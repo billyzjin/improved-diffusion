@@ -1,0 +1,33 @@
+About Pythia
+============
+
+The Pythia HPC Cluster is designed for GPU-accelerated applications and is available to Booth researchers to run A.I., machine learning, or other computationally intensive tasks.
+
+Currently, Pythia comprises 15 physical nodes with 8 GPUs each (120 GPUs in total).
+
+.. csv-table::
+    :file: _static/hardware_table.csv
+    :header-rows: 1
+
+
+.. The H100 nodes pgpu001-005 are fully dedicated to Prof. XY Han research team. We use the Slurm resource manager to schedule jobs as well as interactive access to GPU nodes. Users must be associated with a Slurm account and qos to run jobs on Pythia.
+
+The Pythia Computing Cluster is supported by Booth IT. For general assistance, contact the Help Desk helpdesk@chicagobooth.edu. 
+More technical inquiries can be directed to Research Support research.support@chicagobooth.edu. 
+Make sure to start a new email thread for each new support request. 
+It helps us to organize requests.
+
+
+Service Level Agreement Policy
+------------------------------
+
+View our `SLA Policy <_static/BoothHPCEnvironmentsSLA Policy-v1.0.pdf>`_
+
+
+
+Acknowledgement of Use
+----------------------
+
+Please include the following acknowledgement when publishing research done using the computing cluster at Booth.
+
+*This research was supported in part by the Pythia computing cluster at The University of Chicago Booth School of Business which is funded by the Office of the Dean.*

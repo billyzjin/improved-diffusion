@@ -1,0 +1,208 @@
+.. include:: <isonum.txt>
+
+Accessing Files on Pythia
+==========================
+
+
+Storage and File System
+-----------------------
+
+Home Directories
+!!!!!!!!!!!!!!!!
+
+Booth home directories are auto-mounted on Pythia upon login.
+User home directories on Pythia are the same home directories present on Mercury.
+These directories are private and cannot be shared.
+
+* :code:`/home/<BoothID>`: user's private home directory
+
+
+Project Shares
+!!!!!!!!!!!!!!
+
+Users may request that administrators mount their Booth shared project folders on Pythia.
+These directories are much larger than home directories (Terabytes) and are meant for storing large files associated with research projects.
+Faculty members can add/remove collaborators to these project shares as necessary.
+Shared project folders are the primary way that researchers can access large amounts of disk space.
+
+* :code:`/project/<project-name>`: network group share directory
+
+
+Scratch Space
+!!!!!!!!!!!!!
+
+Pythia has 50 TB of shared GPFS scratch space in :file:`/scratch`.
+This is the recommended place to store temporary job files such as transformed data, temporary logs, parallel job metadata or intermediate output.
+It is not to be used for file/data storage not related to running jobs.
+We recommend placing your scratch files within a personal folder organized by job number: :file:`/scratch/<boothID>/${SLURM_JOB_USER}/${SLURM_JOB_ID}/`.
+Here, ${SLURM_JOB_USER} and ${SLURM_JOB_ID} are environment variables which you can query in your job script.
+Your code should automatically delete the job-specific files and folder upon successful completion.
+You can review our section on how to efficiently prefetch data to GPFS /scratch/ `here`_ 
+
+.. _here: https://pythia-docs.chicagobooth.edu/additional_resources.html#prefetch-data-to-gpfs
+
+.. note::
+    The GPFST scratch directory is only available on the compute nodes, not on the front end nodes.
+
+.. warning::
+    You should delete all unused scratch files as soon as they are no longer needed.
+    All scratch files will be automatically deleted 35 days after creation without notice.
+    If scratch space fills up, the oldest files will be deleted first without notice.
+
+Below is an example of creating a temporary directory in :file:`/scratch` and deleting it once the job finishes.
+
+.. code-block:: bash
+
+   #!/bin/bash
+
+   #SBATCH --job-name=mystatajob  # name of job
+   #SBATCH --partition=standard   # assign the job to the "standard" partition
+
+   # create a new scratch directory for this job
+   scratch_dir="/scratch/${SLURM_JOB_USER}/${SLURM_JOB_ID}"
+   mkdir -p $scratch_dir
+
+   # use scratch dir to store tmp files
+   export STATATMP=$scratch_dir
+
+   # run stata
+   dofile="choosevars.do"
+   /apps/bin/stataMP  -b do $PWD/$dofile
+
+   # remove scratch directory when done
+   rm -r $scratch_dir
+
+
+
+I/O Tools
+---------
+
+Command line utilities
+!!!!!!!!!!!!!!!!!!!!!!
+
+A common way of transferring files to and from a remote cluster is to use the :code:`scp` command.
+
+.. code-block:: bash
+
+    # copy a file to a local dir; use the same name for the file
+    $ scp <BoothID>@pythia.chicagobooth.edu:<src_dir>/myfile.txt <dst_dir>/.
+
+    # copy a file to a local dir; use a different name for the file
+    $ scp <BoothID>@pythia.chicagobooth.edu:<src_dir>/myfile.txt <dst_dir>/renamed.txt
+
+    # copy a directory using the recursive flag (-r)
+    $ scp -r <BoothID>@pythia.chicagobooth.edu:<src_dir> <dst_dir>
+
+If you need to check the space available in your home directory or project share, you can use the :code:`df -h` command.
+
+.. code-block:: bash
+
+    # Check home directory space
+    $ df -h /home/<BoothID>/
+    Filesystem                                                     Size  Used Avail Use% Mounted on
+    sisyphus-n.chicagobooth.edu:/ifs/home/<affiliation>/<BoothID>  14G   7G   7G    50% /home/<BoothID>
+
+    # Check project share space
+    $ df -h /project/<name_of_project>
+    
+
+sftp
+!!!!
+
+Another common way of transferring files is via sftp.
+One software package that provides cross-platform support for sftp transfers is `Filezilla`_.
+Filezilla is an easy to use sftp client with a graphical user interface.
+The split window shows your local machine's directory tree on one side, and the remote files in the other.
+Filezilla's GUI allows simple drag-and-drop for transferring files.
+
+.. figure:: _static/filezilla.png
+    :scale: 80 %
+
+    Filezilla
+
+A connection to Pythia can be established by simply entering the following fields and clicking the Quickconnect button.
+
+:Host: :code:`sftp://pythia.chicagobooth.edu`
+:Username: :code:`<BoothID>`
+:Password: :code:`<BoothPassword>`
+
+.. _`Filezilla`: https://filezilla-project.org/
+
+
+Mounting home directory on a Desktop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+Users who are connected to the Chicago Booth network (either through a wired ethernet connection or through the Booth VPN) can access files on Pythia by mapping to their home directory. 
+To map your home directory:
+
+Windows
+#######
+
+.. note:: If you are off campus or on a wireless connection, you must use Booth VPN to access files on Pythia.
+
+1.    Right-click on the My Computer icon.
+2.    Click on the Map Network Driveâ€¦ link.
+3.    Choose a free drive letter from the Drive: dropdown.
+4.    Enter one of the following for the Folder field
+
+:PhD students: :code:`\\\\home.chicagobooth.edu\\home\\phd\\<BoothID>`
+:Faculty: :code:`\\\\home.chicagobooth.edu\\home\\fac\\<BoothID>`
+:Staff: :code:`\\\\home.chicagobooth.edu\\home\\staff\\<BoothID>`
+:Collaborator: :code:`\\\\home.chicagobooth.edu\\home\\collab\\<BoothID>`
+
+5.    Uncheck the Reconnect at logon checkbox.
+6.    Click on the Finish button.
+7.    At the prompt, enter your Chicago Booth credentials as follows, :code:`GSB\<BoothID>` and :code:`<Booth password>`.
+
+Your Booth home directory will now appear in My Computer under Network Drives.
+
+.. note:: Project shares can similarly be mounted by using :code:`\\\\project.chicagobooth.edu\\<project-name>`
+
+Mac
+###
+
+.. note:: If you are off campus or on a wireless connection, you must use Booth VPN to access files on Pythia.
+
+1.    From the Finder menu, click on Go |rarr| Connect to Server...
+2.    Enter one of the following for Server Address
+
+:PhD students: :code:`smb://home.chicagobooth.edu/home/phd/<BoothID>`
+:Faculty: :code:`smb://home.chicagobooth.edu/home/fac/<BoothID>`
+:Staff: :code:`smb://home.chicagobooth.edu/home/staff/<BoothID>`
+:Collaborator: :code:`smb://home.chicagobooth.edu/home/collab/<BoothID>`
+
+3.    Click on the Connect button.
+4.    Click on the Registered User radio button.
+5.    Enter your Chicago BoothID and password
+6.    Uncheck the Remember this password in my keychain checkbox.
+7.    Click on the Connect button.
+
+Your Booth home directory will now appear on your desktop.
+
+.. note:: Project shares can similarly be mounted by using :code:`smb://project.chicagobooth.edu/<project-name>`
+
+
+Snapshots and File Recovery
+---------------------------
+
+Snapshots on Pythia and Mercury  are performed nightly for user home directories as well as project shares.
+Nightly snapshots are available for 30 days and provides users with a short-term file versioning system.
+Files older than 30 days are not recoverable.
+Note that ".snapshot" is a hidden folder not visible by directory listing commands.
+Here are some example commands for using snapshots.
+
+.. code-block:: bash
+
+    # Navigate to the hidden ".snapshot" folder
+    $ cd ~/.snapshot
+
+    # View available snapshots taken in last 30 days
+    $ ls
+    gridhome_30day_2021-12-20_01-00
+    gridhome_30day_2021-12-21_01-00
+    gridhome_30day_2022-12-22_01-00
+    gridhome_30day_2022-12-23_01-00
+
+    # Restore a single file
+    cp ~/.snapshot/gridhome_30day_2021-12-20_01-00/file ~/target/folder/.
+

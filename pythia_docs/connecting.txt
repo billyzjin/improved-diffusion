@@ -1,0 +1,145 @@
+.. include:: <isonum.txt>
+
+Connecting To Pythia 
+=====================
+
+Researchers wishing to use Pythia must contact research.support@chicagobooth.edu to request access.
+
+.. note:: Pythia requires users to be connected to a UChicago campus network or logged on to the `Booth VPN`_ (vpn.chicagobooth.edu).
+
+..  and MBA students the UChicago cVPN (cvpn.uchicago.edu).
+
+Accessing Pythia requires having Booth credentials (i.e. Booth ID and password) and access to a Secure Shell (SSH) client.
+
+.. _Booth VPN: https://it.chicagobooth.edu/TDClient/30/Portal/KB/ArticleDet?ID=572
+
+:Connection Type: ssh
+:Host Name: pythia.chicagobooth.edu
+:Port Number: 22
+
+Mac/Linux
+---------
+
+Mac and Linux systems have a built-in Terminal that can be used to access Pythia.
+In these systems, simply open a Terminal window and type the SSH command at the prompt.
+
+.. code-block:: console
+
+    $ ssh <BoothID>@pythia.chicagobooth.edu
+
+At the prompt, enter your Booth password. 
+The screen will not show characters as you type your password.
+
+.. note:: You must use your Booth ID, not CNET ID!
+
+Windows
+-------
+
+Windows users will need to first download a terminal emulator.
+The university's `IT Services`_ provides support for the terminal emulator PuTTY which can be used as a Secure Shell (SSH) client.
+The official PuTTY download page can be found `here`_.
+
+.. _IT Services: https://uchicago.service-now.com/it?id=kb_article&sys_id=80db73c0db7d174042a35bc0cf9619ca
+.. _here: https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
+
+Once downloaded, a connection to Pythia can be initiated by entering the host name, port number, and connection type.
+
+.. figure:: _static/putty_screenshot.png
+    :scale: 100 %
+    
+    PuTTY configuration for initiating an SSH connection to Pythia
+
+A new window will pop up where you can enter your Booth ID and password.
+You should then see Pythia's welcome banner if the log in has been successful.
+
+
+X11 Forwarding
+--------------
+
+On occasion, it may be useful to use X11 forwarding when using an application that provides a graphical interface.
+To do so, you may have to download an X server before connecting to Pythia.
+You can verify that X11 forwarding is working as expected by typing `xeyes` at a prompt.
+When X11 forwarding is working properly, a window will pop up with a pair of eyes that follow the mouse cursor as it moves.
+
+Linux:
+
+#. Log in to Pythia with X11 forwarding enabled :code:`ssh -X <BoothID>@pythia.chicagobooth.edu`
+#. Test X11 forwarding by typing :code:`xeyes`
+
+Mac: 
+
+#. Install an X Server (e.g. `XQuartz`_)
+#. Click on Apple icon in top left of desktop and log out user; then log back in
+#. Log in to Pythia with X11 forwarding enabled :code:`ssh -X <BoothID>@pythia.chicagobooth.edu`
+#. Test X11 forwarding by typing :code:`xeyes`
+
+.. _XQuartz: https://www.xquartz.org/
+
+Windows:
+
+1. Install an X Server (e.g. `VcXsrv`_)
+2. Enable X11 forwarding in Putty
+
+    a) From the left side menu, select *Connection* |rarr| *SSH* |rarr| *X11*
+    b) Check the box labeled *X11 Forwarding*
+
+3. Click *Open* to log in to Pythia with X11 forwarding enabled
+4. Test X11 forwaring by typing :code:`xeyes`
+
+.. _VcXsrv: https://sourceforge.net/projects/vcxsrv/
+
+SSH keys
+--------------
+SSH Keys are automatically generated for each user upon launching their first interactive session on a Pythia `compute` node (i.e. via :code:`srun --account=<accountname> --pty bash --login`).
+SSH key authenication allows users to connect to the cluster without typing their password.
+
+.. code-block:: bash
+
+    # log into a compute node (start an interactive session)
+    [pytfe02] $ srun --pty bash --login
+
+    # private key "id_ecdsa_booth" and public key are automatically created on Pythia
+    [pgpu010] $ ls  /home/${USER}/.ssh/
+    id_ecdsa_booth    id_ecdsa_booth.pub
+
+
+Mac/Linux:
+
+1. Copy the private key from Pythia to your local machine. Do this from your local machine.
+
+.. code-block:: bash
+
+    # copy the private key from Pythia to your local machine
+    [laptop] $ scp <Booth_ID>@pythia.chicagobooth.edu:~/.ssh/id_ecdsa_booth ~/.ssh/id_ecdsa_booth
+
+    # create a symbolic link to the private key
+    [laptop] $ ln -s ~/.ssh/id_ecdsa_booth ~/.ssh/id_ecdsa
+
+2. Try logging to Pythia. You should see the Pythia's welcome banner without having to enter your password.
+
+Windows:
+
+1. If you installed PuTTY, you can copy the private key from the Windows Powershell with pscp command.
+
+.. code-block:: bash
+
+ PS C:\Users\BoothID> pscp <Booth_ID>@pythia.chicagobooth.edu:/home/<Booth_ID/.ssh/id_ecdsa_booth C:\my_folder\ #copy private key to Windows C drive
+
+2. Convert id_ecdsa_booth to id_ecdsa_booth.ppk with PuTTYgen  
+     
+     a) Launch Puttygen and click :code:`conversions -> Import key` (import id_ecdsa_booth saved in my_folder)
+     b) Under :code:`Actions / Save the generated key`, select :code:`Save private key` and save key as id_ecdsa_booth.ppk
+
+.. figure:: _static/puttygen_import_key.png
+    :scale: 100 %
+
+    PuTTYgen import and convert private key id_ecdsa_booth to id_ecdsa_booth.ppk
+
+3.  Connecting to Pythia via PuTTY as described in the paragraph Connecting to Pythia-Windows and upload the private key id_rsa.ppk by navigating to :code:`Connection> SSH > Auth`, upload the key via the :code:`browse` button under :code:`Authentication parameters` and click :code:`open`.
+
+.. figure:: _static/putty_private_key_updated.png
+    :scale: 100 %
+    
+    PuTTY configuration for connecting with ssh keys
+   
+

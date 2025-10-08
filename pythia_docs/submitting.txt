@@ -1,0 +1,350 @@
+Submit Jobs on Pythia
+=====================
+
+Pythia employs the SLURM workload manager to prioritize jobs and allocated resources.
+At a minimum, SLURM must be told which account a user belongs to (:code:`--account`) and what hardware is being requested (:code:`--partition`).
+
+Scheduler Configuration
+-----------------------
+
+Slurm Accounts
+!!!!!!!!!!!!!!!
+
+All users must belong to an account before being able to access the compute nodes.
+View your available accounts by copy-pasting the literal command below:
+
+.. code-block:: console
+
+    sacctmgr show association where user=${USER} format=user,account
+
+.. note:: If the above command does not return any accounts, please contact research.support@chicagobooth.edu to request access to Pythia
+    
+
+
+Slurm Partitions
+!!!!!!!!!!!!!!!!
+
+To see a list of available partitions, use the :code:`sinfo` command:
+
+.. code-block:: console
+
+   $ sinfo
+
+Currently, Pythia is configured with the following partitions:
+
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| Partition        | Nodes    | Cores     | Memory       | GPU     | Wall clock  |        Notes            |
++==================+==========+===========+==============+=========+=============+=========================+
+| interactive_l40s | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 2h   |                         |
+|                  | | Max: 1 | | Max: 64 | | Max:750GB  | | Max:8 | | Max: 2h   |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| standard_l40s    | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 4h   |                         |
+|                  | | Max: 1 | | Max: 64 | | Max:750GB  | | Max:8 | | Max: 3d   |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| interactive_h100 | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 2h   |                         |
+|                  | | Max: 1 | | Max: 64 | | Max: 2 TB  | | Max:8 | | Max: 2h   |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| standard_h100    | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 4h   |                         |
+|                  | | Max: 1 | | Max: 64 | | Max: 2 TB  | | Max:8 | | Max: 3d   |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| long_h100        | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 3d   |                         |
+|                  | | Max: 1 | | Max: 64 | | Max: 2 TB  | | Max:8 | | Max: 6d   |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+| xyhan_h100       | | Def: 1 | | Def: 1  | | Def: 2GB   | | Min:1 |             |                         |
+|                  | | Max: 5 | | Max: 64 | | Max: 2 TB  | | Max:8 |             |                         |
++------------------+----------+-----------+--------------+---------+-------------+-------------------------+
+
+The standard partitions are suitable for most batch jobs.
+
+The interactive partitions are meant for light workloads (e.g. debugging, testing, short exploratory runs, etc.) that require user input.
+
+The long_h100 partition is available for batch jobs that require more than 3 days to run.
+    
+
+Environment and Modules
+-----------------------
+
+Booth IT maintains a curated set of software programs commonly in use by Booth researchers.
+To facilitate setting up the computing environments, we use *software modules*.
+Below are some examples of software modules that are currently available on Pythia:
+
+* Python
+* Conda
+* Cuda
+* R
+* Matlab
+
+Additionally, we provide cloud provider command line interface (CLI) to reach out to your 
+cloud account from Pythia:
+
+* aws-cli
+* gcloudcli
+ 
+Once logged in to Pythia, modules can be used in the following manner.
+
+* View the list of currently loaded modules: :code:`module list`
+* View a list of the available software modules: :code:`module avail`
+* Load a specific module: :code:`module load <module_name>` 
+* Unload a specific module: :code:`module unload <module_name>`
+* Unload *all* loaded modules: :code:`module purge`
+
+.. note::
+    To access modules commands, you must be logged in to a *compute* node
+
+Loading and unloading modules is typically done for every session.
+In addition, you may load modules inside a submission script.
+More detailed information for the module command can be found by typing :code:`man module`.
+
+
+.. code-block:: bash
+
+    # make sure you are on a compute node
+    $ srun --partition=interactive_h100 --account=<accountname> --gres=gpu:1 --pty bash --login
+
+    # list currently loaded modules
+    $ module list
+    No Modulefiles Currently Loaded.
+
+    # check which version of R would be used
+    $ which Python3
+    /usr/bin/python3
+
+    # find out what modules are available
+    $ module avail
+    
+    ------------------------- /apps/modulefiles/pythia ------------------------
+    conda/23.10
+    python/booth/3.12
+    R/4.3/4.3.2
+
+    # now, load a specific version of Python (3.12)
+    $ module load  python/booth/3.12
+
+    # verify that the module has been loaded
+    $ module list
+    Currently Loaded Modulefiles:
+          1) python/booth/3.12
+
+    # check the version of Python3    
+    $ which python3
+    /apps/python/RHEL8/3.12/3.12.9/bin/python3
+
+    # unload all of the currently loaded modules
+    $ module purge
+
+    # check that the version of R has reverted    
+    $ which python3
+    /usr/bin/python3
+
+
+Running Programs on Pythia
+--------------------------
+
+When connecting to Pythia, a user is directed to a `login` node (pytfe01 or pytfe02)
+The `login` node is useful for viewing your home directory or for submitting computational tasks on Pythia's `compute` nodes via the sbatch command.
+The login node should never be used to directly run any computational tasks or to large datasets.
+
+.. _Slurm: http://www.slurm.schedmd.com/documentation.html
+
+
+Submitting Batch Jobs
+!!!!!!!!!!!!!!!!!!!!!
+
+The :code:`sbatch` command is the command most commonly used to request computing resources on Pythia.
+
+Rather than specify all the options in the command line, users typically write a submission script that contains all the commands and parameters necessary to run the program on the cluster.
+
+In a submission script, all Slurm parameters are declared with :code:`#SBATCH`, followed by additional definitions.
+
+Here is an example of a submission script:
+
+.. code-block:: bash
+   :caption: submit.sh
+   :linenos:
+
+   #!/bin/bash
+   
+   #---------------------------------------------------------------------------------
+   # Account information
+   
+   #SBATCH --account=faculty-<PI BoothID>              
+   
+   #---------------------------------------------------------------------------------
+   # Resources requested
+   
+   #SBATCH --partition=standard_h100       #  standard_h100, long_h100
+   #SBATCH --cpus-per-task=1          # number of CPUs requested (for parallel tasks)
+   #SBATCH --mem=2G           # requested memory
+   #SBATCH --time=0-04:00:00          # wall clock limit (d-hh:mm:ss)
+   #SBATCH --gres=gpu:2
+   #---------------------------------------------------------------------------------
+   # Job specific name (helps organize and track progress of jobs)   
+
+   #SBATCH --job-name=my_batch_job    # user-defined job name
+   
+   #---------------------------------------------------------------------------------
+   # Print some useful variables
+   
+   echo "Job ID: $SLURM_JOB_ID"
+   echo "Job User: $SLURM_JOB_USER"
+   echo "Num Cores: $SLURM_JOB_CPUS_PER_NODE"
+   
+   #---------------------------------------------------------------------------------
+   # Load necessary modules for the job
+   
+   module load <modulename>
+   
+   #---------------------------------------------------------------------------------
+   # Commands to execute below...
+
+   <commands>
+
+   #---------------------------------------------------------------------------------
+   # Print GPU stats to output file at job completion
+
+   dcgmi stats --verbose --job ${SLURM_JOB_ID}
+
+
+Typing :code:`sbatch submit.sh` at the command line will submit the batch job using the scheduler.
+
+
+.. note:: 
+	All sbatch jobs must be submitted from one of the front nodes pytfe01 or pytfe02. Although lines 2--27 are optional, their use is highly recommended. Omitting the SBATCH parameters will cause jobs to be scheduled with the lowest priority and will allocate limited resources to your jobs.
+
+
+
+Submitting Array of Jobs
+!!!!!!!!!!!!!!!!!!!!!!!!
+
+It is sometimes necessary to submit a collection of similar jobs.
+This can be accomplished using job arrays with the :code:`--array` option.
+In the example below, four separate jobs will be launched by the scheduler each with a unique :code:`$SLURM_ARRAY_TASK_ID`.
+
+.. code-block:: bash
+   :caption: submit.sh
+   :linenos:
+
+   #!/bin/bash
+
+   #SBATCH --array=0-3
+
+   # Load the software module
+   module load python/booth/3.10
+
+   # Access unique array task ID using environment variable
+   echo "Array ID: $SLURM_ARRAY_TASK_ID"
+   srun python3 -c "import os; x=os.environ['SLURM_ARRAY_TASK_ID']; print(x)"
+
+
+Managing Jobs
+-------------
+
+The Slurm job scheduler provides several command-line tools for checking on the status of your jobs and for managing them.
+For a complete list of Slurm commands, see the Slurm man pages.
+Here are a few commands that you may find particularly useful:
+
+The most common commands can be summarized as:
+
+:`srun`_: Obtain a job allocation and execute an application
+:`sbatch`_: Submit a batch script to the slurm scheduler.
+:`sacct`_: retrieve job history and information about past jobs
+:`scancel`_: cancel jobs you have submitted
+:`squeue`_: find out the status of queued jobs
+:`sinfo`_: view information about Slurm nodes and partitions.
+
+.. In the next couple sections we explain how to use :code:`squeue` to find out the status of your submitted jobs, and scancel to cancel jobs in the queue.
+
+.. _srun: https://slurm.schedmd.com/srun.html
+.. _sbatch: https://slurm.schedmd.com/sbatch.html
+.. _sacct: https://slurm.schedmd.com/sacct.html
+.. _scancel: https://slurm.schedmd.com/scancel.html
+.. _squeue: https://slurm.schedmd.com/squeue.html
+.. _sinfo: https://slurm.schedmd.com/sinfo.html
+
+Checking your jobs
+~~~~~~~~~~~~~~~~~~
+
+Use the :code:`squeue` command to check on the status of your jobs, and other jobs running on Pythia.
+The simplest invocation lists all jobs that are currently running or waiting in the job queue (â€œpendingâ€), along with details about each job such as the job id and the number of nodes requested:
+
+.. code-block:: console
+
+   $ squeue
+             
+   JOBID PARTITION         NAME     USER      ST     TIME  NODES NODELIST(REASON)
+     924  standard_h100   probe_A  vargaslo    R      0:35      1 pgpu005
+     925  standard_h100   probe_B  vargaslo    R      0:34      1 pgpu006
+     926  standard_h100   survey   fratnasamy  R      0:32      1 pgpu011
+     927  long_h100       probe_C  vargaslo    R      0:30      1 pgpu012
+     928  long_h100       survey2   hchyde    PD      0:00      1 (Resources)
+
+Any job with 0:00 under the TIME column is a job that is still waiting in the queue.
+In the above case, there are not enough resources to run all jobs, so job 928 is waiting in the queue.
+:code:`(Resources)` means that the job is waiting in the queue for available resources to free up.
+Another common reason for a job to be waiting in the queue is if other jobs have higher priority.
+This will be listed as :code:`(Priority)`. 
+
+To view only the jobs that you have submitted, use the :code:`--user` flag
+
+.. code-block:: console
+
+   $ squeue --user=fratnasamy
+
+   JOBID PARTITION     NAME     USER      ST      TIME  NODES NODELIST(REASON)
+     926  standard  survey    fratnasamy  R       0:32      1   pgpu011
+     928  standard  survey2   hchyde      PD      0:00      1 (Resources)
+
+This command has many other useful options for querying the status of the queue and getting information about individual jobs.
+For example, to get information about all jobs that are waiting to run on the standard partition, enter:
+
+.. code-block:: console
+
+   $ squeue --state=PENDING --partition=standard_h100
+
+Alternatively, to get information about all your jobs that are running on the standard partition, type:
+
+.. code-block:: console
+
+   $ squeue --state=RUNNING --partition=standard_h100
+
+The last column of the output tells us which nodes are allocated for each job.
+For more information, consult the command-line help by typing :code:`squeue --help`, or visit the official online `documentation`_.
+
+.. _documentation: http://www.slurm.schedmd.com/squeue.html
+
+
+Canceling your jobs
+~~~~~~~~~~~~~~~~~~~
+
+To cancel a job you have submitted, use the :code:`scancel` command. 
+This requires you to specify the id of the job you wish to cancel. 
+For example, to cancel a job with id 8885128, do the following:
+
+.. code-block:: console
+
+   $ scancel 8885128
+
+If you are unsure what is the id of the job you would like to cancel, see the JOBID column from running :code:`squeue --user=<username>`.
+
+To cancel all jobs you have submitted that are either running or waiting in the queue, enter the following:
+
+.. code-block:: console
+
+   $ scancel --user=<username>
+
+Viewing Past Jobs
+~~~~~~~~~~~~~~~~~
+
+Jobs that have completed can be viewed using :code:`sacct`.
+This can be useful for example to see how much memory a job consumed.
+
+.. code-block:: console
+
+    # view job with jobid 993
+    $ sacct -j 993
+
+    # view amount of memory used during job execution
+    $ sacct -j <jobID> --format=User,MaxRss,MaxVMSize,Jobname,partition,start,end
+
+    # view all jobs started after a specific date for a specific user
+    $ sacct --starttime=2018-06-10 --user=<BoothID>
