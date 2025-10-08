@@ -40,6 +40,7 @@ cd /home/bjin0/improved-diffusion
 
 # Install dependencies (if not already installed)
 pip install -e .
+pip install mpi4py
 
 # Set hyperparameters for LSUN bedroom
 MODEL_FLAGS="--image_size 256 --num_channels 128 --num_res_blocks 2 --num_heads 1 --learn_sigma True --use_scale_shift_norm False --attention_resolutions 16"

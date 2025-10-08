@@ -39,9 +39,30 @@ cd /home/bjin0/improved-diffusion
 
 # Install dependencies (if not already installed)
 pip install -e .
+pip install mpi4py
 
 # Prepare dataset (if not already done)
-python3 datasets/cifar10.py
+# Check if CIFAR-10 already exists, otherwise use pre-downloaded data
+if [ ! -d "cifar_train" ]; then
+    echo "CIFAR-10 not found in current directory..."
+    
+    # Check for pre-downloaded data in home directory
+    if [ -d "/home/bjin0/cifar10_data/cifar_train" ]; then
+        echo "Using pre-downloaded CIFAR-10 data..."
+        cp -r /home/bjin0/cifar10_data/cifar_* .
+    elif [ -d "/home/bjin0/cifar_train" ]; then
+        echo "Using CIFAR-10 data from home directory..."
+        cp -r /home/bjin0/cifar_* .
+    else
+        echo "No pre-downloaded data found, trying network download..."
+        if ! python3 datasets/cifar10.py; then
+            echo "Network download failed, creating dummy CIFAR-10 dataset..."
+            python3 prepare_cifar10_manual.py
+        fi
+    fi
+else
+    echo "CIFAR-10 dataset already exists, skipping download..."
+fi
 
 # Set hyperparameters
 MODEL_FLAGS="--image_size 32 --num_channels 128 --num_res_blocks 3 --learn_sigma True --dropout 0.3"

@@ -40,6 +40,7 @@ cd /home/bjin0/improved-diffusion
 
 # Install dependencies (if not already installed)
 pip install -e .
+pip install mpi4py
 
 # Set hyperparameters for ImageNet-64
 MODEL_FLAGS="--image_size 64 --num_channels 128 --num_res_blocks 3 --learn_sigma True"
