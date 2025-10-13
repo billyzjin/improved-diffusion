@@ -149,10 +149,15 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
         dataset, 
         batch_size=batch_size, 
         shuffle=True, 
-        num_workers=4,
+        num_workers=1,  # Reduced to avoid warnings
         pin_memory=True
     )
-    return dataloader
+    # Convert to infinite iterator
+    def infinite_dataloader():
+        while True:
+            for batch in dataloader:
+                yield batch
+    return infinite_dataloader()
 EOF
 
 # Create a simple patch for train_util.py to fix the distributed training issue
