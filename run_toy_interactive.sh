@@ -151,6 +151,11 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
     return dataloader
 EOF
 
+# Create a simple patch for train_util.py to fix the distributed training issue
+echo "Creating train_util patch..."
+# Just replace the problematic line with a simple sed command
+sed 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
+
 # Backup and replace files
 echo "Backing up original files and applying patches..."
 cp improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
@@ -158,6 +163,9 @@ cp improved_diffusion/dist_util_no_mpi.py improved_diffusion/dist_util.py
 
 cp improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
 cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets.py
+
+cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
+cp improved_diffusion/train_util_patched.py improved_diffusion/train_util.py
 
 # Prepare dataset
 echo "Preparing dataset..."
@@ -212,6 +220,7 @@ fi
 echo "Restoring original files..."
 cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py
 cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py
+cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py
 
 echo "=========================================="
 echo "TOY MODEL COMPLETED SUCCESSFULLY!"
