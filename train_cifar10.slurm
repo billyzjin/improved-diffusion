@@ -28,6 +28,7 @@ echo "Num Cores: $SLURM_JOB_CPUS_PER_NODE"
 # Load necessary modules for the job
 module load python/booth/3.12
 module load cuda/11.0
+module load openmpi
 
 #---------------------------------------------------------------------------------
 # Set environment variables
@@ -39,6 +40,13 @@ cd /home/bjin0/improved-diffusion
 
 # Install dependencies (if not already installed)
 pip install -e .
+
+# Install mpi4py with proper MPI support
+# First, set up environment for MPI
+export MPICC=$(which mpicc)
+export MPICXX=$(which mpicxx)
+
+# Install mpi4py
 pip install mpi4py
 
 # Prepare dataset (if not already done)
