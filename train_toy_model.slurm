@@ -6,7 +6,7 @@
 
 #---------------------------------------------------------------------------------
 # Resources requested
-#SBATCH --partition=interactive_h100
+#SBATCH --partition=standard_h100
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
 #SBATCH --time=0-01:00:00
