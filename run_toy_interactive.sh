@@ -161,6 +161,7 @@ echo "Creating train_util patch..."
 sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' \
     -e 's/if th.cuda.is_available():/if False:  # Disable DDP for single GPU/' \
     -e 's/self.use_ddp = True/self.use_ddp = False/' \
+    -e 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' \
     improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
 
 # Backup and replace files
