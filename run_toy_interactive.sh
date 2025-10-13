@@ -88,6 +88,10 @@ def synchronize():
 def load_state_dict(path, map_location="cpu"):
     """Load state dict from file."""
     return th.load(path, map_location=map_location)
+
+def sync_params(params):
+    """Sync parameters across processes (no-op for single GPU)."""
+    pass
 EOF
 
 # Create image_datasets_no_mpi.py
