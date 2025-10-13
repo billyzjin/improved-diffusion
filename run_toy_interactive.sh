@@ -157,8 +157,11 @@ EOF
 
 # Create a simple patch for train_util.py to fix the distributed training issue
 echo "Creating train_util patch..."
-# Just replace the problematic line with a simple sed command
-sed 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
+# Replace multiple problematic lines with sed commands
+sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' \
+    -e 's/if th.cuda.is_available():/if False:  # Disable DDP for single GPU/' \
+    -e 's/self.use_ddp = True/self.use_ddp = False/' \
+    improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
 
 # Backup and replace files
 echo "Backing up original files and applying patches..."
