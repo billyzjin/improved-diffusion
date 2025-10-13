@@ -10,7 +10,7 @@ cd /home/bjin0/improved-diffusion
 # Load modules
 echo "Loading modules..."
 module load python/booth/3.12
-module load cuda/11.0
+# Skip CUDA module - it's already included with Python
 
 # Set environment
 export OPENAI_LOGDIR=/tmp/toy_diffusion_logs
@@ -175,7 +175,7 @@ echo "=========================================="
 
 TOY_MODEL_FLAGS="--image_size 32 --num_channels 32 --num_res_blocks 1 --learn_sigma True --dropout 0.1"
 TOY_DIFFUSION_FLAGS="--diffusion_steps 50 --noise_schedule linear"
-TOY_TRAIN_FLAGS="--lr 1e-3 --batch_size 32 --max_steps 500 --save_interval 250"
+TOY_TRAIN_FLAGS="--lr 1e-3 --batch_size 32 --save_interval 250"
 
 echo "Model flags: $TOY_MODEL_FLAGS"
 echo "Diffusion flags: $TOY_DIFFUSION_FLAGS"
@@ -183,12 +183,30 @@ echo "Train flags: $TOY_TRAIN_FLAGS"
 
 python3 scripts/image_train.py --data_dir ./cifar_train $TOY_MODEL_FLAGS $TOY_DIFFUSION_FLAGS $TOY_TRAIN_FLAGS
 
-# Generate samples
-echo "=========================================="
-echo "GENERATING SAMPLES"
-echo "=========================================="
-
-python3 scripts/image_sample.py --model_path $OPENAI_LOGDIR/ema_0.9999_*.pt $TOY_MODEL_FLAGS $TOY_DIFFUSION_FLAGS --num_samples 50
+# Check if training succeeded
+if [ $? -eq 0 ]; then
+    echo "Training completed successfully!"
+    
+    # Find the model checkpoint
+    MODEL_PATH=$(find $OPENAI_LOGDIR -name "ema_0.9999_*.pt" | head -1)
+    
+    if [ -n "$MODEL_PATH" ]; then
+        echo "Found model checkpoint: $MODEL_PATH"
+        
+        # Generate samples
+        echo "=========================================="
+        echo "GENERATING SAMPLES"
+        echo "=========================================="
+        
+        python3 scripts/image_sample.py --model_path "$MODEL_PATH" $TOY_MODEL_FLAGS $TOY_DIFFUSION_FLAGS --num_samples 50
+    else
+        echo "No model checkpoint found in $OPENAI_LOGDIR"
+        echo "Listing directory contents:"
+        ls -la $OPENAI_LOGDIR/
+    fi
+else
+    echo "Training failed! Check the error messages above."
+fi
 
 # Restore original files
 echo "Restoring original files..."
