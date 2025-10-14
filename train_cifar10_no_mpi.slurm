@@ -50,7 +50,17 @@ restore_originals() {
 trap restore_originals EXIT
 
 # Install dependencies (if not already installed)
-pip3 install -e .
+echo "Installing improved-diffusion package..."
+if ! pip3 install -e .; then
+    echo "Editable install failed, trying regular install..."
+    pip3 install .
+fi
+
+# Verify installation
+python3 -c "import improved_diffusion; print('Package installed successfully')" || {
+    echo "ERROR: Package installation failed!"
+    exit 1
+}
 
 #---------------------------------------------------------------------------------
 # Apply patches to remove MPI dependencies for single-GPU training
