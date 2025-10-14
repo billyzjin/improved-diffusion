@@ -265,10 +265,13 @@ class LossAwareSampler:
         Get sampling weights for each timestep.
         """
         if not self.loss_history.any():
-            return np.ones_like(self.loss_history)
+            return np.ones_like(self.loss_history) / len(self.loss_history)
         weights = np.sqrt(np.mean(self.loss_history**2, axis=-1))
         weights /= np.sum(weights)
         weights *= 1 - np.exp(-self.loss_history / self.loss_history.mean())
+        # Ensure probabilities sum to 1
+        weights = np.maximum(weights, 1e-8)  # Avoid zero weights
+        weights /= np.sum(weights)
         return weights
 
     def sample(self, batch_size, device):
