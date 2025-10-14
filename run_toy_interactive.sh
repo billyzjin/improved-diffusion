@@ -152,11 +152,22 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
         num_workers=1,  # Reduced to avoid warnings
         pin_memory=True
     )
-    # Convert to infinite iterator
+    # Convert to infinite iterator and fix format
     def infinite_dataloader():
         while True:
-            for batch in dataloader:
-                yield batch
+            for batch_data in dataloader:
+                if class_cond:
+                    # batch_data is (images, labels)
+                    images, labels = batch_data
+                    # Convert to expected format: (batch, cond_dict)
+                    cond = {"y": labels} if class_cond else {}
+                    yield images, cond
+                else:
+                    # batch_data is (images, dummy_labels)
+                    images, _ = batch_data
+                    # Convert to expected format: (batch, cond_dict)
+                    cond = {}
+                    yield images, cond
     return infinite_dataloader()
 EOF
 
