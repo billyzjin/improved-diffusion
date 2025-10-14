@@ -35,8 +35,19 @@ module load python/booth/3.12
 export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_paper_repro
 export CUDA_VISIBLE_DEVICES=0
 
+# OPTIMIZE LOGGING FOR DISK SPACE
+# Only log essential formats: stdout (terminal) and log (text file)
+# Removed csv format which creates large CSV files with every metric
+export OPENAI_LOG_FORMAT="stdout,log"
+
 # Create log directory
 mkdir -p $OPENAI_LOGDIR
+
+# Clean up old logs to free space (keep only recent experiments)
+echo "Cleaning up old logs to free disk space..."
+find /home/bjin0/improved-diffusion/logs -name "progress*.csv" -delete 2>/dev/null || true
+find /home/bjin0/improved-diffusion/logs -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
+find /home/bjin0/improved-diffusion/logs -name "*.pt" -mtime +7 -delete 2>/dev/null || true
 
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
@@ -409,8 +420,9 @@ echo ""
 MODEL_FLAGS="--image_size 32 --num_channels 128 --num_res_blocks 3"
 MODEL_FLAGS="$MODEL_FLAGS --num_heads 4 --attention_resolutions 16,8 --use_scale_shift_norm True"
 
-# Training flags (from paper)
-TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --ema_rate 0.9999 --log_interval 100 --save_interval 10000"
+# Training flags (from paper) - OPTIMIZED FOR DISK SPACE
+# Reduced log_interval from 100 to 1000 to cut logging by 10x (500,000 steps = 500 logs instead of 5,000)
+TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --ema_rate 0.9999 --log_interval 1000 --save_interval 10000"
 
 # Diffusion steps (from paper)
 DIFFUSION_STEPS="--diffusion_steps 4000"

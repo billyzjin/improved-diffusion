@@ -27,6 +27,11 @@ echo "Loading modules..."
 module load python/booth/3.12
 # Skip CUDA module - it's already included with Python
 
+# OPTIMIZE LOGGING FOR DISK SPACE
+# Only log essential formats: stdout (terminal) and log (text file)
+# Removed csv format which creates large CSV files with every metric
+export OPENAI_LOG_FORMAT="stdout,log"
+
 # Set environment
 export OPENAI_LOGDIR=/tmp/toy_diffusion_logs
 export CUDA_VISIBLE_DEVICES=0
@@ -313,10 +318,11 @@ echo "=========================================="
 echo "STARTING COMPREHENSIVE TOY MODEL TESTS"
 echo "=========================================="
 
-# Common toy model parameters (small and fast)
+# Common toy model parameters (small and fast) - OPTIMIZED FOR DISK SPACE
 TOY_MODEL_FLAGS="--image_size 32 --num_channels 32 --num_res_blocks 1 --dropout 0.1"
 TOY_DIFFUSION_FLAGS="--diffusion_steps 50"
-TOY_TRAIN_FLAGS="--lr 1e-3 --batch_size 32 --save_interval 100"
+# Reduced log_interval from default to minimize logging
+TOY_TRAIN_FLAGS="--lr 1e-3 --batch_size 32 --log_interval 50 --save_interval 100"
 
 # Test 1: Uniform sampler with learn_sigma=False (linear_simple path)
 echo "=========================================="
