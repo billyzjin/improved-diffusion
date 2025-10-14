@@ -1,0 +1,43 @@
+#!/bin/bash -l
+#PBS -A Brownian_bandits
+#PBS -l select=1:system=polaris
+#PBS -l walltime=0:05:00
+#PBS -l filesystems=home:eagle
+#PBS -q debug
+#PBS -N test_job
+
+echo "=========================================="
+echo "PBS TEST JOB RUNNING"
+echo "=========================================="
+echo "Job ID: $PBS_JOBID"
+echo "User: $(whoami)"
+echo "Host: $(hostname)"
+echo "Date: $(date)"
+echo "Working directory: $(pwd)"
+echo "Node file: $PBS_NODEFILE"
+echo "=========================================="
+
+# Check if we're on a compute node
+if [ -n "$PBS_NODEFILE" ]; then
+    echo "Running on compute node(s):"
+    cat $PBS_NODEFILE
+    echo "Number of nodes: $(wc -l < $PBS_NODEFILE)"
+else
+    echo "Running on login node"
+fi
+
+# Check available modules
+echo "Available modules:"
+module avail 2>&1 | head -20
+
+# Check Python
+echo "Python version:"
+python3 --version 2>/dev/null || echo "Python3 not found"
+
+# Check CUDA (if available)
+echo "CUDA version:"
+nvidia-smi --version 2>/dev/null || echo "nvidia-smi not available"
+
+echo "=========================================="
+echo "TEST COMPLETED SUCCESSFULLY!"
+echo "=========================================="

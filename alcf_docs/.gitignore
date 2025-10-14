@@ -1,0 +1,9 @@
+site/
+env/
+venv/
+.idea/
+.DS_Store
+.python-version
+inbound-links.md
+pyproject.toml
+uv.lock
