@@ -247,7 +247,8 @@ class UniformSampler:
         ts = np.random.choice(
             self.diffusion.num_timesteps, batch_size, replace=True
         ).astype(np.int64)
-        return th.from_numpy(ts).to(device), th.ones_like(ts, dtype=th.float32)
+        ts_tensor = th.from_numpy(ts).to(device)
+        return ts_tensor, th.ones_like(ts_tensor, dtype=th.float32)
 
 
 class LossAwareSampler:
@@ -278,7 +279,8 @@ class LossAwareSampler:
         ts = np.random.choice(
             self.diffusion.num_timesteps, batch_size, replace=True, p=weights
         ).astype(np.int64)
-        return th.from_numpy(ts).to(device), th.ones_like(ts, dtype=th.float32)
+        ts_tensor = th.from_numpy(ts).to(device)
+        return ts_tensor, th.ones_like(ts_tensor, dtype=th.float32)
 
     def update_with_local_losses(self, local_ts, local_losses):
         """
