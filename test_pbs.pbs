@@ -30,7 +30,9 @@ fi
 echo "Available modules:"
 module avail 2>&1 | head -20
 
-# Check Python
+# Load and check Python
+echo "Loading Python module..."
+module load cray-python/3.11.7
 echo "Python version:"
 python3 --version 2>/dev/null || echo "Python3 not found"
 

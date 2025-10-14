@@ -10,8 +10,8 @@ echo "=========================================="
 echo "TOY DIFFUSION MODEL TEST"
 echo "=========================================="
 
-# Load Python module
-module load python
+# Load Python module (use newer version)
+module load cray-python/3.11.7
 
 # Create a simple Python test
 cat > test_diffusion.py << 'PYEOF'
