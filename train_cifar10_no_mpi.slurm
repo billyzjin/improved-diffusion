@@ -46,21 +46,30 @@ restore_originals() {
   cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
   cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
   cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
+  cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
 }
 trap restore_originals EXIT
 
 # Install dependencies (if not already installed)
 echo "Installing improved-diffusion package..."
-if ! pip3 install -e .; then
+if ! pip3 install -e . 2>&1; then
     echo "Editable install failed, trying regular install..."
-    pip3 install .
+    if ! pip3 install . 2>&1; then
+        echo "ERROR: Both editable and regular install failed!"
+        echo "Last pip error output:"
+        pip3 install . 2>&1 | tail -20
+        exit 1
+    fi
 fi
 
 # Verify installation
-python3 -c "import improved_diffusion; print('Package installed successfully')" || {
-    echo "ERROR: Package installation failed!"
+echo "Verifying package installation..."
+if ! python3 -c "import improved_diffusion; print('Package installed successfully')" 2>&1; then
+    echo "ERROR: Package installation verification failed!"
+    echo "Trying to import improved_diffusion:"
+    python3 -c "import improved_diffusion" 2>&1
     exit 1
-}
+fi
 
 #---------------------------------------------------------------------------------
 # Apply patches to remove MPI dependencies for single-GPU training
@@ -210,7 +219,97 @@ sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.glob
     -e 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' \
     -e 's/if dist.get_rank() == 0:/if True:  # Always save on single GPU/' \
     -e 's/dist.barrier()/pass  # No barrier needed for single GPU/' \
+    -e 's/dist.get_world_size()/1/g' \
+    -e 's/dist.get_rank()/0/g' \
     improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
+
+# Create resample_no_mpi.py (CRITICAL - this was missing!)
+cat > improved_diffusion/resample_no_mpi.py << 'EOF'
+"""
+Resampling utilities - modified to work without MPI for single GPU training.
+"""
+import torch as th
+import numpy as np
+from . import dist_util
+
+
+class UniformSampler:
+    """
+    Uniform sampling of timesteps.
+    """
+
+    def __init__(self, diffusion):
+        self.diffusion = diffusion
+
+    def sample(self, batch_size, device):
+        ts = np.random.choice(
+            self.diffusion.num_timesteps, batch_size, replace=True
+        ).astype(np.int64)
+        return th.from_numpy(ts).to(device), th.ones_like(ts, dtype=th.float32)
+
+
+class LossAwareSampler:
+    """
+    A wrapper around a sampler that performs loss-aware sampling.
+    """
+
+    def __init__(self, diffusion):
+        self.diffusion = diffusion
+        self.loss_history = np.zeros([diffusion.num_timesteps])
+
+    def weights(self):
+        """
+        Get sampling weights for each timestep.
+        """
+        if not self.loss_history.any():
+            return np.ones_like(self.loss_history)
+        weights = np.sqrt(np.mean(self.loss_history**2, axis=-1))
+        weights /= np.sum(weights)
+        weights *= 1 - np.exp(-self.loss_history / self.loss_history.mean())
+        return weights
+
+    def sample(self, batch_size, device):
+        """
+        Sample timesteps based on loss history.
+        """
+        weights = self.weights()
+        ts = np.random.choice(
+            self.diffusion.num_timesteps, batch_size, replace=True, p=weights
+        ).astype(np.int64)
+        return th.from_numpy(ts).to(device), th.ones_like(ts, dtype=th.float32)
+
+    def update_with_local_losses(self, local_ts, local_losses):
+        """
+        Update loss history with local losses (no MPI needed for single GPU).
+        """
+        for t, loss in zip(local_ts.cpu().numpy(), local_losses.cpu().numpy()):
+            if self.loss_history[t] == 0:
+                self.loss_history[t] = loss
+            else:
+                self.loss_history[t] = 0.9 * self.loss_history[t] + 0.1 * loss
+
+    def update_with_all_losses(self, ts, losses):
+        """
+        Update loss history with all losses.
+        """
+        for t, loss in zip(ts, losses):
+            if self.loss_history[t] == 0:
+                self.loss_history[t] = loss
+            else:
+                self.loss_history[t] = 0.9 * self.loss_history[t] + 0.1 * loss
+
+
+def create_named_schedule_sampler(name, diffusion):
+    """
+    Create a named schedule sampler.
+    """
+    if name == "uniform":
+        return UniformSampler(diffusion)
+    elif name == "loss-second-moment":
+        return LossAwareSampler(diffusion)
+    else:
+        raise ValueError(f"Unknown schedule sampler: {name}")
+EOF
 
 # Apply patches
 echo "Applying patches..."
@@ -223,6 +322,9 @@ cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets
 cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
 cp improved_diffusion/train_util_patched.py improved_diffusion/train_util.py
 
+cp improved_diffusion/resample.py improved_diffusion/resample_original.py
+cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
+
 #---------------------------------------------------------------------------------
 # Prepare dataset
 #---------------------------------------------------------------------------------
@@ -234,20 +336,37 @@ if [ ! -d "cifar_train" ]; then
     # Check for pre-downloaded data in home directory
     if [ -d "/home/bjin0/cifar10_data/cifar_train" ]; then
         echo "Using pre-downloaded CIFAR-10 data..."
-        cp -r /home/bjin0/cifar10_data/cifar_* .
+        if ! cp -r /home/bjin0/cifar10_data/cifar_* . 2>&1; then
+            echo "ERROR: Failed to copy pre-downloaded CIFAR-10 data!"
+            exit 1
+        fi
     elif [ -d "/home/bjin0/cifar_train" ]; then
         echo "Using CIFAR-10 data from home directory..."
-        cp -r /home/bjin0/cifar_* .
+        if ! cp -r /home/bjin0/cifar_* . 2>&1; then
+            echo "ERROR: Failed to copy CIFAR-10 data from home directory!"
+            exit 1
+        fi
     else
         echo "No pre-downloaded data found, trying network download..."
-        if ! python3 datasets/cifar10.py; then
+        if ! python3 datasets/cifar10.py 2>&1; then
             echo "Network download failed, creating dummy CIFAR-10 dataset..."
-            python3 prepare_cifar10_manual.py
+            if ! python3 prepare_cifar10_manual.py 2>&1; then
+                echo "ERROR: Failed to create dummy CIFAR-10 dataset!"
+                exit 1
+            fi
         fi
     fi
 else
     echo "CIFAR-10 dataset already exists, skipping download..."
 fi
+
+# Verify dataset exists
+if [ ! -d "cifar_train" ]; then
+    echo "ERROR: CIFAR-10 dataset preparation failed - cifar_train directory not found!"
+    exit 1
+fi
+
+echo "CIFAR-10 dataset ready: $(find cifar_train -name "*.png" | wc -l) images found"
 
 #---------------------------------------------------------------------------------
 # Train models to reproduce paper results
@@ -306,6 +425,7 @@ case $EXPERIMENT in
         export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_linear_simple
         mkdir -p $OPENAI_LOGDIR
         
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
@@ -314,7 +434,8 @@ case $EXPERIMENT in
             --dropout 0.1 \
             --learn_sigma False \
             $TRAIN_FLAGS \
-            --lr_anneal_steps 500000
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
         
     linear_hybrid)
@@ -324,6 +445,7 @@ case $EXPERIMENT in
         export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
@@ -333,7 +455,8 @@ case $EXPERIMENT in
             --learn_sigma True \
             --rescale_learned_sigmas False \
             $TRAIN_FLAGS \
-            --lr_anneal_steps 500000
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
         
     cosine_simple)
@@ -343,6 +466,7 @@ case $EXPERIMENT in
         export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
@@ -351,7 +475,8 @@ case $EXPERIMENT in
             --dropout 0.3 \
             --learn_sigma False \
             $TRAIN_FLAGS \
-            --lr_anneal_steps 500000
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
         
     cosine_hybrid)
@@ -361,6 +486,7 @@ case $EXPERIMENT in
         export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
@@ -370,7 +496,8 @@ case $EXPERIMENT in
             --learn_sigma True \
             --rescale_learned_sigmas False \
             $TRAIN_FLAGS \
-            --lr_anneal_steps 500000
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
         
     cosine_vlb)
@@ -381,6 +508,7 @@ case $EXPERIMENT in
         export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
@@ -392,7 +520,8 @@ case $EXPERIMENT in
             --use_kl True \
             --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS \
-            --lr_anneal_steps 500000
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
         
     *)
@@ -403,7 +532,8 @@ case $EXPERIMENT in
 esac
 
 # Check if training completed successfully
-if [ $? -eq 0 ]; then
+TRAINING_EXIT_CODE=$?
+if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo ""
     echo "=========================================="
     echo "EXPERIMENT COMPLETED SUCCESSFULLY!"
@@ -418,7 +548,14 @@ else
     echo "=========================================="
     echo "EXPERIMENT FAILED!"
     echo "=========================================="
-    echo "Check the error messages above for details."
+    echo "Exit code: $TRAINING_EXIT_CODE"
+    echo ""
+    echo "Last 50 lines of training output:"
+    echo "----------------------------------------"
+    tail -50 "$OPENAI_LOGDIR/log.txt" 2>/dev/null || echo "No log file found"
+    echo "----------------------------------------"
+    echo ""
+    echo "Check the full log file for details: $OPENAI_LOGDIR/log.txt"
     echo "=========================================="
     exit 1
 fi
@@ -430,6 +567,7 @@ echo "Restoring original files..."
 cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py
 cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py
 cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py
+cp improved_diffusion/resample_original.py improved_diffusion/resample.py
 
 #---------------------------------------------------------------------------------
 # Print GPU stats
