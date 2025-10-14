@@ -179,6 +179,7 @@ sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.glob
     -e 's/self.use_ddp = True/self.use_ddp = False/' \
     -e 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' \
     -e 's/if dist.get_rank() == 0:/if True:  # Always save on single GPU/' \
+    -e 's/dist.barrier()/pass  # No barrier needed for single GPU/' \
     improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
 
 # Backup and replace files
