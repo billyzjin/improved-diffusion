@@ -1,0 +1,81 @@
+#!/bin/bash -l
+#PBS -A Brownian_bandits
+#PBS -l select=1:system=polaris
+#PBS -l walltime=0:30:00
+#PBS -l filesystems=home:eagle
+#PBS -q debug
+#PBS -N pytorch_job
+
+echo "=========================================="
+echo "PYTORCH JOB RUNNING"
+echo "=========================================="
+echo "Job ID: $PBS_JOBID"
+echo "Host: $(hostname)"
+echo "Date: $(date)"
+echo "Working directory: $(pwd)"
+echo "=========================================="
+
+# Check if we're on a compute node
+if [ -n "$PBS_NODEFILE" ]; then
+    echo "Running on compute node(s):"
+    cat $PBS_NODEFILE
+    echo "Number of nodes: $(wc -l < $PBS_NODEFILE)"
+else
+    echo "ERROR: Running on login node - this shouldn't happen!"
+    exit 1
+fi
+
+echo "=========================================="
+echo "LOADING MODULES"
+echo "=========================================="
+
+# Load required modules
+module load cray-python/3.11.7
+module load cuda/12.6
+module load nvidia/24.11
+
+echo "Python version: $(python3 --version)"
+echo "CUDA version: $(nvcc --version 2>/dev/null || echo 'nvcc not found')"
+
+echo "=========================================="
+echo "ACTIVATING PYTORCH ENVIRONMENT"
+echo "=========================================="
+
+# Activate your PyTorch environment
+source ~/pytorch_env/bin/activate
+
+echo "PyTorch environment activated!"
+echo "Python path: $(which python3)"
+
+echo "=========================================="
+echo "TESTING PYTORCH"
+echo "=========================================="
+
+# Quick PyTorch test
+python3 -c "
+import torch
+print(f'PyTorch version: {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print(f'CUDA device count: {torch.cuda.device_count()}')
+    print(f'CUDA device name: {torch.cuda.get_device_name(0)}')
+    
+    # Quick GPU test
+    x = torch.randn(100, 100, device='cuda')
+    y = torch.matmul(x, x)
+    print(f'GPU test successful! Result shape: {y.shape}')
+else:
+    print('CUDA not available')
+"
+
+echo "=========================================="
+echo "YOUR CODE GOES HERE"
+echo "=========================================="
+
+# Replace this section with your actual code
+echo "Add your Python script here:"
+echo "python3 your_script.py"
+
+echo "=========================================="
+echo "JOB COMPLETED!"
+echo "=========================================="
