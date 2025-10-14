@@ -64,24 +64,12 @@ restore_originals() {
 }
 trap restore_originals EXIT
 
-# Install dependencies (if not already installed)
-echo "Installing improved-diffusion package..."
-if ! pip install -e . 2>&1; then
-    echo "Editable install failed, trying regular install..."
-    if ! pip install . 2>&1; then
-        echo "ERROR: Both editable and regular install failed!"
-        echo "Last pip error output:"
-        pip install . 2>&1 | tail -20
-        exit 1
-    fi
-fi
-
-# Verify installation
+# Verify package is already installed (installed on login node)
 echo "Verifying package installation..."
 if ! python3 -c "import improved_diffusion; print('Package installed successfully')" 2>&1; then
-    echo "ERROR: Package installation verification failed!"
-    echo "Trying to import improved_diffusion:"
-    python3 -c "import improved_diffusion" 2>&1
+    echo "ERROR: Package not found! Please install on login node first:"
+    echo "  source ~/pytorch_env/bin/activate"
+    echo "  pip install -e ."
     exit 1
 fi
 
