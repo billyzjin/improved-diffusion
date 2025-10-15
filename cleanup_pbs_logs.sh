@@ -18,7 +18,8 @@ fi
 # Show what will be deleted
 echo ""
 echo "Files to be deleted:"
-ls -la *.o* *.e* 2>/dev/null || true
+ls -la *.o* 2>/dev/null || true
+ls -la *.e* 2>/dev/null || true
 
 echo ""
 read -p "Are you sure you want to delete these files? (y/N): " -n 1 -r
@@ -26,7 +27,8 @@ echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     # Delete the files
-    rm -f *.o* *.e* 2>/dev/null
+    rm -f *.o* 2>/dev/null
+    rm -f *.e* 2>/dev/null
     
     # Verify deletion
     REMAINING_O=$(ls -1 *.o* 2>/dev/null | wc -l)
