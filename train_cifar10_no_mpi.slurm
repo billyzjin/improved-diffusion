@@ -227,19 +227,9 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
     return infinite_dataloader()
 EOF
 
-# Create train_util_no_mpi.py (complete file approach - most reliable)
-echo "Creating train_util_no_mpi.py..."
-# Copy the original file and apply minimal, safe patches
-cp improved_diffusion/train_util.py improved_diffusion/train_util_no_mpi.py
-
-# Apply only the most essential patches that won't break the class structure
-sed -i 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/self.use_ddp = True/self.use_ddp = False/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/if th.cuda.is_available():/if False:  # Disable DDP for single GPU/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/if dist.get_rank() == 0:/if True:  # Always save on single GPU/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/dist.barrier()/pass  # No barrier needed for single GPU/' improved_diffusion/train_util_no_mpi.py
-sed -i 's/dist_util.sync_params(self.model.parameters())/pass  # No sync needed for single GPU/' improved_diffusion/train_util_no_mpi.py
+# Use the pre-created clean train_util_no_mpi.py file
+echo "Using clean train_util_no_mpi.py file..."
+# The file is already created in the repository, no patching needed
 
 # Create resample_no_mpi.py (CRITICAL - this was missing!)
 cat > improved_diffusion/resample_no_mpi.py << 'EOF'

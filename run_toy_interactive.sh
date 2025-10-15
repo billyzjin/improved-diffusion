@@ -280,15 +280,9 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
 EOF
 
 # Create a simple patch for train_util.py to fix the distributed training issue
-echo "Creating train_util patch..."
-# Replace multiple problematic lines with sed commands
-sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' \
-    -e 's/if th.cuda.is_available():/if False:  # Disable DDP for single GPU/' \
-    -e 's/self.use_ddp = True/self.use_ddp = False/' \
-    -e 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' \
-    -e 's/if dist.get_rank() == 0:/if True:  # Always save on single GPU/' \
-    -e 's/dist.barrier()/pass  # No barrier needed for single GPU/' \
-    improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
+# Use the pre-created clean train_util_no_mpi.py file
+echo "Using clean train_util_no_mpi.py file..."
+# The file is already created in the repository, no patching needed
 
 # Backup and replace files
 echo "Backing up original files and applying patches..."
@@ -299,7 +293,7 @@ cp improved_diffusion/image_datasets.py improved_diffusion/image_datasets_origin
 cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets.py
 
 cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
-cp improved_diffusion/train_util_patched.py improved_diffusion/train_util.py
+cp improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
 
 cp improved_diffusion/resample.py improved_diffusion/resample_original.py
 cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
