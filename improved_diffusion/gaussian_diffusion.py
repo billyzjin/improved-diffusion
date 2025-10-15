@@ -38,6 +38,15 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
             num_diffusion_timesteps,
             lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2,
         )
+    elif schedule_name == "ours":
+        # Our custom schedule
+        def compute_betas(T):
+            betas = np.zeros(T)
+            betas[T-1] = 1  # Set last timestep to 1
+            for t in range(T-2, -1, -1):
+                betas[t] = (((betas[t+1]**(1/2)*3/2)*(1-betas[t+1]) + betas[t+1]**(3/2))*(2/3))**2
+            return betas
+        return compute_betas(num_diffusion_timesteps)
     else:
         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
 

@@ -578,10 +578,60 @@ case $EXPERIMENT in
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
+    
+    ours_simple)
+        echo "=========================================="
+        echo "EXPERIMENT: Our Custom schedule, L_simple"
+        echo "Testing our custom noise schedule vs paper baselines"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
+        mkdir -p $OPENAI_LOGDIR
+        
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours \
+            --dropout 0.0 \
+            --learn_sigma False \
+            --rescale_learned_sigmas False \
+            --use_kl False \
+            --schedule_sampler uniform \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+    
+    ours_hybrid)
+        echo "=========================================="
+        echo "EXPERIMENT: Our Custom schedule, L_hybrid"
+        echo "Testing our custom noise schedule with hybrid loss"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
+        mkdir -p $OPENAI_LOGDIR
+        
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours \
+            --dropout 0.1 \
+            --learn_sigma True \
+            --rescale_learned_sigmas True \
+            --use_kl False \
+            --schedule_sampler uniform \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
         
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, cosine_simple, cosine_hybrid, cosine_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid"
         exit 1
         ;;
 esac
