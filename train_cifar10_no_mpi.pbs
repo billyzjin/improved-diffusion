@@ -7,13 +7,14 @@
 #---------------------------------------------------------------------------------
 # Resources requested
 #PBS -l select=1:system=polaris:ngpus=1:ncpus=8
-#PBS -l walltime=24:00:00
+#PBS -l walltime=48:00:00
 #PBS -l filesystems=home:eagle
 
 #---------------------------------------------------------------------------------
 # Job specific name
 #PBS -N cifar10_paper_repro
-#PBS -q prod
+#PBS -q preemptable
+#PBS -r y
 
 #---------------------------------------------------------------------------------
 # Print some useful variables
