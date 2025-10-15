@@ -5,8 +5,19 @@ echo "CLEANING UP PBS LOG FILES"
 echo "=========================================="
 
 # Count files before deletion
-O_FILES=$(ls -1 *.o* 2>/dev/null | wc -l)
-E_FILES=$(ls -1 *.e* 2>/dev/null | wc -l)
+O_FILES=0
+E_FILES=0
+for file in *.o*; do
+    if [ -f "$file" ]; then
+        O_FILES=$((O_FILES + 1))
+    fi
+done 2>/dev/null || true
+
+for file in *.e*; do
+    if [ -f "$file" ]; then
+        E_FILES=$((E_FILES + 1))
+    fi
+done 2>/dev/null || true
 
 echo "Found $O_FILES .o* files and $E_FILES .e* files"
 
@@ -40,8 +51,19 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -f *.e* 2>/dev/null
     
     # Verify deletion
-    REMAINING_O=$(ls -1 *.o* 2>/dev/null | wc -l)
-    REMAINING_E=$(ls -1 *.e* 2>/dev/null | wc -l)
+    REMAINING_O=0
+    REMAINING_E=0
+    for file in *.o*; do
+        if [ -f "$file" ]; then
+            REMAINING_O=$((REMAINING_O + 1))
+        fi
+    done 2>/dev/null || true
+    
+    for file in *.e*; do
+        if [ -f "$file" ]; then
+            REMAINING_E=$((REMAINING_E + 1))
+        fi
+    done 2>/dev/null || true
     
     if [ $REMAINING_O -eq 0 ] && [ $REMAINING_E -eq 0 ]; then
         echo "✅ Successfully deleted all PBS log files!"
