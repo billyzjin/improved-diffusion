@@ -18,8 +18,17 @@ fi
 # Show what will be deleted
 echo ""
 echo "Files to be deleted:"
-ls -la *.o* 2>/dev/null || true
-ls -la *.e* 2>/dev/null || true
+for file in *.o*; do
+    if [ -f "$file" ]; then
+        ls -la "$file"
+    fi
+done 2>/dev/null || true
+
+for file in *.e*; do
+    if [ -f "$file" ]; then
+        ls -la "$file"
+    fi
+done 2>/dev/null || true
 
 echo ""
 read -p "Are you sure you want to delete these files? (y/N): " -n 1 -r
