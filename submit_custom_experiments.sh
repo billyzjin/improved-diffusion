@@ -6,12 +6,12 @@ echo "=========================================="
 
 # Submit ours_simple experiment
 echo "Submitting ours_simple experiment..."
-JOB_ID_1=$(sbatch -v EXPERIMENT=ours_simple train_cifar10_no_mpi.slurm | awk '{print $4}')
+JOB_ID_1=$(sbatch --export=EXPERIMENT=ours_simple train_cifar10_no_mpi.slurm | awk '{print $4}')
 echo "Job ID: $JOB_ID_1"
 
 # Submit ours_hybrid experiment  
 echo "Submitting ours_hybrid experiment..."
-JOB_ID_2=$(sbatch -v EXPERIMENT=ours_hybrid train_cifar10_no_mpi.slurm | awk '{print $4}')
+JOB_ID_2=$(sbatch --export=EXPERIMENT=ours_hybrid train_cifar10_no_mpi.slurm | awk '{print $4}')
 echo "Job ID: $JOB_ID_2"
 
 echo "=========================================="
