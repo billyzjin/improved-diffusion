@@ -256,7 +256,8 @@ class UniformSampler:
         ts = np.random.choice(
             self.diffusion.num_timesteps, batch_size, replace=True
         ).astype(np.int64)
-        return th.from_numpy(ts).to(device), th.ones_like(ts, dtype=th.float32)
+        ts_tensor = th.from_numpy(ts).to(device)
+        return ts_tensor, th.ones_like(ts_tensor, dtype=th.float32)
 
 
 class LossAwareSampler:
@@ -273,10 +274,23 @@ class LossAwareSampler:
         Get sampling weights for each timestep.
         """
         if not self.loss_history.any():
-            return np.ones_like(self.loss_history)
+            # Return uniform weights if no loss history
+            weights = np.ones_like(self.loss_history)
+            weights = weights / np.sum(weights)  # Normalize to sum to 1
+            return weights
+        
+        # Calculate weights based on loss history
         weights = np.sqrt(np.mean(self.loss_history**2, axis=-1))
-        weights /= np.sum(weights)
+        
+        # Apply exponential scaling
         weights *= 1 - np.exp(-self.loss_history / self.loss_history.mean())
+        
+        # Ensure minimum weight to avoid zero probabilities
+        weights = np.maximum(weights, 1e-8)
+        
+        # Normalize to ensure probabilities sum to 1
+        weights = weights / np.sum(weights)
+        
         return weights
 
     def sample(self, batch_size, device):
@@ -336,46 +350,74 @@ cp improved_diffusion/train_util_patched.py improved_diffusion/train_util.py
 cp improved_diffusion/resample.py improved_diffusion/resample_original.py
 cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
 
+# Verify patches were applied correctly
+echo "Verifying patches..."
+if grep -q "from mpi4py import MPI" improved_diffusion/dist_util.py; then
+    echo "ERROR: MPI import still present in dist_util.py!"
+    exit 1
+fi
+if grep -q "from mpi4py import MPI" improved_diffusion/image_datasets.py; then
+    echo "ERROR: MPI import still present in image_datasets.py!"
+    exit 1
+fi
+if grep -q "dist.get_world_size()" improved_diffusion/train_util.py; then
+    echo "ERROR: dist.get_world_size() still present in train_util.py!"
+    exit 1
+fi
+echo "All patches verified successfully"
+
+# Verify all required modules can be imported after patches
+echo "Verifying all required modules..."
+python3 -c "
+import improved_diffusion
+import improved_diffusion.dist_util
+import improved_diffusion.image_datasets
+import improved_diffusion.train_util
+import improved_diffusion.resample
+import improved_diffusion.gaussian_diffusion
+import improved_diffusion.script_util
+print('All modules imported successfully')
+" || { echo "ERROR: Module import verification failed!"; exit 1; }
+
 #---------------------------------------------------------------------------------
 # Prepare dataset
 #---------------------------------------------------------------------------------
 
 echo "Preparing CIFAR-10 dataset..."
 if [ ! -d "cifar_train" ]; then
-    echo "CIFAR-10 not found in current directory..."
-    
-    # Check for pre-downloaded data in home directory
-    if [ -d "/home/bjin0/cifar10_data/cifar_train" ]; then
-        echo "Using pre-downloaded CIFAR-10 data..."
-        if ! cp -r /home/bjin0/cifar10_data/cifar_* . 2>&1; then
-            echo "ERROR: Failed to copy pre-downloaded CIFAR-10 data!"
-            exit 1
-        fi
-    elif [ -d "/home/bjin0/cifar_train" ]; then
-        echo "Using CIFAR-10 data from home directory..."
-        if ! cp -r /home/bjin0/cifar_* . 2>&1; then
-            echo "ERROR: Failed to copy CIFAR-10 data from home directory!"
-            exit 1
-        fi
-    else
-        echo "No pre-downloaded data found, trying network download..."
-        if ! python3 datasets/cifar10.py 2>&1; then
-            echo "Network download failed, creating dummy CIFAR-10 dataset..."
-            if ! python3 prepare_cifar10_manual.py 2>&1; then
-                echo "ERROR: Failed to create dummy CIFAR-10 dataset!"
-                exit 1
-            fi
-        fi
-    fi
-else
-    echo "CIFAR-10 dataset already exists, skipping download..."
-fi
-
-# Verify dataset exists
-if [ ! -d "cifar_train" ]; then
-    echo "ERROR: CIFAR-10 dataset preparation failed - cifar_train directory not found!"
+    echo "ERROR: CIFAR-10 dataset not found in current directory!"
+    echo ""
+    echo "The script requires the real CIFAR-10 dataset to reproduce paper results."
+    echo "Please download it on the login node first:"
+    echo "  python3 datasets/cifar10.py"
+    echo ""
+    echo "This will create cifar_train/ and cifar_test/ directories with 50,000 and 10,000 images respectively."
     exit 1
 fi
+
+# Verify dataset completeness
+TRAIN_COUNT=$(find cifar_train -name "*.png" | wc -l)
+TEST_COUNT=$(find cifar_test -name "*.png" | wc -l)
+
+echo "Found $TRAIN_COUNT training images and $TEST_COUNT test images"
+
+if [ $TRAIN_COUNT -lt 50000 ]; then
+    echo "ERROR: Incomplete CIFAR-10 dataset! Expected 50,000 training images, found $TRAIN_COUNT"
+    echo "Please re-download the dataset:"
+    echo "  rm -rf cifar_train cifar_test"
+    echo "  python3 datasets/cifar10.py"
+    exit 1
+fi
+
+if [ $TEST_COUNT -lt 10000 ]; then
+    echo "ERROR: Incomplete CIFAR-10 dataset! Expected 10,000 test images, found $TEST_COUNT"
+    echo "Please re-download the dataset:"
+    echo "  rm -rf cifar_train cifar_test"
+    echo "  python3 datasets/cifar10.py"
+    exit 1
+fi
+
+echo "CIFAR-10 dataset verified successfully"
 
 echo "CIFAR-10 dataset ready: $(find cifar_train -name "*.png" | wc -l) images found"
 
