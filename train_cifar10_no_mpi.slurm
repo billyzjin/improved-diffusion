@@ -222,7 +222,7 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
     return infinite_dataloader()
 EOF
 
-# Create train_util patch
+# Create train_util patch (safer approach - avoid breaking class structure)
 echo "Creating train_util patch..."
 sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.global_batch = self.batch_size \* 1  # Fixed: no distributed training/' \
     -e 's/if th.cuda.is_available():/if False:  # Disable DDP for single GPU/' \
@@ -230,8 +230,7 @@ sed -e 's/self.global_batch = self.batch_size \* dist.get_world_size()/self.glob
     -e 's/if dist.get_world_size() > 1:/if False:  # Disable multi-GPU check/' \
     -e 's/if dist.get_rank() == 0:/if True:  # Always save on single GPU/' \
     -e 's/dist.barrier()/pass  # No barrier needed for single GPU/' \
-    -e 's/dist.get_world_size()/1/g' \
-    -e 's/dist.get_rank()/0/g' \
+    -e 's/dist_util.sync_params(self.model.parameters())/pass  # No sync needed for single GPU/' \
     improved_diffusion/train_util.py > improved_diffusion/train_util_patched.py
 
 # Create resample_no_mpi.py (CRITICAL - this was missing!)
