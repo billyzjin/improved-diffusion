@@ -32,7 +32,8 @@ module load python/booth/3.12
 #---------------------------------------------------------------------------------
 # Set environment variables
 # Use a persistent directory instead of /tmp to preserve results across runs
-export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_paper_repro
+# Use scratch space for logs (50TB available vs 14GB home directory)
+export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_paper_repro
 export CUDA_VISIBLE_DEVICES=0
 
 # OPTIMIZE LOGGING FOR DISK SPACE
@@ -45,9 +46,10 @@ mkdir -p $OPENAI_LOGDIR
 
 # Clean up old logs to free space (keep only recent experiments)
 echo "Cleaning up old logs to free disk space..."
-find /home/bjin0/improved-diffusion/logs -name "progress*.csv" -delete 2>/dev/null || true
-find /home/bjin0/improved-diffusion/logs -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
-find /home/bjin0/improved-diffusion/logs -name "*.pt" -mtime +7 -delete 2>/dev/null || true
+# Clean up old files to save space (scratch space will auto-cleanup after 35 days)
+find /scratch/bjin0 -name "progress*.csv" -delete 2>/dev/null || true
+find /scratch/bjin0 -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
+find /scratch/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
 
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
@@ -462,7 +464,8 @@ MODEL_FLAGS="$MODEL_FLAGS --num_heads 4 --attention_resolutions 16,8 --use_scale
 
 # Training flags (from paper) - OPTIMIZED FOR DISK SPACE
 # Reduced log_interval from 100 to 1000 to cut logging by 10x (500,000 steps = 500 logs instead of 5,000)
-TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --ema_rate 0.9999 --log_interval 1000 --save_interval 10000"
+# Increased save_interval from 10,000 to 50,000 to reduce checkpoints by 5x (500,000 steps = 10 checkpoints instead of 50)
+TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --ema_rate 0.9999 --log_interval 1000 --save_interval 50000"
 
 # Diffusion steps (from paper)
 DIFFUSION_STEPS="--diffusion_steps 4000"
@@ -474,7 +477,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_simple"
         echo "Target: FID = 2.90 (best FID in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_linear_simple
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -494,7 +497,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Linear schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_linear_hybrid
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -515,7 +518,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_simple
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -535,7 +538,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_hybrid
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -557,7 +560,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Cosine schedule, L_vlb"
         echo "Target: NLL = 2.94 bits/dim (best NLL in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/home/bjin0/improved-diffusion/logs/cifar10_cosine_vlb
+        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -591,6 +594,9 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo "EXPERIMENT COMPLETED SUCCESSFULLY!"
     echo "=========================================="
     echo "Results saved in: $OPENAI_LOGDIR"
+    echo ""
+    echo "NOTE: Logs are stored in scratch space (/scratch/) which has 50TB available"
+    echo "vs your 14GB home directory. Files will auto-delete after 35 days."
     echo ""
     echo "To evaluate FID and NLL:"
     echo "  python3 scripts/image_sample.py --model_path $OPENAI_LOGDIR/ema_0.9999_500000.pt ..."
