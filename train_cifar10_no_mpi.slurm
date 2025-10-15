@@ -61,15 +61,20 @@ restore_originals() {
 }
 trap restore_originals EXIT
 
-# Install dependencies (if not already installed)
-echo "Installing improved-diffusion package..."
-if ! pip3 install -e . 2>&1; then
-    echo "Editable install failed, trying regular install..."
-    if ! pip3 install . 2>&1; then
-        echo "ERROR: Both editable and regular install failed!"
-        echo "Last pip error output:"
-        pip3 install . 2>&1 | tail -20
-        exit 1
+# Check if package is already installed, install if needed
+echo "Checking if improved-diffusion package is installed..."
+if python3 -c "import improved_diffusion; print('Package already installed')" 2>/dev/null; then
+    echo "Package already installed, skipping installation."
+else
+    echo "Installing improved-diffusion package..."
+    if ! pip3 install -e . 2>&1; then
+        echo "Editable install failed, trying regular install..."
+        if ! pip3 install . 2>&1; then
+            echo "ERROR: Both editable and regular install failed!"
+            echo "Last pip error output:"
+            pip3 install . 2>&1 | tail -20
+            exit 1
+        fi
     fi
 fi
 
