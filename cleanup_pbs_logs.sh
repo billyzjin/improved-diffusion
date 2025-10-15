@@ -1,0 +1,44 @@
+#!/bin/bash
+
+echo "=========================================="
+echo "CLEANING UP PBS LOG FILES"
+echo "=========================================="
+
+# Count files before deletion
+O_FILES=$(ls -1 *.o* 2>/dev/null | wc -l)
+E_FILES=$(ls -1 *.e* 2>/dev/null | wc -l)
+
+echo "Found $O_FILES .o* files and $E_FILES .e* files"
+
+if [ $O_FILES -eq 0 ] && [ $E_FILES -eq 0 ]; then
+    echo "No PBS log files found to clean up."
+    exit 0
+fi
+
+# Show what will be deleted
+echo ""
+echo "Files to be deleted:"
+ls -la *.o* *.e* 2>/dev/null || true
+
+echo ""
+read -p "Are you sure you want to delete these files? (y/N): " -n 1 -r
+echo ""
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Delete the files
+    rm -f *.o* *.e* 2>/dev/null
+    
+    # Verify deletion
+    REMAINING_O=$(ls -1 *.o* 2>/dev/null | wc -l)
+    REMAINING_E=$(ls -1 *.e* 2>/dev/null | wc -l)
+    
+    if [ $REMAINING_O -eq 0 ] && [ $REMAINING_E -eq 0 ]; then
+        echo "✅ Successfully deleted all PBS log files!"
+    else
+        echo "⚠️  Some files may not have been deleted. Remaining: $REMAINING_O .o* files, $REMAINING_E .e* files"
+    fi
+else
+    echo "❌ Cleanup cancelled."
+fi
+
+echo "=========================================="

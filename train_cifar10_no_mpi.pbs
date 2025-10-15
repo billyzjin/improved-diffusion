@@ -74,18 +74,7 @@ if ! python3 -c "import improved_diffusion; print('Package installed successfull
     exit 1
 fi
 
-# Verify all required modules can be imported
-echo "Verifying all required modules..."
-python3 -c "
-import improved_diffusion
-import improved_diffusion.dist_util
-import improved_diffusion.image_datasets
-import improved_diffusion.train_util
-import improved_diffusion.resample
-import improved_diffusion.gaussian_diffusion
-import improved_diffusion.script_util
-print('All modules imported successfully')
-" || { echo "ERROR: Module import verification failed!"; exit 1; }
+# Note: Module verification will happen after patches are applied
 
 #---------------------------------------------------------------------------------
 # Apply patches to remove MPI dependencies for single-GPU training
@@ -362,6 +351,19 @@ if grep -q "dist.get_world_size()" improved_diffusion/train_util.py; then
     exit 1
 fi
 echo "All patches verified successfully"
+
+# Verify all required modules can be imported after patches
+echo "Verifying all required modules..."
+python3 -c "
+import improved_diffusion
+import improved_diffusion.dist_util
+import improved_diffusion.image_datasets
+import improved_diffusion.train_util
+import improved_diffusion.resample
+import improved_diffusion.gaussian_diffusion
+import improved_diffusion.script_util
+print('All modules imported successfully')
+" || { echo "ERROR: Module import verification failed!"; exit 1; }
 
 #---------------------------------------------------------------------------------
 # Prepare dataset
