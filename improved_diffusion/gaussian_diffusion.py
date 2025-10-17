@@ -39,12 +39,19 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
             lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2,
         )
     elif schedule_name == "ours":
-        # Our custom schedule
+        # Our custom schedule - exact implementation for scientific comparison
         def compute_betas(T):
             betas = np.zeros(T)
-            betas[T-1] = 1  # Set last timestep to 1
+            betas[T-1] = 0.999  # Set last timestep to 1 (as in your original)
+            
             for t in range(T-2, -1, -1):
+                # Your exact formula - no modifications for scientific validity
                 betas[t] = (((betas[t+1]**(1/2)*3/2)*(1-betas[t+1]) + betas[t+1]**(3/2))*(2/3))**2
+                
+                # Check for invalid values and raise error instead of fallback
+                if np.isnan(betas[t]) or np.isinf(betas[t]) or betas[t] < 0 or betas[t] > 1:
+                    raise ValueError(f"Custom schedule produced invalid beta[{t}] = {betas[t]}")
+            
             return betas
         return compute_betas(num_diffusion_timesteps)
     else:

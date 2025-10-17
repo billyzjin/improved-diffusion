@@ -467,6 +467,13 @@ MODEL_FLAGS="$MODEL_FLAGS --num_heads 4 --attention_resolutions 16,8 --use_scale
 # Increased save_interval from 10,000 to 50,000 to reduce checkpoints by 5x (500,000 steps = 10 checkpoints instead of 50)
 TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --ema_rate 0.9999 --log_interval 1000 --save_interval 50000"
 
+# Resume checkpoint (set via environment variable)
+RESUME_CHECKPOINT=${RESUME_CHECKPOINT:-""}
+if [ -n "$RESUME_CHECKPOINT" ]; then
+    TRAIN_FLAGS="$TRAIN_FLAGS --resume_checkpoint $RESUME_CHECKPOINT"
+    echo "Resuming from checkpoint: $RESUME_CHECKPOINT"
+fi
+
 # Diffusion steps (from paper)
 DIFFUSION_STEPS="--diffusion_steps 4000"
 
@@ -582,7 +589,7 @@ case $EXPERIMENT in
     ours_simple)
         echo "=========================================="
         echo "EXPERIMENT: Our Custom schedule, L_simple"
-        echo "Testing our custom noise schedule vs paper baselines"
+        echo "Identical to linear_simple except noise schedule"
         echo "=========================================="
         export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
         mkdir -p $OPENAI_LOGDIR
@@ -596,8 +603,6 @@ case $EXPERIMENT in
             --dropout 0.0 \
             --learn_sigma False \
             --rescale_learned_sigmas False \
-            --use_kl False \
-            --schedule_sampler uniform \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -607,7 +612,7 @@ case $EXPERIMENT in
     ours_hybrid)
         echo "=========================================="
         echo "EXPERIMENT: Our Custom schedule, L_hybrid"
-        echo "Testing our custom noise schedule with hybrid loss"
+        echo "Identical to cosine_hybrid except noise schedule"
         echo "=========================================="
         export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
         mkdir -p $OPENAI_LOGDIR
@@ -618,11 +623,9 @@ case $EXPERIMENT in
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule ours \
-            --dropout 0.1 \
+            --dropout 0.3 \
             --learn_sigma True \
-            --rescale_learned_sigmas True \
-            --use_kl False \
-            --schedule_sampler uniform \
+            --rescale_learned_sigmas False \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
