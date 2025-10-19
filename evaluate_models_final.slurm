@@ -45,15 +45,19 @@ EVAL_DIR="/scratch/bjin0/evaluation_final_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)
 mkdir -p "$EVAL_DIR"
 echo "Evaluation results will be saved to: $EVAL_DIR"
 
-# List of key experiments to evaluate
+# List of all experiments to evaluate (comprehensive)
 EXPERIMENTS=(
     "cifar10_ours_simple"
     "cifar10_linear_simple" 
     "cifar10_cosine_simple"
+    "cifar10_linear_hybrid"
+    "cifar10_cosine_hybrid"
+    "cifar10_cosine_vlb"
+    "cifar10_ours_hybrid"
 )
 
 echo ""
-echo "Evaluating ${#EXPERIMENTS[@]} key models (final version)..."
+echo "Evaluating ${#EXPERIMENTS[@]} models (comprehensive final version)..."
 echo ""
 
 # Function to create comprehensive no-MPI patches
@@ -904,15 +908,36 @@ evaluate_model() {
     local exp_dir="$EVAL_DIR/$exp_name"
     mkdir -p "$exp_dir"
     
-    # Determine the correct noise schedule for this model
+    # Determine the correct parameters for this model
     local noise_schedule="linear"  # default
+    local learn_sigma="False"
+    local dropout="0.0"
+    local use_kl="False"
+    local schedule_sampler="uniform"
+    
     if [[ "$exp_name" == *"cosine"* ]]; then
         noise_schedule="cosine"
     elif [[ "$exp_name" == *"ours"* ]]; then
         noise_schedule="ours"
     fi
     
-    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=False, dropout=0.0"
+    if [[ "$exp_name" == *"hybrid"* ]]; then
+        learn_sigma="True"
+        use_kl="True"
+        schedule_sampler="loss-second-moment"
+        if [[ "$exp_name" == *"cosine"* ]] || [[ "$exp_name" == *"ours"* ]]; then
+            dropout="0.3"
+        else
+            dropout="0.1"
+        fi
+    elif [[ "$exp_name" == *"vlb"* ]]; then
+        learn_sigma="True"
+        use_kl="True"
+        schedule_sampler="loss-second-moment"
+        dropout="0.3"
+    fi
+    
+    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, schedule_sampler=$schedule_sampler"
     
     # 1. Calculate NLL (bits/dimension) using patched script
     echo "Calculating NLL using patched image_nll_no_mpi.py..."
@@ -927,15 +952,15 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.0 \
-        --learn_sigma False \
+        --dropout "$dropout" \
+        --learn_sigma "$learn_sigma" \
         --rescale_learned_sigmas False \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl False \
+        --use_kl "$use_kl" \
         --predict_xstart False \
         --clip_denoised True \
         2>&1 | tee "$exp_dir/nll_results.txt"
@@ -952,15 +977,15 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.0 \
-        --learn_sigma False \
+        --dropout "$dropout" \
+        --learn_sigma "$learn_sigma" \
         --rescale_learned_sigmas False \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl False \
+        --use_kl "$use_kl" \
         --predict_xstart False \
         --clip_denoised True \
         --use_ddim True \
@@ -993,10 +1018,17 @@ echo "CREATING RESULTS SUMMARY"
 echo "=========================================="
 
 RESULTS_FILE="$EVAL_DIR/results_summary.txt"
-echo "FINAL MODEL EVALUATION RESULTS" > "$RESULTS_FILE"
-echo "==============================" >> "$RESULTS_FILE"
+echo "COMPREHENSIVE MODEL EVALUATION RESULTS" > "$RESULTS_FILE"
+echo "======================================" >> "$RESULTS_FILE"
 echo "Job ID: $SLURM_JOB_ID" >> "$RESULTS_FILE"
 echo "Date: $(date)" >> "$RESULTS_FILE"
+echo "" >> "$RESULTS_FILE"
+
+echo "EXPERIMENT TYPES:" >> "$RESULTS_FILE"
+echo "=================" >> "$RESULTS_FILE"
+echo "- Simple: learn_sigma=False, use_kl=False, dropout=0.0" >> "$RESULTS_FILE"
+echo "- Hybrid: learn_sigma=True, use_kl=True, dropout=0.1/0.3" >> "$RESULTS_FILE"
+echo "- VLB: learn_sigma=True, use_kl=True, dropout=0.3" >> "$RESULTS_FILE"
 echo "" >> "$RESULTS_FILE"
 
 echo "NLL RESULTS (bits/dimension - lower is better):" >> "$RESULTS_FILE"
@@ -1038,11 +1070,15 @@ echo "=========================" >> "$RESULTS_FILE"
 echo "From Table 2 of the paper:" >> "$RESULTS_FILE"
 echo "- Linear Simple: ~3.17 bits/dimension" >> "$RESULTS_FILE"
 echo "- Cosine Simple: ~3.17 bits/dimension" >> "$RESULTS_FILE"
+echo "- Linear Hybrid: ~3.11 bits/dimension" >> "$RESULTS_FILE"
+echo "- Cosine Hybrid: ~3.11 bits/dimension" >> "$RESULTS_FILE"
+echo "- Cosine VLB: ~3.11 bits/dimension" >> "$RESULTS_FILE"
 echo "" >> "$RESULTS_FILE"
-echo "Your custom 'ours' schedule should be compared against these baselines." >> "$RESULTS_FILE"
+echo "Your custom 'ours' schedule (both simple and hybrid) should be compared against these baselines." >> "$RESULTS_FILE"
+echo "The hybrid experiments use learn_sigma=True and loss-second-moment sampling." >> "$RESULTS_FILE"
 
 echo "=========================================="
-echo "FINAL MODEL EVALUATION COMPLETE!"
+echo "COMPREHENSIVE MODEL EVALUATION COMPLETE!"
 echo "=========================================="
 echo "Results saved in: $EVAL_DIR"
 echo "Summary saved to: $RESULTS_FILE"
