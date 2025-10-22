@@ -40,6 +40,10 @@ echo "INFO: NVIDIA modules not available on Pythia, skipping"
 echo "Testing PyTorch..."
 python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')" || { echo "ERROR: PyTorch test failed"; exit 1; }
 
+# Ensure we're in the correct directory
+cd /home/bjin0/improved-diffusion
+echo "Working directory: $(pwd)"
+
 # Create evaluation directory
 EVAL_DIR="/scratch/bjin0/evaluation_final_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
@@ -911,33 +915,33 @@ evaluate_model() {
     # Determine the correct parameters for this model
     local noise_schedule="linear"  # default
     local learn_sigma="False"
-    local dropout="0.0"
+    local dropout="0.1"  # Default for linear schedule
     local use_kl="False"
     local schedule_sampler="uniform"
+    local rescale_learned_sigmas="False"
     
     if [[ "$exp_name" == *"cosine"* ]]; then
         noise_schedule="cosine"
+        dropout="0.3"  # Cosine schedule uses dropout=0.3
     elif [[ "$exp_name" == *"ours"* ]]; then
         noise_schedule="ours"
+        dropout="0.3"  # Custom schedule follows cosine pattern
     fi
     
     if [[ "$exp_name" == *"hybrid"* ]]; then
         learn_sigma="True"
         use_kl="True"
         schedule_sampler="loss-second-moment"
-        if [[ "$exp_name" == *"cosine"* ]] || [[ "$exp_name" == *"ours"* ]]; then
-            dropout="0.3"
-        else
-            dropout="0.1"
-        fi
+        # Dropout already set above based on noise schedule
     elif [[ "$exp_name" == *"vlb"* ]]; then
         learn_sigma="True"
         use_kl="True"
         schedule_sampler="loss-second-moment"
         dropout="0.3"
+        rescale_learned_sigmas="True"  # VLB experiment uses rescale_learned_sigmas=True
     fi
     
-    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, schedule_sampler=$schedule_sampler"
+    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, schedule_sampler=$schedule_sampler, rescale_learned_sigmas=$rescale_learned_sigmas"
     
     # 1. Calculate NLL (bits/dimension) using patched script
     echo "Calculating NLL using patched image_nll_no_mpi.py..."
@@ -954,7 +958,7 @@ evaluate_model() {
         --use_scale_shift_norm True \
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
-        --rescale_learned_sigmas False \
+        --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
@@ -979,7 +983,7 @@ evaluate_model() {
         --use_scale_shift_norm True \
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
-        --rescale_learned_sigmas False \
+        --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
@@ -1003,7 +1007,7 @@ evaluate_model() {
 
 # Evaluate each model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"
@@ -1026,8 +1030,8 @@ echo "" >> "$RESULTS_FILE"
 
 echo "EXPERIMENT TYPES:" >> "$RESULTS_FILE"
 echo "=================" >> "$RESULTS_FILE"
-echo "- Simple: learn_sigma=False, use_kl=False, dropout=0.0" >> "$RESULTS_FILE"
-echo "- Hybrid: learn_sigma=True, use_kl=True, dropout=0.1/0.3" >> "$RESULTS_FILE"
+echo "- Simple: learn_sigma=False, use_kl=False, dropout=0.1/0.3 (based on noise schedule)" >> "$RESULTS_FILE"
+echo "- Hybrid: learn_sigma=True, use_kl=True, dropout=0.1/0.3 (based on noise schedule)" >> "$RESULTS_FILE"
 echo "- VLB: learn_sigma=True, use_kl=True, dropout=0.3" >> "$RESULTS_FILE"
 echo "" >> "$RESULTS_FILE"
 

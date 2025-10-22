@@ -600,7 +600,7 @@ case $EXPERIMENT in
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule ours \
-            --dropout 0.0 \
+            --dropout 0.3 \
             --learn_sigma False \
             --rescale_learned_sigmas False \
             $TRAIN_FLAGS \
