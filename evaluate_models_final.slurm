@@ -742,6 +742,92 @@ def configure(dir=None, format_strs=None, comm=None, log_suffix=""):
     log("Logging to %s" % dir)
 
 
+# Backwards compatibility
+def log(*args):
+    get_current().log(*args)
+
+
+def logkv(key, val):
+    """
+    Log a value of some diagnostic
+    Call this once for each diagnostic quantity, each iteration
+    If called many times, last value will be used.
+    """
+    get_current().logkv(key, val)
+
+
+def logkv_mean(key, val):
+    """
+    The same as logkv(), but if called many times, values averaged.
+    """
+    get_current().logkv_mean(key, val)
+
+
+def logkvs(d):
+    """
+    Log a dictionary of key-value pairs
+    """
+    for (k, v) in d.items():
+        logkv(k, v)
+
+
+def dumpkvs():
+    """
+    Write all of the diagnostics from the current iteration
+    """
+    get_current().dumpkvs()
+
+
+def getkvs():
+    return get_current().name2val.copy()
+
+
+def log(*args, level=INFO):
+    get_current().log(*args, level=level)
+
+
+def debug(*args):
+    log(*args, level=DEBUG)
+
+
+def info(*args):
+    log(*args, level=INFO)
+
+
+def warn(*args):
+    log(*args, level=WARN)
+
+
+def error(*args):
+    log(*args, level=ERROR)
+
+
+def set_level(level):
+    """
+    Set logging threshold on current logger.
+    """
+    get_current().set_level(level)
+
+
+def get_dir():
+    """
+    Get directory that log files are being written to.
+    """
+    return get_current().get_dir()
+
+
+def close():
+    """
+    Close the current logger.
+    """
+    if Logger.CURRENT is not None:
+        Logger.CURRENT.close()
+        Logger.CURRENT = None
+
+
+# Configure the default logger
+configure()
+Logger.DEFAULT = Logger.CURRENT
 EOF
 
     # Create a patched version of image_sample.py
