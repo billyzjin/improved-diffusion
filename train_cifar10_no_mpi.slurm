@@ -342,16 +342,7 @@ echo "Applying patches..."
 cp improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
 cp improved_diffusion/dist_util_no_mpi.py improved_diffusion/dist_util.py
 
-cp improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
-cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets.py
-
-cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
-cp improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
-
-cp improved_diffusion/resample.py improved_diffusion/resample_original.py
-cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
-
-# Create logger_no_mpi.py (CRITICAL - this was missing!)
+# Create logger_no_mpi.py FIRST (CRITICAL - must be before train_util replacement!)
 cat > improved_diffusion/logger_no_mpi.py << 'EOF'
 """
 Logger copied from OpenAI baselines to avoid extra RL-based dependencies:
@@ -702,8 +693,18 @@ configure()
 Logger.DEFAULT = Logger.CURRENT
 EOF
 
+# Apply all patches in correct order (logger FIRST, then others)
 cp improved_diffusion/logger.py improved_diffusion/logger_original.py
 cp improved_diffusion/logger_no_mpi.py improved_diffusion/logger.py
+
+cp improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
+cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets.py
+
+cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
+cp improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
+
+cp improved_diffusion/resample.py improved_diffusion/resample_original.py
+cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
 
 # Verify patches were applied correctly
 echo "Verifying patches..."
