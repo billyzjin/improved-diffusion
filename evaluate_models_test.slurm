@@ -40,6 +40,10 @@ echo "INFO: NVIDIA modules not available on Pythia, skipping"
 echo "Testing PyTorch..."
 python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')" || { echo "ERROR: PyTorch test failed"; exit 1; }
 
+# Ensure we're in the correct directory
+cd /home/bjin0/improved-diffusion
+echo "Working directory: $(pwd)"
+
 # Create evaluation directory
 EVAL_DIR="/scratch/bjin0/evaluation_test_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
@@ -707,7 +711,7 @@ evaluate_model() {
         noise_schedule="ours"
     fi
     
-    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=False, dropout=0.0"
+    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=False, dropout=0.3"
     
     # 1. Calculate NLL (bits/dimension) using patched script - SMALL TEST
     echo "Testing NLL calculation (100 samples, 2 batches)..."
@@ -722,7 +726,7 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.0 \
+        --dropout 0.3 \
         --learn_sigma False \
         --rescale_learned_sigmas False \
         --diffusion_steps 4000 \
@@ -747,7 +751,7 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.0 \
+        --dropout 0.3 \
         --learn_sigma False \
         --rescale_learned_sigmas False \
         --diffusion_steps 4000 \
@@ -773,7 +777,7 @@ evaluate_model() {
 
 # Test the first available model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"
