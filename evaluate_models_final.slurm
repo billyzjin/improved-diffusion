@@ -1082,9 +1082,24 @@ evaluate_model() {
         2>&1 | tee "$exp_dir/sample_results.txt"
     
     # Move generated samples to experiment directory
-    if [ -f "samples_50000x32x32x3.npz" ]; then
-        mv "samples_50000x32x32x3.npz" "$exp_dir/"
-        echo "Samples saved to: $exp_dir/samples_50000x32x32x3.npz"
+    # Extract logger directory from the sample generation output
+    logger_dir=$(grep "Logging to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*Logging to //' | tr -d '\r\n')
+    if [ -n "$logger_dir" ] && [ -d "$logger_dir" ]; then
+        sample_file="$logger_dir/samples_50000x32x32x3.npz"
+        if [ -f "$sample_file" ]; then
+            cp "$sample_file" "$exp_dir/"
+            echo "Samples saved to: $exp_dir/samples_50000x32x32x3.npz"
+            # Clean up the temporary file
+            rm -f "$sample_file"
+        else
+            echo "ERROR: Sample file not found at $sample_file"
+            echo "Available files in logger directory:"
+            ls -la "$logger_dir" 2>/dev/null || echo "Logger directory not accessible"
+        fi
+    else
+        echo "ERROR: Could not determine logger directory from output"
+        echo "Sample generation output:"
+        tail -10 "$exp_dir/sample_results.txt"
     fi
     
     echo "Completed evaluation for $exp_name"
@@ -1093,7 +1108,7 @@ evaluate_model() {
 
 # Evaluate each model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" 2>/dev/null | head -1)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"
