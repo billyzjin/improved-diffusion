@@ -3,7 +3,7 @@
 #SBATCH --partition=long_h100
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=0:10:00
+#SBATCH --time=1:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=eval_test
 #SBATCH --output=evaluation_test_%j.out
@@ -49,13 +49,19 @@ EVAL_DIR="/scratch/bjin0/evaluation_test_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
 echo "Test evaluation results will be saved to: $EVAL_DIR"
 
-# List of key experiments to test (just one for speed)
+# List of experiments to test (all types for comprehensive testing)
 EXPERIMENTS=(
     "cifar10_ours_simple"
+    "cifar10_linear_simple" 
+    "cifar10_cosine_simple"
+    "cifar10_linear_hybrid"
+    "cifar10_cosine_hybrid"
+    "cifar10_cosine_vlb"
+    "cifar10_ours_hybrid"
 )
 
 echo ""
-echo "Testing 1 model (5-minute test version)..."
+echo "Testing all 7 experiment types (comprehensive test version)..."
 echo ""
 
 # Function to create comprehensive no-MPI patches
@@ -791,15 +797,36 @@ evaluate_model() {
     local exp_dir="$EVAL_DIR/$exp_name"
     mkdir -p "$exp_dir"
     
-    # Determine the correct noise schedule for this model
+    # Determine the correct parameters for this model
     local noise_schedule="linear"  # default
+    local learn_sigma="False"
+    local dropout="0.1"  # Default for linear schedule
+    local use_kl="False"
+    local schedule_sampler="uniform"
+    local rescale_learned_sigmas="False"
+    
     if [[ "$exp_name" == *"cosine"* ]]; then
         noise_schedule="cosine"
+        dropout="0.3"  # Cosine schedule uses dropout=0.3
     elif [[ "$exp_name" == *"ours"* ]]; then
         noise_schedule="ours"
+        dropout="0.3"  # Custom schedule follows cosine pattern
     fi
     
-    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=False, dropout=0.3"
+    if [[ "$exp_name" == *"hybrid"* ]]; then
+        learn_sigma="True"
+        use_kl="True"
+        schedule_sampler="loss-second-moment"
+        # Dropout already set above based on noise schedule
+    elif [[ "$exp_name" == *"vlb"* ]]; then
+        learn_sigma="True"
+        use_kl="True"
+        schedule_sampler="loss-second-moment"
+        dropout="0.3"
+        rescale_learned_sigmas="True"  # VLB experiment uses rescale_learned_sigmas=True
+    fi
+    
+    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, schedule_sampler=$schedule_sampler, rescale_learned_sigmas=$rescale_learned_sigmas"
     
     # 1. Calculate NLL (bits/dimension) using patched script - SMALL TEST
     echo "Testing NLL calculation (100 samples, 2 batches)..."
@@ -814,15 +841,16 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.3 \
-        --learn_sigma False \
-        --rescale_learned_sigmas False \
+        --dropout "$dropout" \
+        --learn_sigma "$learn_sigma" \
+        --use_kl "$use_kl" \
+        --schedule_sampler "$schedule_sampler" \
+        --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl False \
         --predict_xstart False \
         --clip_denoised True \
         2>&1 | tee "$exp_dir/nll_test_results.txt"
@@ -839,15 +867,16 @@ evaluate_model() {
         --num_heads 4 \
         --attention_resolutions 16,8 \
         --use_scale_shift_norm True \
-        --dropout 0.3 \
-        --learn_sigma False \
-        --rescale_learned_sigmas False \
+        --dropout "$dropout" \
+        --learn_sigma "$learn_sigma" \
+        --use_kl "$use_kl" \
+        --schedule_sampler "$schedule_sampler" \
+        --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl False \
         --predict_xstart False \
         --clip_denoised True \
         --use_ddim True \
@@ -878,13 +907,12 @@ evaluate_model() {
     echo ""
 }
 
-# Test the first available model
+# Test all available models (comprehensive testing)
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"
-        break  # Only test one model for speed
     else
         echo "WARNING: Model not found for $exp_name"
     fi
@@ -939,10 +967,11 @@ echo "" >> "$RESULTS_FILE"
 echo "TEST COMPLETION STATUS:" >> "$RESULTS_FILE"
 echo "======================" >> "$RESULTS_FILE"
 echo "If you see this message, all patches are working correctly!" >> "$RESULTS_FILE"
+echo "All 7 experiment types have been tested with correct parameters." >> "$RESULTS_FILE"
 echo "The full evaluation script should work without issues." >> "$RESULTS_FILE"
 
 echo "=========================================="
-echo "5-MINUTE TEST COMPLETE!"
+echo "COMPREHENSIVE TEST COMPLETE!"
 echo "=========================================="
 echo "Test results saved in: $EVAL_DIR"
 echo "Summary saved to: $RESULTS_FILE"

@@ -3,7 +3,7 @@
 #SBATCH --partition=long_h100
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=12:00:00
+#SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=eval_final
 #SBATCH --output=evaluation_final_%j.out
@@ -1044,13 +1044,14 @@ evaluate_model() {
         --use_scale_shift_norm True \
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
+        --use_kl "$use_kl" \
+        --schedule_sampler "$schedule_sampler" \
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl "$use_kl" \
         --predict_xstart False \
         --clip_denoised True \
         2>&1 | tee "$exp_dir/nll_results.txt"
@@ -1069,13 +1070,14 @@ evaluate_model() {
         --use_scale_shift_norm True \
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
+        --use_kl "$use_kl" \
+        --schedule_sampler "$schedule_sampler" \
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
-        --use_kl "$use_kl" \
         --predict_xstart False \
         --clip_denoised True \
         --use_ddim True \
@@ -1108,7 +1110,7 @@ evaluate_model() {
 
 # Evaluate each model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"
