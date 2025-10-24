@@ -41,10 +41,10 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
     elif schedule_name == "ours":
         # Our custom schedule - exact implementation for scientific comparison
         def compute_betas(T):
-            betas = np.zeros(T)
-            betas[T-1] = 0.999  # Set last timestep to 1 (as in your original)
+            betas = np.zeros(T+1)  # Fix: T+1 elements for timesteps 0 to T
+            betas[T] = 0.999  # Fix: Set last timestep T to 0.999
             
-            for t in range(T-2, -1, -1):
+            for t in range(T-1, -1, -1):  # Fix: Start from T-1, go down to 0
                 # Your exact formula - no modifications for scientific validity
                 betas[t] = (((betas[t+1]**(1/2)*3/2)*(1-betas[t+1]) + betas[t+1]**(3/2))*(2/3))**2
                 
