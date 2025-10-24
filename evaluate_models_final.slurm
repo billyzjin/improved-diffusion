@@ -1003,7 +1003,6 @@ evaluate_model() {
     local learn_sigma="False"
     local dropout="0.1"  # Default for linear schedule
     local use_kl="False"
-    local schedule_sampler="uniform"
     local rescale_learned_sigmas="False"
     
     if [[ "$exp_name" == *"cosine"* ]]; then
@@ -1017,17 +1016,15 @@ evaluate_model() {
     if [[ "$exp_name" == *"hybrid"* ]]; then
         learn_sigma="True"
         use_kl="True"
-        schedule_sampler="loss-second-moment"
         # Dropout already set above based on noise schedule
     elif [[ "$exp_name" == *"vlb"* ]]; then
         learn_sigma="True"
         use_kl="True"
-        schedule_sampler="loss-second-moment"
         dropout="0.3"
         rescale_learned_sigmas="True"  # VLB experiment uses rescale_learned_sigmas=True
     fi
     
-    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, schedule_sampler=$schedule_sampler, rescale_learned_sigmas=$rescale_learned_sigmas"
+    echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, rescale_learned_sigmas=$rescale_learned_sigmas"
     
     # 1. Calculate NLL (bits/dimension) using patched script
     echo "Calculating NLL using patched image_nll_no_mpi.py..."
@@ -1045,7 +1042,6 @@ evaluate_model() {
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
         --use_kl "$use_kl" \
-        --schedule_sampler "$schedule_sampler" \
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
@@ -1071,7 +1067,6 @@ evaluate_model() {
         --dropout "$dropout" \
         --learn_sigma "$learn_sigma" \
         --use_kl "$use_kl" \
-        --schedule_sampler "$schedule_sampler" \
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
