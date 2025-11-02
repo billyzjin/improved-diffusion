@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# This script aggregates the results from parallel evaluation jobs into a single summary file.
+# It should be run AFTER all the parallel Slurm jobs have completed successfully.
+
+# Check if the parent evaluation directory is provided as an argument.
+if [ -z "$1" ]; then
+    echo "Usage: bash aggregate_evaluation_results.sh <path_to_parent_evaluation_directory>"
+    exit 1
+fi
+
+EVAL_DIR="$1"
+RESULTS_FILE="$EVAL_DIR/results_summary.txt"
+
+echo "=========================================="
+echo "CREATING RESULTS SUMMARY"
+echo "Aggregating results from: $EVAL_DIR"
+echo "=========================================="
+
+# Create the header for the summary file.
+echo "COMPREHENSIVE MODEL EVALUATION RESULTS" > "$RESULTS_FILE"
+echo "======================================" >> "$RESULTS_FILE"
+echo "Date: $(date)" >> "$RESULTS_FILE"
+echo "" >> "$RESULTS_FILE"
+
+echo "EXPERIMENT TYPES:" >> "$RESULTS_FILE"
+echo "=================" >> "$RESULTS_FILE"
+echo "- Simple: learn_sigma=False, use_kl=False" >> "$RESULTS_FILE"
+echo "- Hybrid: learn_sigma=True, use_kl=True" >> "$RESULTS_FILE"
+echo "- VLB: learn_sigma=True, use_kl=True, rescale_learned_sigmas=True" >> "$RESULTS_FILE"
+echo "" >> "$RESULTS_FILE"
+
+echo "NLL RESULTS (bits/dimension - lower is better):" >> "$RESULTS_FILE"
+echo "==============================================" >> "$RESULTS_FILE"
+
+# Extract NLL results from each sub-directory.
+for exp_dir in "$EVAL_DIR"/cifar10_*; do
+    if [ -d "$exp_dir" ] && [ -f "$exp_dir/nll_results.txt" ]; then
+        exp_name=$(basename "$exp_dir")
+        # Extract the final bpd score from the log file.
+        nll_score=$(grep "done 10000 samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | awk -F'bpd=' '{print $2}')
+        
+        if [ -n "$nll_score" ]; then
+            printf "%-25s: %s bits/dimension\n" "$exp_name" "$nll_score" >> "$RESULTS_FILE"
+        else
+            printf "%-25s: ERROR extracting NLL\n" "$exp_name" >> "$RESULTS_FILE"
+        fi
+    fi
+done
+
+echo "" >> "$RESULTS_FILE"
+echo "SAMPLE GENERATION STATUS (for FID calculation):" >> "$RESULTS_FILE"
+echo "==============================================" >> "$RESULTS_FILE"
+
+# Check the status of the generated sample files in each sub-directory.
+for exp_dir in "$EVAL_DIR"/cifar10_*; do
+    if [ -d "$exp_dir" ]; then
+        exp_name=$(basename "$exp_dir")
+        if [ -f "$exp_dir/samples_50000x32x32x3.npz" ]; then
+            printf "%-25s: Samples generated successfully\n" "$exp_name" >> "$RESULTS_FILE"
+        else
+            printf "%-25s: No samples found\n" "$exp_name" >> "$RESULTS_FILE"
+        fi
+    fi
+done
+
+echo "" >> "$RESULTS_FILE"
+echo "PAPER BASELINE COMPARISON:" >> "$RESULTS_FILE"
+echo "=========================" >> "$RESULTS_FILE"
+echo "From Table 2 of the paper:" >> "$RESULTS_FILE"
+echo "- linear, L_simple (ours: linear_simple) : 3.37 bpd" >> "$RESULTS_FILE"
+echo "- linear, L_hybrid (ours: linear_hybrid) : 3.26 bpd" >> "$RESULTS_FILE"
+echo "- cosine, L_simple (ours: cosine_simple) : 3.26 bpd" >> "$RESULTS_FILE"
+echo "- cosine, L_hybrid (ours: cosine_hybrid) : 3.17 bpd" >> "$RESULTS_FILE"
+echo "- cosine, L_vlb    (ours: cosine_vlb)    : 2.94 bpd" >> "$RESULTS_FILE"
+echo "" >> "$RESULTS_FILE"
+echo "Your custom 'ours' schedule can be compared against these baselines." >> "$RESULTS_FILE"
+
+echo "=========================================="
+echo "AGGREGATION COMPLETE!"
+echo "Results summary saved to: $RESULTS_FILE"
+echo ""
+echo "To view the final results, run:"
+echo "  cat $RESULTS_FILE"
+echo "=========================================="
