@@ -206,8 +206,8 @@ evaluate_model() {
 
 # Evaluate the single model passed from the submission script
 model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
-
-if [ -n "$model_path" ] && [ -f "$model_path" ]; then
+    
+    if [ -n "$model_path" ] && [ -f "$model_path" ]; then
     evaluate_model "$EVAL_MODEL_NAME" "$model_path"
 else
     echo "FATAL: Model not found for $EVAL_MODEL_NAME"

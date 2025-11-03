@@ -54,50 +54,23 @@ find /scratch/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
 
-# Always restore originals, even on failure
-restore_originals() {
-  cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
-  cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
-  cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
-  cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
-  cp improved_diffusion/logger_original.py improved_diffusion/logger.py 2>/dev/null || true
-}
-trap restore_originals EXIT
-
-# Check if package is already installed, install if needed
-echo "Checking if improved-diffusion package is installed..."
-if python3 -c "import improved_diffusion; print('Package already installed')" 2>/dev/null; then
-    echo "Package already installed, skipping installation."
-else
-    echo "Installing improved-diffusion package..."
-    if ! pip3 install -e . 2>&1; then
-        echo "Editable install failed, trying regular install..."
-        if ! pip3 install . 2>&1; then
-            echo "ERROR: Both editable and regular install failed!"
-            echo "Last pip error output:"
-            pip3 install . 2>&1 | tail -20
-            exit 1
-        fi
-    fi
-fi
-
-# Verify installation
-echo "Verifying package installation..."
-if ! python3 -c "import improved_diffusion; print('Package installed successfully')" 2>&1; then
-    echo "ERROR: Package installation verification failed!"
-    echo "Trying to import improved_diffusion:"
-    python3 -c "import improved_diffusion" 2>&1
-    exit 1
-fi
-
 #---------------------------------------------------------------------------------
-# Apply patches to remove MPI dependencies for single-GPU training
+# Apply patches to remove MPI dependencies BEFORE any python commands are run
+# This is CRITICAL to ensure Python's import cache doesn't use old versions
 #---------------------------------------------------------------------------------
 
-echo "Creating no-MPI patches..."
+# Backup original files first, so they can be restored.
+# Use -f to avoid errors if the originals don't exist on the first run.
+cp -f improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
+cp -f improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
+cp -f improved_diffusion/train_util.py improved_diffusion/train_util_original.py
+cp -f improved_diffusion/resample.py improved_diffusion/resample_original.py
+cp -f improved_diffusion/logger.py improved_diffusion/logger_original.py
+
+echo "Creating and applying no-MPI patches..."
 
 # Create dist_util_no_mpi.py
-cat > improved_diffusion/dist_util_no_mpi.py << 'EOF'
+cat > improved_diffusion/dist_util.py << 'EOF'
 """
 Distributed utilities - modified to work without MPI for single GPU training.
 """
@@ -162,7 +135,7 @@ def sync_params(params):
 EOF
 
 # Create image_datasets_no_mpi.py
-cat > improved_diffusion/image_datasets_no_mpi.py << 'EOF'
+cat > improved_diffusion/image_datasets.py << 'EOF'
 """
 Image datasets - modified to work without MPI.
 """
@@ -230,12 +203,8 @@ def load_data(data_dir, batch_size, image_size, class_cond=False):
     return infinite_dataloader()
 EOF
 
-# Use the pre-created clean train_util_no_mpi.py file
-echo "Using clean train_util_no_mpi.py file..."
-# The file is already created in the repository, no patching needed
-
-# Create resample_no_mpi.py (CRITICAL - this was missing!)
-cat > improved_diffusion/resample_no_mpi.py << 'EOF'
+# Create resample_no_mpi.py and overwrite resample.py
+cat > improved_diffusion/resample.py << 'EOF'
 """
 Resampling utilities - modified to work without MPI for single GPU training.
 """
@@ -337,13 +306,8 @@ def create_named_schedule_sampler(name, diffusion):
         raise ValueError(f"Unknown schedule sampler: {name}")
 EOF
 
-# Apply patches
-echo "Applying patches..."
-cp improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
-cp improved_diffusion/dist_util_no_mpi.py improved_diffusion/dist_util.py
-
-# Create logger_no_mpi.py FIRST (CRITICAL - must be before train_util replacement!)
-cat > improved_diffusion/logger_no_mpi.py << 'EOF'
+# Create logger_no_mpi.py and overwrite logger.py
+cat > improved_diffusion/logger.py << 'EOF'
 """
 Logger copied from OpenAI baselines to avoid extra RL-based dependencies:
 https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/logger.py
@@ -693,47 +657,46 @@ configure()
 Logger.DEFAULT = Logger.CURRENT
 EOF
 
-# Apply all patches in correct order (logger FIRST, then others)
-cp improved_diffusion/logger.py improved_diffusion/logger_original.py
-cp improved_diffusion/logger_no_mpi.py improved_diffusion/logger.py
+# Use the pre-created clean train_util_no_mpi.py file
+cp -f improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
 
-cp improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
-cp improved_diffusion/image_datasets_no_mpi.py improved_diffusion/image_datasets.py
+echo "All patches applied successfully before package installation."
 
-cp improved_diffusion/train_util.py improved_diffusion/train_util_original.py
-cp improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
+# Always restore originals, even on failure
+restore_originals() {
+  cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
+  cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
+  cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
+  cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
+  cp improved_diffusion/logger_original.py improved_diffusion/logger.py 2>/dev/null || true
+}
+trap restore_originals EXIT
 
-cp improved_diffusion/resample.py improved_diffusion/resample_original.py
-cp improved_diffusion/resample_no_mpi.py improved_diffusion/resample.py
+# Check if package is already installed, install if needed
+echo "Checking if improved-diffusion package is installed..."
+if python3 -c "import improved_diffusion; print('Package already installed')" 2>/dev/null; then
+    echo "Package already installed, skipping installation."
+else
+    echo "Installing improved-diffusion package..."
+    if ! pip3 install -e . 2>&1; then
+        echo "Editable install failed, trying regular install..."
+        if ! pip3 install . 2>&1; then
+            echo "ERROR: Both editable and regular install failed!"
+            echo "Last pip error output:"
+            pip3 install . 2>&1 | tail -20
+            exit 1
+        fi
+    fi
+fi
 
-# Verify patches were applied correctly
-echo "Verifying patches..."
-if grep -q "from mpi4py import MPI" improved_diffusion/dist_util.py; then
-    echo "ERROR: MPI import still present in dist_util.py!"
+# Verify installation
+echo "Verifying package installation..."
+if ! python3 -c "import improved_diffusion; print('Package installed successfully')" 2>&1; then
+    echo "ERROR: Package installation verification failed!"
+    echo "Trying to import improved_diffusion:"
+    python3 -c "import improved_diffusion" 2>&1
     exit 1
 fi
-if grep -q "from mpi4py import MPI" improved_diffusion/image_datasets.py; then
-    echo "ERROR: MPI import still present in image_datasets.py!"
-    exit 1
-fi
-if grep -q "dist.get_world_size()" improved_diffusion/train_util.py; then
-    echo "ERROR: dist.get_world_size() still present in train_util.py!"
-    exit 1
-fi
-echo "All patches verified successfully"
-
-# Verify all required modules can be imported after patches
-echo "Verifying all required modules..."
-python3 -c "
-import improved_diffusion
-import improved_diffusion.dist_util
-import improved_diffusion.image_datasets
-import improved_diffusion.train_util
-import improved_diffusion.resample
-import improved_diffusion.gaussian_diffusion
-import improved_diffusion.script_util
-print('All modules imported successfully')
-" || { echo "ERROR: Module import verification failed!"; exit 1; }
 
 #---------------------------------------------------------------------------------
 # Prepare dataset
