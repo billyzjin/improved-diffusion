@@ -176,7 +176,7 @@ evaluate_model() {
         --rescale_timesteps True \
         --predict_xstart False \
         --clip_denoised True \
-        --use_ddim True \
+        --use_ddim False \
         2>&1 | tee "$exp_dir/sample_results.txt"
     
     # Move generated samples to experiment directory

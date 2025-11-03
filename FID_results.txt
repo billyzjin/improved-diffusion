@@ -1,0 +1,10 @@
+--- Final FID Results ---
+FID SCORES (lower is better):
+=============================
+cifar10_cosine_hybrid    : FID:  5.914679002646608
+cifar10_cosine_simple    : FID:  6.597075590884685
+cifar10_cosine_vlb       : FID:  8.588575715480147
+cifar10_linear_hybrid    : FID:  9.856040392374041
+cifar10_linear_simple    : FID:  9.208600164166171
+cifar10_ours_hybrid      : FID:  9.441636410820308
+cifar10_ours_simple      : FID:  9.270903334386674
