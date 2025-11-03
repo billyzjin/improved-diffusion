@@ -57,13 +57,14 @@ def main():
         print(f"This is a one-time operation. Statistics will be saved to {cifar_stats_file}")
         
         # We call the internal function, which gives us more control.
+        # CORRECTED: The output path is the second positional argument, not a keyword argument.
         pytorch_fid.fid_score.save_fid_stats(
-            paths=[str(cifar_train_path)],
+            [str(cifar_train_path)],
+            str(cifar_stats_file),
             batch_size=50,
             device=device,
             dims=2048,
-            num_workers=4,
-            output_path=str(cifar_stats_file)
+            num_workers=4
         )
         print("--- Statistics calculated and saved successfully. ---")
     else:
