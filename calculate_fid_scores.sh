@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# This script calculates the FID score for the 6 successfully completed experiments.
-# It installs the necessary tools, pre-calculates real dataset statistics,
-# and then computes the FID for each set of generated samples.
+# This script calculates the FID score for the successfully completed experiments.
+# It uses the command-line interface of pytorch-fid in a robust way.
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -31,75 +30,58 @@ CIFAR_TRAIN_PATH="./cifar_train"
 CIFAR_STATS_FILE="/scratch/bjin0/cifar10_train_stats.npz" # Saved in scratch to persist
 
 if [ ! -d "$CIFAR_TRAIN_PATH" ]; then
-    echo "ERROR: CIFAR-10 training directory not found at '$CIFAR_TRAIN_PATH'"
-    echo "Please ensure the dataset is present in your project root before calculating FID."
+    echo "ERROR: Real dataset not found at $CIFAR_TRAIN_PATH"
+    echo "Please ensure the 'cifar_train' directory exists in the current folder."
     exit 1
 fi
 
-# 5. Pre-calculate statistics for the real CIFAR-10 training set (if they don't exist).
+# 5. Pre-calculate statistics for the real CIFAR-10 dataset if they don't exist.
 if [ ! -f "$CIFAR_STATS_FILE" ]; then
     echo ""
     echo "--- Pre-calculating statistics for the real CIFAR-10 dataset ---"
     echo "This is a one-time operation. Statistics will be saved to $CIFAR_STATS_FILE"
-    # Corrected Command: Use --save-stats flag with the output file as its argument.
-    python3 -m pytorch_fid "$CIFAR_TRAIN_PATH" --save-stats "$CIFAR_STATS_FILE" --device cuda
+    # THE CORRECT COMMAND: The tool takes two paths, and --save-stats changes the mode.
+    python3 -m pytorch_fid "$CIFAR_TRAIN_PATH" "$CIFAR_STATS_FILE" --save-stats --device cuda
 else
     echo "--- Found pre-calculated CIFAR-10 statistics. Skipping calculation. ---"
 fi
 
 # 6. Prepare a file to store the final FID results.
-FID_RESULTS_FILE="$LATEST_EVAL_DIR/fid_summary.txt"
-echo "FID CALCULATION RESULTS (lower is better)" > "$FID_RESULTS_FILE"
-echo "========================================" >> "$FID_RESULTS_FILE"
-echo "Date: $(date)" >> "$FID_RESULTS_FILE"
-echo "" >> "$FID_RESULTS_FILE"
+FID_RESULTS_FILE="$LATEST_EVAL_DIR/fid_scores.txt"
+echo "FID SCORES (lower is better):" > "$FID_RESULTS_FILE"
+echo "=============================" >> "$FID_RESULTS_FILE"
 
+# 7. Loop through all experiment sub-directories and calculate FID.
 echo ""
-echo "--- Calculating FID for each experiment ---"
-
-# 7. Loop through the experiment sub-directories and calculate FID.
-for exp_dir in "$LATEST_EVAL_DIR"/cifar10_*; do
-    if [ -d "$exp_dir" ]; then
-        exp_name=$(basename "$exp_dir")
+echo "--- Calculating FID Scores for Generated Samples ---"
+for exp_dir in "$LATEST_EVAL_DIR"/*/; do
+    exp_name=$(basename "$exp_dir")
+    sample_file_path="${exp_dir}samples_50000x32x32x3.npz"
+    
+    echo ""
+    echo "Processing: $exp_name"
+    
+    if [ -f "$sample_file_path" ]; then
+        echo "    Calculating FID score..."
+        # THE CORRECT COMMAND: For comparison, provide the two paths to compare.
+        # The output of the command is just the FID score, so we can capture it directly.
+        fid_score=$(python3 -m pytorch_fid "$sample_file_path" "$CIFAR_STATS_FILE" --device cuda)
         
-        # Skip the VLB experiment for now as it's being retrained.
-        if [[ "$exp_name" == *"vlb"* ]]; then
-            echo "--> Skipping $exp_name (this model is being retrained)"
-            continue
-        fi
-
-        echo "--> Processing $exp_name..."
-        
-        sample_file_path="${exp_dir}/samples_50000x32x32x3.npz"
-
-        if [ -f "$sample_file_path" ]; then
-            echo "    Calculating FID score..."
-            # For comparison, the two paths are positional arguments. This is correct.
-            fid_score=$(python3 -m pytorch_fid --device cuda "$sample_file_path" "$CIFAR_STATS_FILE")
-            
-            echo "    Done. FID score for $exp_name: $fid_score"
-            printf "%-25s: %s\n" "$exp_name" "$fid_score" >> "$FID_RESULTS_FILE"
-        else
-            echo "    WARNING: Sample file not found for $exp_name. Cannot calculate FID."
-            printf "%-25s: Sample file not found\n" "$exp_name" >> "$FID_RESULTS_FILE"
-        fi
+        echo "    Done. FID score for $exp_name: $fid_score"
+        printf "%-25s: %s\n" "$exp_name" "$fid_score" >> "$FID_RESULTS_FILE"
+    else
+        echo "    WARNING: Sample file not found at $sample_file_path"
+        printf "%-25s: SAMPLES NOT FOUND\n" "$exp_name" >> "$FID_RESULTS_FILE"
     fi
 done
-
-# Add paper comparison to the summary file
-echo "" >> "$FID_RESULTS_FILE"
-echo "PAPER BASELINE COMPARISON (FID):" >> "$FID_RESULTS_FILE"
-echo "================================" >> "$FID_RESULTS_FILE"
-echo "- linear, L_simple (ours: linear_simple) : 2.90" >> "$FID_RESULTS_FILE"
-echo "- linear, L_hybrid (ours: linear_hybrid) : 3.07" >> "$FID_RESULTS_FILE"
-echo "- cosine, L_simple (ours: cosine_simple) : 3.05" >> "$FID_RESULTS_FILE"
-echo "- cosine, L_hybrid (ours: cosine_hybrid) : 3.19" >> "$FID_RESULTS_FILE"
 
 echo ""
 echo "=========================================="
 echo "FID CALCULATION COMPLETE!"
 echo "Results summary saved to: $FID_RESULTS_FILE"
-echo ""
-echo "--- Final FID Results Summary ---"
-cat "$FID_RESULTS_FILE"
 echo "=========================================="
+
+# 8. Print the final summary to the console.
+echo ""
+echo "--- Final FID Results ---"
+cat "$FID_RESULTS_FILE"
