@@ -6,7 +6,12 @@
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
-# 1. Find the most recent parent evaluation directory.
+# 1. Set up the environment by loading necessary modules.
+echo "--- Loading Python and CUDA modules ---"
+module load python/booth/3.12
+module load cuda/12.8
+
+# 2. Find the most recent parent evaluation directory.
 LATEST_EVAL_DIR=$(find /scratch/bjin0 -name "evaluation_parallel_*" -type d 2>/dev/null | sort | tail -1)
 
 if [ -z "$LATEST_EVAL_DIR" ]; then
@@ -16,12 +21,12 @@ fi
 
 echo "Calculating FID for results located in: $LATEST_EVAL_DIR"
 
-# 2. Install the required FID calculation tool and its dependencies.
+# 3. Install the required FID calculation tool and its dependencies.
 echo ""
 echo "--- Installing/Updating pytorch-fid and dependencies ---"
-pip install --upgrade pytorch-fid scipy
+pip3 install --upgrade pytorch-fid scipy
 
-# 3. Set paths for the real dataset and the pre-calculated statistics file.
+# 4. Set paths for the real dataset and the pre-calculated statistics file.
 CIFAR_TRAIN_PATH="./cifar_train"
 CIFAR_STATS_FILE="/scratch/bjin0/cifar10_train_stats.npz" # Saved in scratch to persist
 
@@ -31,17 +36,17 @@ if [ ! -d "$CIFAR_TRAIN_PATH" ]; then
     exit 1
 fi
 
-# 4. Pre-calculate statistics for the real CIFAR-10 training set (if they don't exist).
+# 5. Pre-calculate statistics for the real CIFAR-10 training set (if they don't exist).
 if [ ! -f "$CIFAR_STATS_FILE" ]; then
     echo ""
     echo "--- Pre-calculating statistics for the real CIFAR-10 dataset ---"
     echo "This is a one-time operation. Statistics will be saved to $CIFAR_STATS_FILE"
-    python -m pytorch_fid --device cuda "$CIFAR_TRAIN_PATH" --out-file "$CIFAR_STATS_FILE"
+    python3 -m pytorch_fid --device cuda "$CIFAR_TRAIN_PATH" --out-file "$CIFAR_STATS_FILE"
 else
     echo "--- Found pre-calculated CIFAR-10 statistics. Skipping calculation. ---"
 fi
 
-# 5. Prepare a file to store the final FID results.
+# 6. Prepare a file to store the final FID results.
 FID_RESULTS_FILE="$LATEST_EVAL_DIR/fid_summary.txt"
 echo "FID CALCULATION RESULTS (lower is better)" > "$FID_RESULTS_FILE"
 echo "========================================" >> "$FID_RESULTS_FILE"
@@ -51,7 +56,7 @@ echo "" >> "$FID_RESULTS_FILE"
 echo ""
 echo "--- Calculating FID for each experiment ---"
 
-# 6. Loop through the experiment sub-directories and calculate FID.
+# 7. Loop through the experiment sub-directories and calculate FID.
 for exp_dir in "$LATEST_EVAL_DIR"/cifar10_*; do
     if [ -d "$exp_dir" ]; then
         exp_name=$(basename "$exp_dir")
@@ -71,7 +76,7 @@ for exp_dir in "$LATEST_EVAL_DIR"/cifar10_*; do
             # The pytorch-fid tool can compare an .npz file directly with pre-calculated stats.
             # It assumes the .npz file contains one array of images named 'arr_0', which is the
             # default for np.savez, so this should work directly.
-            fid_score=$(python -m pytorch_fid --device cuda "$sample_file_path" "$CIFAR_STATS_FILE")
+            fid_score=$(python3 -m pytorch_fid --device cuda "$sample_file_path" "$CIFAR_STATS_FILE")
             
             echo "    Done. FID score for $exp_name: $fid_score"
             printf "%-25s: %s\n" "$exp_name" "$fid_score" >> "$FID_RESULTS_FILE"
