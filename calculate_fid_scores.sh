@@ -41,7 +41,8 @@ if [ ! -f "$CIFAR_STATS_FILE" ]; then
     echo ""
     echo "--- Pre-calculating statistics for the real CIFAR-10 dataset ---"
     echo "This is a one-time operation. Statistics will be saved to $CIFAR_STATS_FILE"
-    python3 -m pytorch_fid --device cuda "$CIFAR_TRAIN_PATH" --out-file "$CIFAR_STATS_FILE"
+    # Corrected command: --out-file is deprecated. The output file is the second positional argument.
+    python3 -m pytorch_fid --device cuda "$CIFAR_TRAIN_PATH" "$CIFAR_STATS_FILE"
 else
     echo "--- Found pre-calculated CIFAR-10 statistics. Skipping calculation. ---"
 fi
@@ -74,8 +75,7 @@ for exp_dir in "$LATEST_EVAL_DIR"/cifar10_*; do
         if [ -f "$sample_file_path" ]; then
             echo "    Calculating FID score..."
             # The pytorch-fid tool can compare an .npz file directly with pre-calculated stats.
-            # It assumes the .npz file contains one array of images named 'arr_0', which is the
-            # default for np.savez, so this should work directly.
+            # Corrected command: The two paths are positional arguments.
             fid_score=$(python3 -m pytorch_fid --device cuda "$sample_file_path" "$CIFAR_STATS_FILE")
             
             echo "    Done. FID score for $exp_name: $fid_score"
