@@ -3,13 +3,21 @@
 # This script aggregates the results from parallel evaluation jobs into a single summary file.
 # It should be run AFTER all the parallel Slurm jobs have completed successfully.
 
-# Check if the parent evaluation directory is provided as an argument.
-if [ -z "$1" ]; then
-    echo "Usage: bash aggregate_evaluation_results.sh <path_to_parent_evaluation_directory>"
-    exit 1
+# If a path is provided, use it. Otherwise, find the latest evaluation directory automatically.
+if [ -n "$1" ]; then
+    EVAL_DIR="$1"
+    echo "Using provided evaluation directory: $EVAL_DIR"
+else
+    echo "No directory provided. Searching for the latest one..."
+    EVAL_DIR=$(find /scratch/bjin0 -name "evaluation_parallel_*" -type d 2>/dev/null | sort | tail -1)
+    
+    if [ -z "$EVAL_DIR" ]; then
+        echo "ERROR: No 'evaluation_parallel_*' directory was found in /scratch/bjin0"
+        exit 1
+    fi
+    echo "Found latest evaluation directory: $EVAL_DIR"
 fi
 
-EVAL_DIR="$1"
 RESULTS_FILE="$EVAL_DIR/results_summary.txt"
 
 echo "=========================================="
