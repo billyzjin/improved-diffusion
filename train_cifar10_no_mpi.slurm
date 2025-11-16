@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=2-00:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 
 #---------------------------------------------------------------------------------
 # Job specific name
@@ -33,7 +33,7 @@ module load python/booth/3.12
 # Set environment variables
 # Use a persistent directory instead of /tmp to preserve results across runs
 # Use scratch space for logs (50TB available vs 14GB home directory)
-export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_paper_repro
+export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_paper_repro
 export CUDA_VISIBLE_DEVICES=0
 
 # OPTIMIZE LOGGING FOR DISK SPACE
@@ -47,9 +47,9 @@ mkdir -p $OPENAI_LOGDIR
 # Clean up old logs to free space (keep only recent experiments)
 echo "Cleaning up old logs to free disk space..."
 # Clean up old files to save space (scratch space will auto-cleanup after 35 days)
-find /scratch/bjin0 -name "progress*.csv" -delete 2>/dev/null || true
-find /scratch/bjin0 -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
-find /scratch/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
+find /project_gpfs/bjin0 -name "progress*.csv" -delete 2>/dev/null || true
+find /project_gpfs/bjin0 -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
+find /project_gpfs/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
 
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
@@ -684,8 +684,8 @@ else
             echo "ERROR: Both editable and regular install failed!"
             echo "Last pip error output:"
             pip3 install . 2>&1 | tail -20
-            exit 1
-        fi
+    exit 1
+fi
     fi
 fi
 
@@ -803,7 +803,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_simple"
         echo "Target: FID = 2.90 (best FID in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -823,7 +823,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Linear schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -844,7 +844,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -864,7 +864,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -886,7 +886,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Cosine schedule, L_vlb"
         echo "Target: NLL = 2.94 bits/dim (best NLL in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -910,7 +910,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_simple"
         echo "Identical to linear_simple except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -933,7 +933,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_hybrid"
         echo "Identical to cosine_hybrid except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/scratch/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -967,7 +967,7 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo "=========================================="
     echo "Results saved in: $OPENAI_LOGDIR"
     echo ""
-    echo "NOTE: Logs are stored in scratch space (/scratch/) which has 50TB available"
+    echo "NOTE: Logs are stored in scratch space (/project_gpfs/) which has 50TB available"
     echo "vs your 14GB home directory. Files will auto-delete after 35 days."
     echo ""
     echo "To evaluate FID and NLL:"

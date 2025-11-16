@@ -9,11 +9,11 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <checkpoint_path> [experiment_name]"
     echo ""
     echo "Examples:"
-    echo "  $0 /scratch/bjin0/job123/logs/cifar10_ours_simple/model100000.pt ours_simple"
-    echo "  $0 /scratch/bjin0/job123/logs/cifar10_ours_hybrid/model150000.pt ours_hybrid"
+    echo "  $0 /project_gpfs/bjin0/job123/logs/cifar10_ours_simple/model100000.pt ours_simple"
+    echo "  $0 /project_gpfs/bjin0/job123/logs/cifar10_ours_hybrid/model150000.pt ours_hybrid"
     echo ""
     echo "To find checkpoints:"
-    echo "  find /scratch/bjin0 -name 'model*.pt' -type f"
+    echo "  find /project_gpfs/bjin0 -name 'model*.pt' -type f"
     exit 1
 fi
 
@@ -42,7 +42,7 @@ if [ -n "$JOB_ID" ]; then
     echo "  tail -f slurm-$JOB_ID.out"
     echo ""
     echo "Check logs in:"
-    echo "  /scratch/bjin0/\${SLURM_JOB_USER}/\${SLURM_JOB_ID}/logs/"
+    echo "  /project_gpfs/bjin0/\${SLURM_JOB_USER}/\${SLURM_JOB_ID}/logs/"
 else
     echo "ERROR: Failed to submit resume job"
     exit 1

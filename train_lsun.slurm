@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
 #SBATCH --time=0-120:00:00
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:h100:4
 
 #---------------------------------------------------------------------------------
 # Job specific name

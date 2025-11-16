@@ -24,10 +24,10 @@ class ImageDataset(Dataset):
             self.labels = np.random.randint(0, 10, len(self.image_files))
         else:
             self.labels = None
-    
+
     def __len__(self):
         return len(self.image_files)
-    
+
     def __getitem__(self, idx):
         # Load image
         img_path = self.image_files[idx]

@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=2:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=eval_robust
 #SBATCH --output=evaluation_robust_%j.out
 #SBATCH --error=evaluation_robust_%j.err
@@ -41,7 +41,7 @@ echo "Testing PyTorch..."
 python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')" || { echo "ERROR: PyTorch test failed"; exit 1; }
 
 # Create evaluation directory
-EVAL_DIR="/scratch/bjin0/evaluation_robust_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
+EVAL_DIR="/project_gpfs/bjin0/evaluation_robust_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
 echo "Evaluation results will be saved to: $EVAL_DIR"
 
@@ -394,7 +394,7 @@ evaluate_model() {
 
 # Evaluate each model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /project_gpfs/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"

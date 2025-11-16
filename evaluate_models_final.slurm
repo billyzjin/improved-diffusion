@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=eval_single_model
 
 # NOTE: The --output and --error flags are now set by the submit_evaluation_jobs.sh script.
@@ -205,11 +205,11 @@ evaluate_model() {
 }
 
 # Evaluate the single model passed from the submission script
-model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+model_path=$(find /project_gpfs/bjin0 -name "ema_0.9999_500000.pt" -path "*/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
     evaluate_model "$EVAL_MODEL_NAME" "$model_path"
-else
+    else
     echo "FATAL: Model not found for $EVAL_MODEL_NAME"
     exit 1
 fi

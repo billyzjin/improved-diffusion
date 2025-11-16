@@ -31,7 +31,7 @@ NP=$4
 NUM_WORKERS=4
 NUM_TILES=4
 DS=/data/ANL/kaggle_3m
-CACHE_DIR=/data/scratch/${USER}/kaggle_3m_${2}
+CACHE_DIR=/data/project_gpfs/${USER}/kaggle_3m_${2}
 if [ ! -d ${CACHE_DIR} ] ; then
   mkdir -p ${CACHE_DIR}
 fi

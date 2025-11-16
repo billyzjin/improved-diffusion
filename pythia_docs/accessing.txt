@@ -31,13 +31,13 @@ Shared project folders are the primary way that researchers can access large amo
 Scratch Space
 !!!!!!!!!!!!!
 
-Pythia has 50 TB of shared GPFS scratch space in :file:`/scratch`.
+Pythia has 50 TB of shared GPFS scratch space in :file:`/project_gpfs`.
 This is the recommended place to store temporary job files such as transformed data, temporary logs, parallel job metadata or intermediate output.
 It is not to be used for file/data storage not related to running jobs.
-We recommend placing your scratch files within a personal folder organized by job number: :file:`/scratch/<boothID>/${SLURM_JOB_USER}/${SLURM_JOB_ID}/`.
+We recommend placing your scratch files within a personal folder organized by job number: :file:`/project_gpfs/<boothID>/${SLURM_JOB_USER}/${SLURM_JOB_ID}/`.
 Here, ${SLURM_JOB_USER} and ${SLURM_JOB_ID} are environment variables which you can query in your job script.
 Your code should automatically delete the job-specific files and folder upon successful completion.
-You can review our section on how to efficiently prefetch data to GPFS /scratch/ `here`_ 
+You can review our section on how to efficiently prefetch data to GPFS /project_gpfs/ `here`_ 
 
 .. _here: https://pythia-docs.chicagobooth.edu/additional_resources.html#prefetch-data-to-gpfs
 
@@ -49,7 +49,7 @@ You can review our section on how to efficiently prefetch data to GPFS /scratch/
     All scratch files will be automatically deleted 35 days after creation without notice.
     If scratch space fills up, the oldest files will be deleted first without notice.
 
-Below is an example of creating a temporary directory in :file:`/scratch` and deleting it once the job finishes.
+Below is an example of creating a temporary directory in :file:`/project_gpfs` and deleting it once the job finishes.
 
 .. code-block:: bash
 
@@ -59,7 +59,7 @@ Below is an example of creating a temporary directory in :file:`/scratch` and de
    #SBATCH --partition=standard   # assign the job to the "standard" partition
 
    # create a new scratch directory for this job
-   scratch_dir="/scratch/${SLURM_JOB_USER}/${SLURM_JOB_ID}"
+   scratch_dir="/project_gpfs/${SLURM_JOB_USER}/${SLURM_JOB_ID}"
    mkdir -p $scratch_dir
 
    # use scratch dir to store tmp files

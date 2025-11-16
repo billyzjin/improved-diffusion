@@ -29,7 +29,7 @@ def main():
     # 2. Define essential paths
     device = "cuda"
     cifar_train_path = Path("./cifar_train")
-    cifar_stats_file = Path("/scratch/bjin0/cifar10_train_stats.npz")
+    cifar_stats_file = Path("/project_gpfs/bjin0/cifar10_train_stats.npz")
     fid_results_file = latest_eval_dir / "fid_scores.txt"
 
     if not cifar_train_path.is_dir():
@@ -58,7 +58,7 @@ def main():
     experiments = sorted([d for d in latest_eval_dir.iterdir() if d.is_dir()])
     
     # 5. Create a temporary directory in scratch space for the images
-    with tempfile.TemporaryDirectory(dir="/scratch/bjin0", prefix="fid_temp_images_") as temp_img_dir:
+    with tempfile.TemporaryDirectory(dir="/project_gpfs/bjin0", prefix="fid_temp_images_") as temp_img_dir:
         temp_img_path = Path(temp_img_dir)
         print(f"\nCreated temporary directory for images: {temp_img_path}")
 

@@ -5,7 +5,7 @@ echo "EVALUATING MODELS USING EXISTING CODEBASE"
 echo "=========================================="
 
 # Create evaluation directory
-EVAL_DIR="/scratch/bjin0/evaluation_$(date +%Y%m%d_%H%M%S)"
+EVAL_DIR="/project_gpfs/bjin0/evaluation_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
 echo "Evaluation results will be saved to: $EVAL_DIR"
 
@@ -123,7 +123,7 @@ evaluate_model() {
 
 # Evaluate each model
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
+    model_path=$(find /project_gpfs/bjin0 -name "model500000.pt" -path "*/logs/$exp_name/*" 2>/dev/null | head -1)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"

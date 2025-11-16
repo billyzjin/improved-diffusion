@@ -22,7 +22,7 @@ export OMP_NUM_THREADS=18
 SECONDS=0
 # Temp file location
 DIRECTORY=$$
-OUTDIR=/data/scratch/${USER}/GPT_RUN
+OUTDIR=/data/project_gpfs/${USER}/GPT_RUN
 mkdir -p ${OUTDIR}
 # Base environment now supports this
 #source ${ACTIVATE}

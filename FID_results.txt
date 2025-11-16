@@ -1,3 +1,94 @@
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=True
+- VLB: learn_sigma=True, use_kl=True, rescale_learned_sigmas=True
+
+
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+cifar10_linear_simple    : 3.407794 bits/dimension
+cifar10_linear_hybrid    : 3.295273 bits/dimension
+cifar10_cosine_simple    : 3.296183 bits/dimension
+cifar10_cosine_hybrid    : 3.205584 bits/dimension
+
+cifar10_ours_hybrid      : 3.847774 bits/dimension
+cifar10_ours_simple      : 4.041294 bits/dimension
+cifar10_cosine_vlb       : 3.654189 bits/dimension
+
+
+
+PAPER BASELINE COMPARISON:
+=========================
+From Table 2 of the paper:
+- linear, L_simple (ours: linear_simple) : 3.37 bpd
+- linear, L_hybrid (ours: linear_hybrid) : 3.26 bpd
+- cosine, L_simple (ours: cosine_simple) : 3.26 bpd
+- cosine, L_hybrid (ours: cosine_hybrid) : 3.17 bpd
+- cosine, L_vlb    (ours: cosine_vlb)    : 2.94 bpd
+
+FID - Frechet Inception Distance
+InceptionV3
+
+CIFAR10 ---> InceptionV3 ---> cloud of points in R^d
+Your sampled images ---> InceptionV3 ---> cloud of points in R^d
+
+======================================================================
+           NLL (bits/dimension) Results vs. Paper Baselines
+======================================================================
+
+This table compares the Negative Log-Likelihood (NLL) scores from our
+reproduction experiments against the original results reported in
+Table 2 of the "Improved Denoising Diffusion Probabilistic Models"
+paper. Lower values are better.
+
+----------------------------------------------------------------------
+| Experiment Name       | Our Result (bpd) | Paper Baseline (bpd) |
+|-----------------------|------------------|----------------------|
+| linear, L_simple      |      3.41        |         3.37         |
+| linear, L_hybrid      |      3.30        |         3.26         |
+| cosine, L_simple      |      3.30        |         3.26         |
+| cosine, L_hybrid      |      3.21        |         3.17         |
+----------------------------------------------------------------------
+
+Analysis of Custom 'ours' Schedule (No Paper Baseline):
+----------------------------------------------------------------------
+| Experiment Name       | Our Result (bpd) | Note                 |
+|-----------------------|------------------|----------------------|
+| ours, L_simple        |      4.04        | Underperforms others |
+| ours, L_hybrid        |      3.85        | Underperforms others |
+----------------------------------------------------------------------
+
+Failed Experiments (To Be Rerun):
+----------------------------------------------------------------------
+| Experiment Name       | Our Result (bpd) | Paper Baseline (bpd) |
+|-----------------------|------------------|----------------------|
+| cosine, L_vlb         |      3.65        |         2.94         |
+----------------------------------------------------------------------
+
+Conclusion:
+Our implementation successfully reproduces the paper's key NLL results
+for the simple and hybrid loss terms, validating our setup. The custom
+'ours' schedule is not competitive on NLL. The L_vlb experiment failed
+due to a now-corrected training bug and will be rerun.
+
+======================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --- Final FID Results ---
 FID SCORES (lower is better):
 =============================

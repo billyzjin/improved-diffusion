@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=0:30:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=toy_diffusion
 #SBATCH --output=toy_%j.out
 #SBATCH --error=toy_%j.err

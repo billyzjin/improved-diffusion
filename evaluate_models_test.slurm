@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=1:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=eval_test
 #SBATCH --output=evaluation_test_%j.out
 #SBATCH --error=evaluation_test_%j.err
@@ -45,7 +45,7 @@ cd /home/bjin0/improved-diffusion
 echo "Working directory: $(pwd)"
 
 # Create evaluation directory
-EVAL_DIR="/scratch/bjin0/evaluation_test_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
+EVAL_DIR="/project_gpfs/bjin0/evaluation_test_${SLURM_JOB_ID}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$EVAL_DIR"
 echo "Test evaluation results will be saved to: $EVAL_DIR"
 
@@ -904,7 +904,7 @@ evaluate_model() {
 
 # Test all available models (comprehensive testing)
 for exp_name in "${EXPERIMENTS[@]}"; do
-    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+    model_path=$(find /project_gpfs/bjin0 -name "ema_0.9999_500000.pt" -path "*/$exp_name/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         evaluate_model "$exp_name" "$model_path"

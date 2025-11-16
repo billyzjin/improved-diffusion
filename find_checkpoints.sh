@@ -8,7 +8,7 @@ echo "Searching for model checkpoints in scratch space..."
 echo ""
 
 # Find all model checkpoints
-find /scratch/bjin0 -name "model*.pt" -type f 2>/dev/null | sort | while read checkpoint; do
+find /project_gpfs/bjin0 -name "model*.pt" -type f 2>/dev/null | sort | while read checkpoint; do
     # Extract experiment name from path
     experiment=$(echo "$checkpoint" | grep -o "cifar10_[^/]*" | head -1)
     
@@ -34,4 +34,4 @@ echo "To resume training:"
 echo "  ./resume_training.sh <checkpoint_path> [experiment_name]"
 echo ""
 echo "Example:"
-echo "  ./resume_training.sh /scratch/bjin0/job123/logs/cifar10_ours_simple/model100000.pt ours_simple"
+echo "  ./resume_training.sh /project_gpfs/bjin0/job123/logs/cifar10_ours_simple/model100000.pt ours_simple"

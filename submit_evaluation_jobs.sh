@@ -4,7 +4,7 @@
 # Each job will run on its own dedicated H100 GPU.
 
 # 1. Create a single parent directory for all evaluation results from this run.
-PARENT_EVAL_DIR="/scratch/bjin0/evaluation_parallel_$(date +%Y%m%d_%H%M%S)"
+PARENT_EVAL_DIR="/project_gpfs/bjin0/evaluation_parallel_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$PARENT_EVAL_DIR"
 echo "Submitting 7 parallel evaluation jobs."
 echo "Results will be saved in: $PARENT_EVAL_DIR"

@@ -2,7 +2,7 @@
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <evaluation_directory>"
-    echo "Example: $0 /scratch/bjin0/evaluation_20241201_143022"
+    echo "Example: $0 /project_gpfs/bjin0/evaluation_20241201_143022"
     exit 1
 fi
 

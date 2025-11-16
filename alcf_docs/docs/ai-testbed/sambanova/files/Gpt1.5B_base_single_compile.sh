@@ -24,7 +24,7 @@ export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 SECONDS=0
 # Temp file location
 DIRECTORY=$$
-OUTDIR=/data/scratch/${USER}/${MODEL_NAME}
+OUTDIR=/data/project_gpfs/${USER}/${MODEL_NAME}
 mkdir -p ${OUTDIR}
 #source ${ACTIVATE}
 echo "Model: " ${MODEL_NAME} > ${OUTPUT_PATH} 2>&1

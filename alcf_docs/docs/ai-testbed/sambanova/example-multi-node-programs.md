@@ -46,7 +46,7 @@ The script uses the arguments `pcompile` and `prun` for the data parallel compil
 
 If you have already compiled for a previous version of the sambaflow stack, delete existing pef file, if it exists.
 ```bash
-rm /data/scratch/$(whoami)/GPT_RUN/gpt15/gpt15.pef
+rm /data/project_gpfs/$(whoami)/GPT_RUN/gpt15/gpt15.pef
 ```
 
 For a image size of 256x256 and local batch size of 256 when running 8 instance, the commands are provided as follows.
@@ -120,7 +120,7 @@ vsastry@sn30-r1-h1:~/nlp-multiNodetest$ ./Gpt1.5B_compile.sh
 Using /data/ANL/results/sn30-r1-h1/vsastry/041823.19/GPT1.5B.out for output
 ```
 
-The artifacts of the compile process is produced in the path : `/data/scratch/<userId>`.
+The artifacts of the compile process is produced in the path : `/data/project_gpfs/<userId>`.
 
 Inspect the `compile` command in the script to see that it includes additional arguments `--data-parallel` and `-ws 2` to generate a `pef` that is compatible for data parallel runs.
 

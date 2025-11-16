@@ -9,10 +9,10 @@ if [ -n "$1" ]; then
     echo "Using provided evaluation directory: $EVAL_DIR"
 else
     echo "No directory provided. Searching for the latest one..."
-    EVAL_DIR=$(find /scratch/bjin0 -name "evaluation_parallel_*" -type d 2>/dev/null | sort | tail -1)
+    EVAL_DIR=$(find /project_gpfs/bjin0 -name "evaluation_parallel_*" -type d 2>/dev/null | sort | tail -1)
     
     if [ -z "$EVAL_DIR" ]; then
-        echo "ERROR: No 'evaluation_parallel_*' directory was found in /scratch/bjin0"
+        echo "ERROR: No 'evaluation_parallel_*' directory was found in /project_gpfs/bjin0"
         exit 1
     fi
     echo "Found latest evaluation directory: $EVAL_DIR"

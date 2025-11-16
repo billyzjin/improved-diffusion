@@ -20,7 +20,7 @@ OUTDIR=$(pwd)/out/${MODEL_NAME}
 BS=$3
 IM=$4
 DS=/data/ANL/kaggle_3m
-CACHE_DIR=/data/scratch/${USER}/kaggle_3m_${IM}
+CACHE_DIR=/data/project_gpfs/${USER}/kaggle_3m_${IM}
 if [ ! -d ${CACHE_DIR} ] ; then
   mkdir -p ${CACHE_DIR}
 fi

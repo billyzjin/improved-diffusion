@@ -67,7 +67,7 @@ echo ""
 
 # Check if any models exist
 for exp in cifar10_ours_simple cifar10_linear_simple cifar10_cosine_simple cifar10_linear_hybrid cifar10_cosine_hybrid cifar10_cosine_vlb cifar10_ours_hybrid; do
-    model_path=$(find /scratch/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$exp/*" 2>/dev/null | head -1)
+    model_path=$(find /project_gpfs/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$exp/*" 2>/dev/null | head -1)
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
         echo "✅ $exp: $model_path"
     else
