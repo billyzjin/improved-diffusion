@@ -44,14 +44,13 @@ class ImageDataset(Dataset):
 
 def load_data(data_dir, batch_size, image_size, class_cond=False, deterministic=False):
     dataset = ImageDataset(data_dir, image_size, class_cond)
-    dataloader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        shuffle=not deterministic,
-        num_workers=1,
-        pin_memory=True
-    )
-    
-    # Return infinite iterator
+    if deterministic:
+        loader = DataLoader(
+            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
+        )
+    else:
+        loader = DataLoader(
+            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True
+        )
     while True:
-        yield from dataloader
+        yield from loader
