@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# This script submits 7 parallel Slurm jobs to evaluate each of the 7 models.
+# This script submits 8 parallel Slurm jobs to evaluate each of the 8 models.
 # Each job will run on its own dedicated H100 GPU.
 
 # 1. Create a single parent directory for all evaluation results from this run.
 PARENT_EVAL_DIR="/project_gpfs/bjin0/evaluation_parallel_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$PARENT_EVAL_DIR"
-echo "Submitting 7 parallel evaluation jobs."
+echo "Submitting 8 parallel evaluation jobs."
 echo "Results will be saved in: $PARENT_EVAL_DIR"
 
 # 2. Create a directory for the SLURM logs for tidiness.
@@ -22,6 +22,7 @@ EXPERIMENTS=(
     "cifar10_cosine_hybrid"
     "cifar10_cosine_vlb"
     "cifar10_ours_hybrid"
+    "cifar10_ours_vlb"
 )
 
 # 4. Loop through the experiments and submit a separate job for each one.
@@ -36,7 +37,7 @@ for exp_name in "${EXPERIMENTS[@]}"; do
 done
 
 echo ""
-echo "All 7 evaluation jobs have been submitted."
+echo "All 8 evaluation jobs have been submitted."
 echo "======================================================================="
 echo "To monitor job progress, run:"
 echo "  squeue -u $USER"
