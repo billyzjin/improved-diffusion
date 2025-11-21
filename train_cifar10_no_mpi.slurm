@@ -61,16 +61,16 @@ cd /home/bjin0/improved-diffusion
 
 # Backup original files first, so they can be restored.
 # Use -f to avoid errors if the originals don't exist on the first run.
-cp -f improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
-cp -f improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
-cp -f improved_diffusion/train_util.py improved_diffusion/train_util_original.py
-cp -f improved_diffusion/resample.py improved_diffusion/resample_original.py
-cp -f improved_diffusion/logger.py improved_diffusion/logger_original.py
+# cp -f improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
+# cp -f improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
+# cp -f improved_diffusion/train_util.py improved_diffusion/train_util_original.py
+# cp -f improved_diffusion/resample.py improved_diffusion/resample_original.py
+# cp -f improved_diffusion/logger.py improved_diffusion/logger_original.py
 
-echo "Creating and applying no-MPI patches..."
+echo "Using permanently patched non-MPI versions of scripts."
 
 # Create dist_util_no_mpi.py
-cat > improved_diffusion/dist_util.py << 'EOF'
+# cat > improved_diffusion/dist_util.py << 'EOF'
 """
 Distributed utilities - modified to work without MPI for single GPU training.
 """
@@ -658,17 +658,18 @@ Logger.DEFAULT = Logger.CURRENT
 EOF
 
 # Use the pre-created clean train_util_no_mpi.py file
-cp -f improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
+# cp -f improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
 
 echo "All patches applied successfully before package installation."
 
 # Always restore originals, even on failure
 restore_originals() {
-  cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
-  cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
-  cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
-  cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
-  cp improved_diffusion/logger_original.py improved_diffusion/logger.py 2>/dev/null || true
+  # cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
+  # cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
+  # cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
+  # cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
+  # cp improved_diffusion/logger_original.py improved_diffusion/logger.py 2>/dev/null || true
+  echo "No restoration needed (permanent patches used)"
 }
 trap restore_originals EXIT
 
@@ -1022,10 +1023,10 @@ fi
 # Restore original files
 #---------------------------------------------------------------------------------
 echo "Restoring original files..."
-cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py
-cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py
-cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py
-cp improved_diffusion/resample_original.py improved_diffusion/resample.py
+# cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py
+# cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py
+# cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py
+# cp improved_diffusion/resample_original.py improved_diffusion/resample.py
 
 #---------------------------------------------------------------------------------
 # Print GPU stats
