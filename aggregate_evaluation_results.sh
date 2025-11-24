@@ -46,7 +46,8 @@ for exp_dir in "$EVAL_DIR"/cifar10_*; do
     if [ -d "$exp_dir" ] && [ -f "$exp_dir/nll_results.txt" ]; then
         exp_name=$(basename "$exp_dir")
         # Extract the final bpd score from the log file.
-        nll_score=$(grep "done 10000 samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | awk -F'bpd=' '{print $2}')
+        # Look for any line with "done ... samples: bpd=" and take the last one
+        nll_score=$(grep "done .* samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | awk -F'bpd=' '{print $2}')
         
         if [ -n "$nll_score" ]; then
             printf "%-25s: %s bits/dimension\n" "$exp_name" "$nll_score" >> "$RESULTS_FILE"

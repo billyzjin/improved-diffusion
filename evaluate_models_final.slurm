@@ -93,6 +93,7 @@ evaluate_model() {
     echo "=========================================="
     echo "EVALUATING: $exp_name"
     echo "Model: $model_path"
+    echo "Start Time: $(date)"
     echo "=========================================="
     
     # Create experiment directory
@@ -180,27 +181,25 @@ evaluate_model() {
         2>&1 | tee "$exp_dir/sample_results.txt"
     
     # Move generated samples to experiment directory
-    # Extract logger directory from the sample generation output
-    logger_dir=$(grep "Logging to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*Logging to //' | tr -d '\r\n')
-    if [ -n "$logger_dir" ] && [ -d "$logger_dir" ]; then
-        sample_file="$logger_dir/samples_50000x32x32x3.npz"
-        if [ -f "$sample_file" ]; then
-            cp "$sample_file" "$exp_dir/"
-            echo "Samples saved to: $exp_dir/samples_50000x32x32x3.npz"
-            # Clean up the temporary file
-            rm -f "$sample_file"
-        else
-            echo "ERROR: Sample file not found at $sample_file"
-            echo "Available files in logger directory:"
-            ls -la "$logger_dir" 2>/dev/null || echo "Logger directory not accessible"
-        fi
+    # Extract sample file path directly from the "saving to" log line
+    # This is more robust than parsing the logger directory header
+    sample_file_source=$(grep "saving to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*saving to //' | awk '{print $1}' | tr -d '\r\n')
+    
+    if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
+        cp "$sample_file_source" "$exp_dir/"
+        echo "Samples saved to: $exp_dir/samples_50000x32x32x3.npz"
+        # Clean up the temporary file
+        rm -f "$sample_file_source"
     else
-        echo "ERROR: Could not determine logger directory from output"
-        echo "Sample generation output:"
-        tail -10 "$exp_dir/sample_results.txt"
+        echo "ERROR: Sample file not found at $sample_file_source"
+        echo "Available files in logger directory (if determined):"
+        # Try to fallback to finding logger dir for debugging
+        logger_dir=$(grep "Logging to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*Logging to //' | awk '{print $1}' | tr -d '\r\n')
+        ls -la "$logger_dir" 2>/dev/null || echo "Logger directory not accessible"
     fi
     
     echo "Completed evaluation for $exp_name"
+    echo "End Time: $(date)"
     echo ""
 }
 
