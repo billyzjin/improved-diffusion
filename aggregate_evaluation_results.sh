@@ -47,7 +47,8 @@ for exp_dir in "$EVAL_DIR"/cifar10_*; do
         exp_name=$(basename "$exp_dir")
         # Extract the final bpd score from the log file.
         # Look for any line with "done ... samples: bpd=" and take the last one
-        nll_score=$(grep "done .* samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | awk -F'bpd=' '{print $2}')
+        # Use sed to extract just the number after bpd= and before any subsequent text
+        nll_score=$(grep "done .* samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | sed -E 's/.*bpd=([0-9.]+).*/\1/')
         
         if [ -n "$nll_score" ]; then
             printf "%-25s: %s bits/dimension\n" "$exp_name" "$nll_score" >> "$RESULTS_FILE"
