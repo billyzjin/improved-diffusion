@@ -182,8 +182,8 @@ evaluate_model() {
     
     # Move generated samples to experiment directory
     # Extract sample file path directly from the "saving to" log line
-    # This is more robust than parsing the logger directory header
-    sample_file_source=$(grep "saving to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*saving to //' | awk '{print $1}' | tr -d '\r\n')
+    # Use sed to robustly extract the path ending in .npz, ignoring any trailing text attached to the line
+    sample_file_source=$(grep "saving to" "$exp_dir/sample_results.txt" | tail -1 | sed -n 's/.*saving to \(.*\.npz\).*/\1/p')
     
     if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
         cp "$sample_file_source" "$exp_dir/"
