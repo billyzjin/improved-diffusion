@@ -6,7 +6,7 @@ This directory contains SLURM job scripts for running improved diffusion experim
 
 ### 1. CIFAR-10 Training (`train_cifar10.slurm`)
 - **Account**: bata0-external
-- **Partition**: standard_h100
+- **Partition**: standard_hopper
 - **Resources**: 1 GPU, 16GB RAM, 4 CPUs, 24 hours
 - **Dataset**: CIFAR-10 (automatically prepared)
 - **Model**: 32x32 images, 128 channels, 3 residual blocks
@@ -14,7 +14,7 @@ This directory contains SLURM job scripts for running improved diffusion experim
 
 ### 2. ImageNet-64 Training (`train_imagenet64.slurm`)
 - **Account**: bata0-external
-- **Partition**: long_h100
+- **Partition**: long_hopper
 - **Resources**: 4 GPUs, 64GB RAM, 16 CPUs, 72 hours
 - **Dataset**: ImageNet-64 (you need to download and prepare)
 - **Model**: 64x64 images, 128 channels, 3 residual blocks
@@ -22,7 +22,7 @@ This directory contains SLURM job scripts for running improved diffusion experim
 
 ### 3. LSUN Bedroom Training (`train_lsun.slurm`)
 - **Account**: bata0-external
-- **Partition**: long_h100
+- **Partition**: long_hopper
 - **Resources**: 4 GPUs, 128GB RAM, 16 CPUs, 120 hours
 - **Dataset**: LSUN bedroom (you need to download and prepare)
 - **Model**: 256x256 images, 128 channels, 2 residual blocks

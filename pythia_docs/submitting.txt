@@ -41,7 +41,7 @@ Currently, Pythia is configured with the following partitions:
 | standard_l40s    | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 4h   |                         |
 |                  | | Max: 1 | | Max: 64 | | Max:750GB  | | Max:8 | | Max: 3d   |                         |
 +------------------+----------+-----------+--------------+---------+-------------+-------------------------+
-| interactive_h100 | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 2h   |                         |
+| interactive_hopper | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 2h   |                         |
 |                  | | Max: 1 | | Max: 64 | | Max: 2 TB  | | Max:8 | | Max: 2h   |                         |
 +------------------+----------+-----------+--------------+---------+-------------+-------------------------+
 | standard_h100    | | Def: 1 | | Def: 1  | | Def: 16GB  | | Min:1 | | Def: 4h   |                         |
@@ -172,7 +172,7 @@ Here is an example of a submission script:
    #---------------------------------------------------------------------------------
    # Resources requested
    
-   #SBATCH --partition=standard_h100       #  standard_h100, long_h100
+   #SBATCH --partition=standard_hopper       #  standard_hopper, long_hopper
    #SBATCH --cpus-per-task=1          # number of CPUs requested (for parallel tasks)
    #SBATCH --mem=2G           # requested memory
    #SBATCH --time=0-04:00:00          # wall clock limit (d-hh:mm:ss)

@@ -6,7 +6,7 @@
 
 #---------------------------------------------------------------------------------
 # Resources requested
-#SBATCH --partition=long_h100
+#SBATCH --partition=long_hopper
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=0-72:00:00

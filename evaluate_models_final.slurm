@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=bata0-external
-#SBATCH --partition=long_h100
+#SBATCH --partition=long_hopper
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00

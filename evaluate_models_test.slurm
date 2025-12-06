@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=bata0-external
-#SBATCH --partition=long_h100
+#SBATCH --partition=long_hopper
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=1:00:00
@@ -177,8 +177,8 @@ evaluate_model() {
     
     if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
         cp "$sample_file_source" "$exp_dir/"
-        echo "Test samples saved to: $exp_dir/samples_100x32x32x3.npz"
-        # Clean up the temporary file
+            echo "Test samples saved to: $exp_dir/samples_100x32x32x3.npz"
+            # Clean up the temporary file
         rm -f "$sample_file_source"
     else
         echo "ERROR: Sample file not found at $sample_file_source"
