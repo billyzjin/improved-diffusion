@@ -34,8 +34,8 @@ echo "" >> "$RESULTS_FILE"
 echo "EXPERIMENT TYPES:" >> "$RESULTS_FILE"
 echo "=================" >> "$RESULTS_FILE"
 echo "- Simple: learn_sigma=False, use_kl=False" >> "$RESULTS_FILE"
-echo "- Hybrid: learn_sigma=True, use_kl=True" >> "$RESULTS_FILE"
-echo "- VLB: learn_sigma=True, use_kl=True, rescale_learned_sigmas=True" >> "$RESULTS_FILE"
+echo "- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True" >> "$RESULTS_FILE"
+echo "- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment" >> "$RESULTS_FILE"
 echo "" >> "$RESULTS_FILE"
 
 echo "NLL RESULTS (bits/dimension - lower is better):" >> "$RESULTS_FILE"
@@ -54,6 +54,28 @@ for exp_dir in "$EVAL_DIR"/cifar10_*; do
             printf "%-25s: %s bits/dimension\n" "$exp_name" "$nll_score" >> "$RESULTS_FILE"
         else
             printf "%-25s: ERROR extracting NLL\n" "$exp_name" >> "$RESULTS_FILE"
+        fi
+    fi
+done
+
+echo "" >> "$RESULTS_FILE"
+echo "FID RESULTS (lower is better):" >> "$RESULTS_FILE"
+echo "==============================" >> "$RESULTS_FILE"
+
+# Extract FID results from each sub-directory.
+# Each eval job writes a single number to fid_results.txt.
+for exp_dir in "$EVAL_DIR"/cifar10_*; do
+    if [ -d "$exp_dir" ]; then
+        exp_name=$(basename "$exp_dir")
+        if [ -f "$exp_dir/fid_results.txt" ]; then
+            fid_score=$(tail -1 "$exp_dir/fid_results.txt" | tr -d '\r\n' | awk '{print $1}')
+            if [ -n "$fid_score" ]; then
+                printf "%-25s: %s\n" "$exp_name" "$fid_score" >> "$RESULTS_FILE"
+            else
+                printf "%-25s: ERROR extracting FID\n" "$exp_name" >> "$RESULTS_FILE"
+            fi
+        else
+            printf "%-25s: FID not found\n" "$exp_name" >> "$RESULTS_FILE"
         fi
     fi
 done

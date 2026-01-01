@@ -66,23 +66,7 @@ echo ""
 echo "Evaluating 1 model: $EVAL_MODEL_NAME"
 echo ""
 
-# Function to create comprehensive no-MPI patches
-create_no_mpi_patches() {
-    # Using permanently patched non-MPI versions of scripts.
-    echo "Using permanently patched non-MPI versions of scripts."
-}
-
-# Function to restore original files
-restore_originals() {
-    # NOTE: This function is now deprecated as we are using permanent patches.
-    echo "Originals are no longer backed up, skipping restore."
-}
-
-# Set up cleanup trap
-trap restore_originals EXIT
-
-# Create no-MPI patches - DEPRECATED
-# create_no_mpi_patches
+echo "Using clean in-repo no-MPI entrypoints (no runtime patching)."
 
 
 # Function to evaluate a single model
@@ -100,7 +84,7 @@ evaluate_model() {
     local exp_dir="$EVAL_DIR/$exp_name"
     mkdir -p "$exp_dir"
     
-    # Determine the correct parameters for this model
+    # Determine the correct parameters for this model (match paper definitions)
     local noise_schedule="linear"  # default
     local learn_sigma="False"
     local dropout="0.1"  # Default for linear schedule
@@ -116,21 +100,29 @@ evaluate_model() {
     fi
     
     if [[ "$exp_name" == *"hybrid"* ]]; then
+        # L_hybrid: learn_sigma=True, loss_type=RESCALED_MSE (no KL),
+        # which requires rescale_learned_sigmas=True.
         learn_sigma="True"
-        use_kl="True"
-        # Dropout already set above based on noise schedule
+        use_kl="False"
+        rescale_learned_sigmas="True"
     elif [[ "$exp_name" == *"vlb"* ]]; then
         learn_sigma="True"
         use_kl="True"
         dropout="0.3"
-        rescale_learned_sigmas="True"  # VLB experiment uses rescale_learned_sigmas=True
+        # When use_kl=True, loss_type is KL/RESCALED_KL; rescale_learned_sigmas is ignored.
+        rescale_learned_sigmas="True"
     fi
     
     echo "Using parameters: noise_schedule=$noise_schedule, learn_sigma=$learn_sigma, dropout=$dropout, use_kl=$use_kl, rescale_learned_sigmas=$rescale_learned_sigmas"
     
+    # Use a stable logger directory inside the experiment dir, so artifacts land in one place.
+    export OPENAI_LOGDIR="$exp_dir/logger"
+    export OPENAI_LOG_FORMAT="stdout,log"
+    mkdir -p "$OPENAI_LOGDIR"
+
     # 1. Calculate NLL (bits/dimension)
     echo "Calculating NLL..."
-    python3 scripts/image_nll.py \
+    python3 scripts/image_nll_no_mpi.py \
         --model_path "$model_path" \
         --data_dir ./cifar_test \
         --batch_size 128 \
@@ -154,12 +146,12 @@ evaluate_model() {
         --clip_denoised True \
         2>&1 | tee "$exp_dir/nll_results.txt"
     
-    # 2. Generate samples for FID
+    # 2. Generate samples for FID (paper protocol: 50k samples, 250 sampling steps)
     echo "Generating samples for FID..."
-    python3 scripts/image_sample.py \
+    python3 scripts/image_sample_no_mpi.py \
         --model_path "$model_path" \
         --num_samples 50000 \
-        --batch_size 128 \
+        --batch_size 256 \
         --image_size 32 \
         --num_channels 128 \
         --num_res_blocks 3 \
@@ -172,6 +164,7 @@ evaluate_model() {
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
+        --timestep_respacing 250 \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
@@ -180,23 +173,39 @@ evaluate_model() {
         --use_ddim False \
         2>&1 | tee "$exp_dir/sample_results.txt"
     
-    # Move generated samples to experiment directory
-    # Extract sample file path directly from the "saving to" log line
-    # Use sed to robustly extract the path ending in .npz, ignoring any trailing text attached to the line
-    sample_file_source=$(grep "saving to" "$exp_dir/sample_results.txt" | tail -1 | sed -n 's/.*saving to \(.*\.npz\).*/\1/p')
-    
+    # Copy generated samples into the experiment directory with a stable name.
+    sample_file_source=$(ls -1 "$OPENAI_LOGDIR"/samples_*.npz 2>/dev/null | head -1)
     if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
-        cp "$sample_file_source" "$exp_dir/"
+        cp "$sample_file_source" "$exp_dir/samples_50000x32x32x3.npz"
         echo "Samples saved to: $exp_dir/samples_50000x32x32x3.npz"
-        # Clean up the temporary file
-        rm -f "$sample_file_source"
     else
-        echo "ERROR: Sample file not found at $sample_file_source"
-        echo "Available files in logger directory (if determined):"
-        # Try to fallback to finding logger dir for debugging
-        logger_dir=$(grep "Logging to" "$exp_dir/sample_results.txt" | tail -1 | sed 's/.*Logging to //' | awk '{print $1}' | tr -d '\r\n')
-        ls -la "$logger_dir" 2>/dev/null || echo "Logger directory not accessible"
+        echo "ERROR: Sample file not found in $OPENAI_LOGDIR"
+        ls -la "$OPENAI_LOGDIR" 2>/dev/null || true
     fi
+
+    # 3. Compute FID (paper metric) using GPU in this eval job, and write a single number.
+    echo "Computing FID..."
+    # Ensure pytorch-fid is available.
+    if ! python3 -c "import importlib.util; spec=importlib.util.find_spec('pytorch_fid'); print('pytorch_fid found:', spec is not None)" >/dev/null 2>&1; then
+        echo "ERROR: pytorch_fid is not installed in this environment."
+        echo "Please install it in your cluster environment (e.g. pip install pytorch-fid)."
+        return 1
+    fi
+
+    # Ensure CIFAR-10 train stats exist (compute once into scratch if missing).
+    CIFAR_STATS_FILE="/project_gpfs/bjin0/cifar10_train_stats.npz"
+    if [ ! -f "$CIFAR_STATS_FILE" ]; then
+        echo "Precomputing CIFAR-10 train stats to: $CIFAR_STATS_FILE"
+        python3 -m pytorch_fid ./cifar_train "$CIFAR_STATS_FILE" --save-stats --device cuda 2>&1 | tee "$exp_dir/fid_stats_build.txt"
+    fi
+
+    python3 scripts/compute_fid_from_npz.py \
+        --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
+        --stats_npz "$CIFAR_STATS_FILE" \
+        --device cuda \
+        --tmp_root "/project_gpfs/bjin0" \
+        --output_txt "$exp_dir/fid_results.txt" \
+        2>&1 | tee "$exp_dir/fid_compute_log.txt"
     
     echo "Completed evaluation for $exp_name"
     echo "End Time: $(date)"

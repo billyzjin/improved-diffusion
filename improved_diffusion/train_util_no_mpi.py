@@ -9,7 +9,8 @@ import torch as th
 # from torch.nn.parallel.distributed import DistributedDataParallel as DDP  # Not needed for single GPU
 from torch.optim import AdamW
 
-from . import dist_util, logger
+from . import logger
+from . import dist_util_no_mpi as dist_util
 from .fp16_util import (
     make_master_params,
     master_params_to_model_params,
@@ -18,7 +19,7 @@ from .fp16_util import (
     zero_grad,
 )
 from .nn import update_ema
-from .resample import LossAwareSampler, UniformSampler
+from .resample_no_mpi import LossAwareSampler, UniformSampler
 
 # For ImageNet experiments, this was a good default value.
 # We found that the lg_loss_scale quickly climbed to
@@ -203,9 +204,9 @@ class TrainLoop:
         logger.log(f"loading model from checkpoint: {checkpoint}...")
         self.resume_step = parse_resume_step_from_filename(checkpoint)
 
-        if True:  # Always load on single GPU
-            state_dict = dist_util.load_state_dict(checkpoint, map_location=dist_util.dev())
-            self._state_dict_to_master_params(state_dict)
+        # Always load on single GPU.
+        state_dict = dist_util.load_state_dict(checkpoint, map_location=dist_util.dev())
+        self.model.load_state_dict(state_dict)
 
     def run_loop(self):
         if self.resume_step:

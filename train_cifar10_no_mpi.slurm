@@ -54,624 +54,7 @@ find /project_gpfs/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
 
-#---------------------------------------------------------------------------------
-# Apply patches to remove MPI dependencies BEFORE any python commands are run
-# This is CRITICAL to ensure Python's import cache doesn't use old versions
-#---------------------------------------------------------------------------------
-
-# Backup original files first, so they can be restored.
-# Use -f to avoid errors if the originals don't exist on the first run.
-# cp -f improved_diffusion/dist_util.py improved_diffusion/dist_util_original.py
-# cp -f improved_diffusion/image_datasets.py improved_diffusion/image_datasets_original.py
-# cp -f improved_diffusion/train_util.py improved_diffusion/train_util_original.py
-# cp -f improved_diffusion/resample.py improved_diffusion/resample_original.py
-# cp -f improved_diffusion/logger.py improved_diffusion/logger_original.py
-
-echo "Using permanently patched non-MPI versions of scripts."
-
-# Create dist_util_no_mpi.py
-# cat > improved_diffusion/dist_util.py << 'EOF'
-"""
-Distributed utilities - modified to work without MPI for single GPU training.
-"""
-import os
-import torch as th
-
-def setup_dist():
-    """Setup for single GPU (no distributed training)."""
-    if not th.cuda.is_available():
-        print("CUDA not available. Using CPU.")
-        return
-    th.cuda.set_device(0)
-    print(f"Using GPU: {th.cuda.get_device_name(0)}")
-
-def dev():
-    """Get the device to use for torch.distributed."""
-    return th.device("cuda" if th.cuda.is_available() else "cpu")
-
-def get_world_size():
-    """Get the number of processes (always 1 for single GPU)."""
-    return 1
-
-def get_rank():
-    """Get the rank of this process (always 0 for single GPU)."""
-    return 0
-
-def get_local_rank():
-    """Get the local rank (always 0 for single GPU)."""
-    return 0
-
-def is_main_process():
-    """Check if this is the main process (always True for single GPU)."""
-    return True
-
-def barrier():
-    """Synchronization barrier (no-op for single GPU)."""
-    pass
-
-def all_gather(tensor):
-    """Gather tensors from all processes (no-op for single GPU)."""
-    return [tensor]
-
-def all_reduce(tensor, op=None):
-    """Reduce tensors across processes (no-op for single GPU)."""
-    return tensor
-
-def broadcast(tensor, src=0):
-    """Broadcast tensor to all processes (no-op for single GPU)."""
-    return tensor
-
-def synchronize():
-    """Synchronize (no-op for single GPU)."""
-    pass
-
-def load_state_dict(path, map_location="cpu"):
-    """Load state dict from file."""
-    return th.load(path, map_location=map_location)
-
-def sync_params(params):
-    """Sync parameters across processes (no-op for single GPU)."""
-    pass
-EOF
-
-# Create image_datasets_no_mpi.py
-cat > improved_diffusion/image_datasets.py << 'EOF'
-"""
-Image datasets - modified to work without MPI.
-"""
-import os
-import torch as th
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
-import numpy as np
-
-class ImageDataset(Dataset):
-    def __init__(self, data_dir, image_size, class_cond=False):
-        self.data_dir = data_dir
-        self.image_size = image_size
-        self.class_cond = class_cond
-        
-        self.image_paths = []
-        for root, dirs, files in os.walk(data_dir):
-            for file in files:
-                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    self.image_paths.append(os.path.join(root, file))
-        
-        print(f"Found {len(self.image_paths)} images in {data_dir}")
-    
-    def __len__(self):
-        return len(self.image_paths)
-    
-    def __getitem__(self, idx):
-        path = self.image_paths[idx]
-        
-        image = Image.open(path).convert('RGB')
-        image = image.resize((self.image_size, self.image_size), Image.LANCZOS)
-        image = np.array(image).astype(np.float32) / 255.0
-        image = (image - 0.5) / 0.5
-        image = th.from_numpy(image).permute(2, 0, 1)
-        
-        if self.class_cond:
-            class_name = os.path.basename(path).split('_')[0]
-            class_id = hash(class_name) % 1000
-            return image, class_id
-        else:
-            return image, 0
-
-def load_data(data_dir, batch_size, image_size, class_cond=False):
-    """Load image dataset."""
-    dataset = ImageDataset(data_dir, image_size, class_cond)
-    dataloader = DataLoader(
-        dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        num_workers=2,
-        pin_memory=True
-    )
-    # Convert to infinite iterator and fix format
-    def infinite_dataloader():
-        while True:
-            for batch_data in dataloader:
-                if class_cond:
-                    images, labels = batch_data
-                    cond = {"y": labels} if class_cond else {}
-                    yield images, cond
-                else:
-                    images, _ = batch_data
-                    cond = {}
-                    yield images, cond
-    return infinite_dataloader()
-EOF
-
-# Create resample_no_mpi.py and overwrite resample.py
-cat > improved_diffusion/resample.py << 'EOF'
-"""
-Resampling utilities - modified to work without MPI for single GPU training.
-"""
-import torch as th
-import numpy as np
-from . import dist_util
-
-
-class UniformSampler:
-    """
-    Uniform sampling of timesteps.
-    """
-
-    def __init__(self, diffusion):
-        self.diffusion = diffusion
-
-    def sample(self, batch_size, device):
-        ts = np.random.choice(
-            self.diffusion.num_timesteps, batch_size, replace=True
-        ).astype(np.int64)
-        ts_tensor = th.from_numpy(ts).to(device)
-        return ts_tensor, th.ones_like(ts_tensor, dtype=th.float32)
-
-
-class LossAwareSampler:
-    """
-    A wrapper around a sampler that performs loss-aware sampling.
-    """
-
-    def __init__(self, diffusion):
-        self.diffusion = diffusion
-        self.loss_history = np.zeros([diffusion.num_timesteps])
-
-    def weights(self):
-        """
-        Get sampling weights for each timestep.
-        """
-        if not self.loss_history.any():
-            # Return uniform weights if no loss history
-            weights = np.ones_like(self.loss_history)
-            weights = weights / np.sum(weights)  # Normalize to sum to 1
-            return weights
-        
-        # Calculate weights based on loss history
-        weights = np.sqrt(np.mean(self.loss_history**2, axis=-1))
-        
-        # Apply exponential scaling
-        weights *= 1 - np.exp(-self.loss_history / self.loss_history.mean())
-        
-        # Ensure minimum weight to avoid zero probabilities
-        weights = np.maximum(weights, 1e-8)
-        
-        # Normalize to ensure probabilities sum to 1
-        weights = weights / np.sum(weights)
-        
-        return weights
-
-    def sample(self, batch_size, device):
-        """
-        Sample timesteps based on loss history.
-        """
-        weights = self.weights()
-        ts = np.random.choice(
-            self.diffusion.num_timesteps, batch_size, replace=True, p=weights
-        ).astype(np.int64)
-        ts_tensor = th.from_numpy(ts).to(device)
-        return ts_tensor, th.ones_like(ts_tensor, dtype=th.float32)
-
-    def update_with_local_losses(self, local_ts, local_losses):
-        """
-        Update loss history with local losses (no MPI needed for single GPU).
-        """
-        for t, loss in zip(local_ts.cpu().numpy(), local_losses.cpu().numpy()):
-            if self.loss_history[t] == 0:
-                self.loss_history[t] = loss
-            else:
-                self.loss_history[t] = 0.9 * self.loss_history[t] + 0.1 * loss
-
-    def update_with_all_losses(self, ts, losses):
-        """
-        Update loss history with all losses.
-        """
-        for t, loss in zip(ts, losses):
-            if self.loss_history[t] == 0:
-                self.loss_history[t] = loss
-            else:
-                self.loss_history[t] = 0.9 * self.loss_history[t] + 0.1 * loss
-
-
-def create_named_schedule_sampler(name, diffusion):
-    """
-    Create a named schedule sampler.
-    """
-    if name == "uniform":
-        return UniformSampler(diffusion)
-    elif name == "loss-second-moment":
-        return LossAwareSampler(diffusion)
-    else:
-        raise ValueError(f"Unknown schedule sampler: {name}")
-EOF
-
-# Create logger_no_mpi.py and overwrite logger.py
-cat > improved_diffusion/logger.py << 'EOF'
-"""
-Logger copied from OpenAI baselines to avoid extra RL-based dependencies:
-https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/logger.py
-"""
-import os
-import sys
-import shutil
-import os.path as osp
-import json
-import time
-import datetime
-import tempfile
-import warnings
-from collections import defaultdict
-from contextlib import contextmanager
-
-DEBUG = 10
-INFO = 20
-WARN = 30
-ERROR = 40
-
-DISABLED = 50
-
-
-class KVWriter(object):
-    def writekvs(self, kvs):
-        raise NotImplementedError
-
-
-class SeqWriter(object):
-    def write(self, s):
-        print(s)
-
-    def writekvs(self, kvs):
-        for k, v in kvs.items():
-            print("{}: {}".format(k, v))
-
-    def close(self):
-        pass
-
-
-class HumanOutputFormat(KVWriter, SeqWriter):
-    def __init__(self, filename_or_file):
-        if isinstance(filename_or_file, str):
-            self.file = open(filename_or_file, "wt")
-            self.own_file = True
-        else:
-            assert hasattr(filename_or_file, "read"), (
-                "expected file or str, got %s" % filename_or_file
-            )
-            self.file = filename_or_file
-            self.own_file = False
-
-    def write(self, s):
-        self.file.write(s)
-        self.file.flush()
-
-    def writekvs(self, kvs):
-        # Create strings for printing
-        key2str = {}
-        for (key, val) in sorted(kvs.items()):
-            if isinstance(val, float):
-                valstr = "%-8.3g" % (val,)
-            else:
-                valstr = str(val)
-            key2str[self._truncate(key)] = valstr
-
-        # Find max widths
-        if key2str:
-            keys = sorted(key2str.keys())
-            keywidth = max(map(len, keys))
-            valwidth = max(map(len, key2str.values()))
-        else:
-            keywidth, valwidth = 0, 0
-
-        # Write out the data
-        dashes = "-" * (keywidth + valwidth + 7)
-        lines = [dashes]
-        for key in keys:
-            lines.append(
-                "| %s%s | %s%s |"
-                % (
-                    key,
-                    " " * (keywidth - len(key)),
-                    key2str[key],
-                    " " * (valwidth - len(key2str[key])),
-                )
-            )
-        lines.append(dashes)
-        self.file.write("\n".join(lines) + "\n")
-        self.file.flush()
-
-    def _truncate(self, s):
-        return s[:20] + "..." if len(s) > 23 else s
-
-    def close(self):
-        if self.own_file:
-            self.file.close()
-
-
-class JSONOutputFormat(KVWriter):
-    def __init__(self, filename):
-        self.file = open(filename, "wt")
-
-    def writekvs(self, kvs):
-        for k, v in kvs.items():
-            if hasattr(v, "dtype"):
-                kvs[k] = float(v)
-        self.file.write(json.dumps(kvs) + "\n")
-        self.file.flush()
-
-    def close(self):
-        self.file.close()
-
-
-class CSVOutputFormat(KVWriter):
-    def __init__(self, filename):
-        self.file = open(filename, "w+t")
-        self.keys = []
-        self.sep = ","
-
-    def writekvs(self, kvs):
-        # Add our current row to the history
-        extra_keys = kvs.keys() - self.keys
-        if extra_keys:
-            self.keys.extend(extra_keys)
-            self.file.seek(0)
-            lines = self.file.readlines()
-            self.file.seek(0)
-            for (i, k) in enumerate(self.keys):
-                if i > 0:
-                    self.file.write(",")
-                self.file.write(k)
-            self.file.write("\n")
-            for line in lines[1:]:
-                self.file.write(line[:-1])
-                self.file.write(self.sep * len(extra_keys))
-                self.file.write("\n")
-            self.file.flush()
-        for (i, k) in enumerate(self.keys):
-            if i > 0:
-                self.file.write(",")
-            v = kvs.get(k)
-            if v is not None:
-                self.file.write(str(v))
-        self.file.write("\n")
-        self.file.flush()
-
-    def close(self):
-        self.file.close()
-
-
-class Logger(object):
-    DEFAULT = None  # A logger with no output files. (See right below class definition)
-    # So that you can still log to the terminal without setting up any output files
-    CURRENT = None  # Current logger being used by the free functions above
-
-    def __init__(self, dir, output_formats, comm=None):
-        self.name2val = defaultdict(float)  # values this iteration
-        self.name2cnt = defaultdict(int)
-        self.level = INFO
-        self.dir = dir
-        self.output_formats = output_formats
-
-    # Logging API, forwarded
-    # ----------------------------------------
-    def logkv(self, key, val):
-        self.name2val[key] = val
-
-    def logkv_mean(self, key, val):
-        oldval, cnt = self.name2val[key], self.name2cnt[key]
-        self.name2val[key] = oldval * cnt / (cnt + 1) + val / (cnt + 1)
-        self.name2cnt[key] = cnt + 1
-
-    def dumpkvs(self):
-        if self.output_formats:
-            for fmt in self.output_formats:
-                fmt.writekvs(self.name2val)
-        self.name2val.clear()
-        self.name2cnt.clear()
-
-    def log(self, *args, level=INFO):
-        if self.level <= level:
-            self._do_log(args)
-
-    # Configuration
-    # ----------------------------------------
-    def set_level(self, level):
-        self.level = level
-
-    def get_dir(self):
-        return self.dir
-
-    def close(self):
-        for fmt in self.output_formats:
-            fmt.close()
-
-    # Misc
-    # ----------------------------------------
-    def _do_log(self, args):
-        for fmt in self.output_formats:
-            if isinstance(fmt, SeqWriter):
-                fmt.write(*args)
-
-
-def get_current():
-    if Logger.CURRENT is None:
-        _configure_default_logger()
-
-    return Logger.CURRENT
-
-
-def _configure_default_logger():
-    configure()
-    Logger.CURRENT = Logger.DEFAULT
-
-
-def configure(dir=None, format_strs=None, comm=None):
-    """
-    If comm is provided, average all numerical stats across that comm
-    """
-    if dir is None:
-        dir = os.getenv("OPENAI_LOGDIR")
-    if dir is None:
-        dir = osp.join(tempfile.gettempdir(), 
-                       datetime.datetime.now().strftime("openai-%Y-%m-%d-%H-%M-%S-%f"))
-    assert isinstance(dir, str)
-    os.makedirs(dir, exist_ok=True)
-
-    rank = 0
-    if comm is not None:
-        rank = comm.Get_rank()
-    else:
-        rank = 0
-
-    if rank > 0:
-        format_strs = None
-    else:
-        if format_strs is None:
-            format_strs = ["stdout", "log", "csv"]
-
-    output_formats = [make_output_format(f, dir) for f in format_strs]
-
-    Logger.CURRENT = Logger(dir=dir, output_formats=output_formats, comm=comm)
-    log("Logging to %s" % dir)
-
-
-def make_output_format(format, dir):
-    os.makedirs(dir, exist_ok=True)
-    if format == "stdout":
-        return HumanOutputFormat(sys.stdout)
-    elif format == "log":
-        return HumanOutputFormat(osp.join(dir, "log.txt"))
-    elif format == "json":
-        return JSONOutputFormat(osp.join(dir, "progress.json"))
-    elif format == "csv":
-        return CSVOutputFormat(osp.join(dir, "progress.csv"))
-    else:
-        raise ValueError("Unknown format specified: %s" % (format,))
-
-
-# Backwards compatibility
-def log(*args):
-    get_current().log(*args)
-
-
-def logkv(key, val):
-    """
-    Log a value of some diagnostic
-    Call this once for each diagnostic quantity, each iteration
-    If called many times, last value will be used.
-    """
-    get_current().logkv(key, val)
-
-
-def logkv_mean(key, val):
-    """
-    The same as logkv(), but if called many times, values averaged.
-    """
-    get_current().logkv_mean(key, val)
-
-
-def logkvs(d):
-    """
-    Log a dictionary of key-value pairs
-    """
-    for (k, v) in d.items():
-        logkv(k, v)
-
-
-def dumpkvs():
-    """
-    Write all of the diagnostics from the current iteration
-    """
-    get_current().dumpkvs()
-
-
-def getkvs():
-    return get_current().name2val.copy()
-
-
-def log(*args, level=INFO):
-    get_current().log(*args, level=level)
-
-
-def debug(*args):
-    log(*args, level=DEBUG)
-
-
-def info(*args):
-    log(*args, level=INFO)
-
-
-def warn(*args):
-    log(*args, level=WARN)
-
-
-def error(*args):
-    log(*args, level=ERROR)
-
-
-def set_level(level):
-    """
-    Set logging threshold on current logger.
-    """
-    get_current().set_level(level)
-
-
-def get_dir():
-    """
-    Get directory that log files are being written to.
-    """
-    return get_current().get_dir()
-
-
-def close():
-    """
-    Close the current logger.
-    """
-    if Logger.CURRENT is not None:
-        Logger.CURRENT.close()
-        Logger.CURRENT = None
-
-
-# Configure the default logger
-configure()
-Logger.DEFAULT = Logger.CURRENT
-EOF
-
-# Use the pre-created clean train_util_no_mpi.py file
-# cp -f improved_diffusion/train_util_no_mpi.py improved_diffusion/train_util.py
-
-echo "All patches applied successfully before package installation."
-
-# Always restore originals, even on failure
-restore_originals() {
-  # cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py 2>/dev/null || true
-  # cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py 2>/dev/null || true
-  # cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py 2>/dev/null || true
-  # cp improved_diffusion/resample_original.py improved_diffusion/resample.py 2>/dev/null || true
-  # cp improved_diffusion/logger_original.py improved_diffusion/logger.py 2>/dev/null || true
-  echo "No restoration needed (permanent patches used)"
-}
-trap restore_originals EXIT
+echo "Using clean in-repo no-MPI entrypoints (no runtime patching)."
 
 # Check if package is already installed, install if needed
 echo "Checking if improved-diffusion package is installed..."
@@ -808,13 +191,14 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule linear \
             --dropout 0.1 \
             --learn_sigma False \
+            --use_kl False \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -828,15 +212,15 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule linear \
             --dropout 0.1 \
             --learn_sigma True \
-            --use_kl True \
-            --rescale_learned_sigmas False \
+            --use_kl False \
+            --rescale_learned_sigmas True \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -850,13 +234,14 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule cosine \
             --dropout 0.3 \
             --learn_sigma False \
+            --use_kl False \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -870,15 +255,15 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule cosine \
             --dropout 0.3 \
             --learn_sigma True \
-            --use_kl True \
-            --rescale_learned_sigmas False \
+            --use_kl False \
+            --rescale_learned_sigmas True \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -893,14 +278,13 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule cosine \
             --dropout 0.3 \
             --learn_sigma True \
-            --rescale_learned_sigmas True \
             --use_kl True \
             --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS \
@@ -917,14 +301,14 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule ours \
             --dropout 0.3 \
             --learn_sigma False \
-            --rescale_learned_sigmas False \
+            --use_kl False \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -940,15 +324,15 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule ours \
             --dropout 0.3 \
             --learn_sigma True \
-            --use_kl True \
-            --rescale_learned_sigmas False \
+            --use_kl False \
+            --rescale_learned_sigmas True \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -964,14 +348,13 @@ case $EXPERIMENT in
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
-        python3 scripts/image_train.py \
+        python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
             $MODEL_FLAGS \
             $DIFFUSION_STEPS \
             --noise_schedule ours \
             --dropout 0.3 \
             --learn_sigma True \
-            --rescale_learned_sigmas True \
             --use_kl True \
             --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS \
@@ -1000,7 +383,7 @@ if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo "vs your 14GB home directory. Files will auto-delete after 35 days."
     echo ""
     echo "To evaluate FID and NLL:"
-    echo "  python3 scripts/image_sample.py --model_path $OPENAI_LOGDIR/ema_0.9999_500000.pt ..."
+echo "  python3 scripts/image_sample_no_mpi.py --model_path $OPENAI_LOGDIR/ema_0.9999_500000.pt ..."
     echo "=========================================="
 else
     echo ""
@@ -1018,15 +401,6 @@ else
     echo "=========================================="
     exit 1
 fi
-
-#---------------------------------------------------------------------------------
-# Restore original files
-#---------------------------------------------------------------------------------
-echo "Restoring original files..."
-# cp improved_diffusion/dist_util_original.py improved_diffusion/dist_util.py
-# cp improved_diffusion/image_datasets_original.py improved_diffusion/image_datasets.py
-# cp improved_diffusion/train_util_original.py improved_diffusion/train_util.py
-# cp improved_diffusion/resample_original.py improved_diffusion/resample.py
 
 #---------------------------------------------------------------------------------
 # Print GPU stats

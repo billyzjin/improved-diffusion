@@ -19,11 +19,18 @@ class ImageDataset(Dataset):
         
         print(f"Found {len(self.image_files)} images in {data_dir}")
         
-        # Create dummy labels if class_cond is True
+        # If class conditional, derive stable labels from filename prefixes.
+        # Expected filename pattern: "<class>_XXXX.png" (as described in README).
+        self.class_to_id = None
+        self.labels = None
         if class_cond:
-            self.labels = np.random.randint(0, 10, len(self.image_files))
-        else:
-            self.labels = None
+            class_names = []
+            for p in self.image_files:
+                base = os.path.basename(p)
+                class_names.append(base.split("_")[0] if "_" in base else base)
+            unique = sorted(set(class_names))
+            self.class_to_id = {name: i for i, name in enumerate(unique)}
+            self.labels = np.array([self.class_to_id[n] for n in class_names], dtype=np.int64)
 
     def __len__(self):
         return len(self.image_files)
@@ -38,7 +45,7 @@ class ImageDataset(Dataset):
         image = torch.from_numpy(image).permute(2, 0, 1)  # HWC to CHW
         
         if self.class_cond:
-            return image, {"y": torch.tensor(self.labels[idx], dtype=torch.long)}
+            return image, {"y": torch.tensor(int(self.labels[idx]), dtype=torch.long)}
         else:
             return image, {}
 
