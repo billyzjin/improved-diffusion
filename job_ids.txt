@@ -1,0 +1,15 @@
+Resuming Fashionmnist Training
+
+[bjin0@pytfe02 improved-diffusion]$ squeue -u $USER
+             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+             48857 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48858 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48859 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48860 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48861 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48862 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48863 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
+             48856 long_hopp fm_resum    bjin0  R       2:14      1 pgpu010
+
+MNIST Training
+
