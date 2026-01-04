@@ -206,6 +206,14 @@ evaluate_model() {
         --tmp_root "/project_gpfs/bjin0" \
         --output_txt "$exp_dir/fid_results.txt" \
         2>&1 | tee "$exp_dir/fid_compute_log.txt"
+
+    # 4. Compute Total Variation (TV) distance vs real CIFAR-10 test set (pixel histogram TV).
+    echo "Computing TV distance..."
+    python3 scripts/compute_tv_from_npz.py \
+        --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
+        --real_dir ./cifar_test \
+        --output_txt "$exp_dir/tv_results.txt" \
+        2>&1 | tee "$exp_dir/tv_compute_log.txt"
     
     echo "Completed evaluation for $exp_name"
     echo "End Time: $(date)"

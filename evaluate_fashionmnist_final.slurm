@@ -170,6 +170,13 @@ evaluate_model() {
         --output_txt "$exp_dir/fid_results.txt" \
         2>&1 | tee "$exp_dir/fid_compute_log.txt"
 
+    echo "Computing TV distance..."
+    python3 scripts/compute_tv_from_npz.py \
+        --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
+        --real_dir ./fashion_test \
+        --output_txt "$exp_dir/tv_results.txt" \
+        2>&1 | tee "$exp_dir/tv_compute_log.txt"
+
     echo "Completed evaluation for $exp_name"
     echo "End Time: $(date)"
     echo ""

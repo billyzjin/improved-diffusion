@@ -85,16 +85,16 @@ class TrainLoop:
         self.model_params = list(self.model.parameters())
         self.master_params = self.model_params
         self.opt = AdamW(self.master_params, lr=self.lr, weight_decay=self.weight_decay)
-        if self.resume_step:
+
+        # Resume logic (single-process):
+        # If a checkpoint is provided, load the model and set resume_step now,
+        # then load optimizer + EMA parameters.
+        if self.resume_checkpoint:
+            self._load_checkpoint()
             self._load_optimizer_state()
-            # Model was resumed as well
-            self.ema_params = [
-                self._load_ema_parameters(rate) for rate in self.ema_rate
-            ]
+            self.ema_params = [self._load_ema_parameters(rate) for rate in self.ema_rate]
         else:
-            self.ema_params = [
-                copy.deepcopy(self.master_params) for _ in range(len(self.ema_rate))
-            ]
+            self.ema_params = [copy.deepcopy(self.master_params) for _ in range(len(self.ema_rate))]
 
         if th.cuda.is_available():
             self.use_ddp = False  # Disabled for single GPU
@@ -209,9 +209,6 @@ class TrainLoop:
         self.model.load_state_dict(state_dict)
 
     def run_loop(self):
-        if self.resume_step:
-            self._load_checkpoint()
-
         while self.step + self.resume_step < self.lr_anneal_steps or self.lr_anneal_steps == 0:
             batch, cond = next(self.data)
             self.run_step(batch, cond)
@@ -256,11 +253,9 @@ class TrainLoop:
                 model_kwargs=micro_cond,
             )
 
-            if last_batch or not self.use_ddp:
+            # No DDP in no-MPI mode; keep structure for parity.
+            with th.cuda.amp.autocast(enabled=self.use_fp16):
                 losses = compute_losses()
-            else:
-                with self.ddp_model.no_sync():
-                    losses = compute_losses()
 
             if isinstance(self.schedule_sampler, LossAwareSampler):
                 self.schedule_sampler.update_with_local_losses(
@@ -274,8 +269,8 @@ class TrainLoop:
             )
 
             if self.use_fp16:
-                loss_scale = 2**self.lg_loss_scale
-                (loss * loss_scale).backward()
+                assert self.scaler is not None
+                self.scaler.scale(loss).backward()
             else:
                 loss.backward()
 

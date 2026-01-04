@@ -81,6 +81,26 @@ for exp_dir in "$EVAL_DIR"/cifar10_*; do
 done
 
 echo "" >> "$RESULTS_FILE"
+echo "TOTAL VARIATION (TV) RESULTS (lower is better):" >> "$RESULTS_FILE"
+echo "===============================================" >> "$RESULTS_FILE"
+
+for exp_dir in "$EVAL_DIR"/cifar10_*; do
+    if [ -d "$exp_dir" ]; then
+        exp_name=$(basename "$exp_dir")
+        if [ -f "$exp_dir/tv_results.txt" ]; then
+            tv_score=$(tail -1 "$exp_dir/tv_results.txt" | tr -d '\r\n' | awk '{print $1}')
+            if [ -n "$tv_score" ]; then
+                printf "%-25s: %s\n" "$exp_name" "$tv_score" >> "$RESULTS_FILE"
+            else
+                printf "%-25s: ERROR extracting TV\n" "$exp_name" >> "$RESULTS_FILE"
+            fi
+        else
+            printf "%-25s: TV not found\n" "$exp_name" >> "$RESULTS_FILE"
+        fi
+    fi
+done
+
+echo "" >> "$RESULTS_FILE"
 echo "SAMPLE GENERATION STATUS (for FID calculation):" >> "$RESULTS_FILE"
 echo "==============================================" >> "$RESULTS_FILE"
 
