@@ -22,6 +22,13 @@ CLASSES = (
 # Mirrors the Fashion-MNIST dataset prep style: RGB 32x32 PNGs, class-prefixed names.
 
 BASE_URL = "http://yann.lecun.com/exdb/mnist/"
+BASE_URLS = [
+    # Most reliable mirror in practice.
+    "https://storage.googleapis.com/cvdf-datasets/mnist/",
+    # Original host (may be blocked / intermittently unavailable).
+    "https://yann.lecun.com/exdb/mnist/",
+    "http://yann.lecun.com/exdb/mnist/",
+]
 
 FILES = {
     "train": {
@@ -42,6 +49,22 @@ def _download(url: str, out_path: Path) -> None:
     print(f"Downloading {url} -> {out_path}")
     with urllib.request.urlopen(url) as r, open(out_path, "wb") as f:
         f.write(r.read())
+
+
+def _download_from_any(filename: str, out_path: Path) -> None:
+    """
+    Download `filename` into `out_path`, trying multiple base URLs.
+    """
+    last_err = None
+    for base in BASE_URLS:
+        url = base + filename
+        try:
+            _download(url, out_path)
+            return
+        except Exception as e:  # urllib can throw HTTPError/URLError/etc.
+            last_err = e
+            continue
+    raise RuntimeError(f"Failed to download {filename} from all mirrors") from last_err
 
 
 def _read_idx_images_gz(path: Path):
@@ -78,8 +101,8 @@ def _dump_split(split: str, cache_dir: Path, out_dir: Path) -> None:
 
     img_gz = cache_dir / FILES[split]["images"]
     lab_gz = cache_dir / FILES[split]["labels"]
-    _download(BASE_URL + FILES[split]["images"], img_gz)
-    _download(BASE_URL + FILES[split]["labels"], lab_gz)
+    _download_from_any(FILES[split]["images"], img_gz)
+    _download_from_any(FILES[split]["labels"], lab_gz)
 
     n, rows, cols, images = _read_idx_images_gz(img_gz)  # raw bytes
     labels = _read_idx_labels_gz(lab_gz)  # raw bytes
