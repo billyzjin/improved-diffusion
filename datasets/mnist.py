@@ -4,7 +4,6 @@ import struct
 import urllib.request
 from pathlib import Path
 
-import numpy as np
 from PIL import Image
 
 CLASSES = (
@@ -45,28 +44,33 @@ def _download(url: str, out_path: Path) -> None:
         f.write(r.read())
 
 
-def _read_idx_images_gz(path: Path) -> np.ndarray:
+def _read_idx_images_gz(path: Path):
+    """
+    Read IDX image file (gzipped) without numpy.
+    Returns (n, rows, cols, raw_bytes) where raw_bytes has length n*rows*cols.
+    """
     with gzip.open(path, "rb") as f:
         header = f.read(16)
         magic, n, rows, cols = struct.unpack(">IIII", header)
         if magic != 2051:
             raise ValueError(f"Bad magic for images file {path}: {magic}")
         data = f.read()
-    arr = np.frombuffer(data, dtype=np.uint8).reshape(n, rows, cols)
-    return arr
+    expected = n * rows * cols
+    if len(data) != expected:
+        raise ValueError(f"Unexpected image payload size in {path}: got {len(data)}, expected {expected}")
+    return n, rows, cols, data
 
 
-def _read_idx_labels_gz(path: Path) -> np.ndarray:
+def _read_idx_labels_gz(path: Path) -> bytes:
     with gzip.open(path, "rb") as f:
         header = f.read(8)
         magic, n = struct.unpack(">II", header)
         if magic != 2049:
             raise ValueError(f"Bad magic for labels file {path}: {magic}")
         data = f.read()
-    arr = np.frombuffer(data, dtype=np.uint8)
-    if arr.shape[0] != n:
-        raise ValueError(f"Label count mismatch in {path}: expected {n}, got {arr.shape[0]}")
-    return arr
+    if len(data) != n:
+        raise ValueError(f"Label count mismatch in {path}: expected {n}, got {len(data)}")
+    return data
 
 
 def _dump_split(split: str, cache_dir: Path, out_dir: Path) -> None:
@@ -77,17 +81,19 @@ def _dump_split(split: str, cache_dir: Path, out_dir: Path) -> None:
     _download(BASE_URL + FILES[split]["images"], img_gz)
     _download(BASE_URL + FILES[split]["labels"], lab_gz)
 
-    images = _read_idx_images_gz(img_gz)  # [N,28,28], uint8
-    labels = _read_idx_labels_gz(lab_gz)  # [N], uint8
-    if images.shape[0] != labels.shape[0]:
-        raise ValueError(f"Image/label count mismatch: {images.shape[0]} vs {labels.shape[0]}")
+    n, rows, cols, images = _read_idx_images_gz(img_gz)  # raw bytes
+    labels = _read_idx_labels_gz(lab_gz)  # raw bytes
+    if n != len(labels):
+        raise ValueError(f"Image/label count mismatch: {n} vs {len(labels)}")
 
-    n = images.shape[0]
     print(f"Dumping {n} {split} images to {out_dir} ...")
+    stride = rows * cols
     for i in range(n):
-        lab = int(labels[i])
+        lab = labels[i]
         cls = CLASSES[lab]
-        img = Image.fromarray(images[i], mode="L").convert("RGB")
+        offset = i * stride
+        img_bytes = images[offset : offset + stride]
+        img = Image.frombytes("L", (cols, rows), img_bytes).convert("RGB")
         img = img.resize((32, 32), resample=Image.BICUBIC)
         img.save(out_dir / f"{cls}_{i:05d}.png")
         if (i + 1) % 5000 == 0:
