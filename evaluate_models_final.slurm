@@ -119,7 +119,7 @@ evaluate_model() {
     export OPENAI_LOGDIR="$exp_dir/logger"
     export OPENAI_LOG_FORMAT="stdout,log"
     mkdir -p "$OPENAI_LOGDIR"
-
+    
     # 1. Calculate NLL (bits/dimension)
     echo "Calculating NLL..."
     python3 scripts/image_nll_no_mpi.py \

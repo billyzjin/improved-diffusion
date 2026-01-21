@@ -11,5 +11,90 @@ Resuming Fashionmnist Training
              48863 long_hopp fm_resum    bjin0  R       2:13      1 pgpu010
              48856 long_hopp fm_resum    bjin0  R       2:14      1 pgpu010
 
+
 MNIST Training
 
+==========================================
+SUBMITTING ALL 8 MNIST EXPERIMENTS
+==========================================
+This mirrors the CIFAR-10/Fashion-MNIST experiment matrix:
+  1. linear_simple
+  2. linear_hybrid
+  3. cosine_simple
+  4. cosine_hybrid
+  5. cosine_vlb
+  6. ours_simple
+  7. ours_hybrid
+  8. ours_vlb
+==========================================
+SLURM logs will be saved in the 'slurm_logs/' directory.
+
+==========================================
+ALL MNIST EXPERIMENTS SUBMITTED!
+==========================================
+Job IDs:
+  linear_simple:  48864
+  linear_hybrid:  48865
+  cosine_simple:  48866
+  cosine_hybrid:  48867
+  cosine_vlb:     48868
+  ours_simple:    48869
+  ours_hybrid:    48870
+  ours_vlb:       48871
+
+
+CIFAR10 Evaluation (submitted Jan 4 2:53pm)
+
+  [bjin0@pytfe02 improved-diffusion]$ ./submit_all_cifar10.sh 
+==========================================
+SUBMITTING ALL 8 CIFAR-10 EXPERIMENTS
+==========================================
+This will submit all experiments to reproduce the paper results and test custom schedules:
+  1. linear_simple    - Target: FID = 2.90 (best FID)
+  2. linear_hybrid    - Baseline comparison
+  3. cosine_simple    - Cosine schedule test
+  4. cosine_hybrid    - Cosine + learn_sigma
+  5. cosine_vlb       - Target: NLL = 2.94 (best NLL)
+  6. ours_simple      - Custom noise schedule
+  7. ours_hybrid      - Custom noise schedule
+  8. ours_vlb         - Custom noise schedule with VLB
+==========================================
+SLURM logs will be saved in the 'slurm_logs/' directory.
+
+Submitting linear_simple experiment...
+  Job ID: 48872
+Submitting linear_hybrid experiment...
+  Job ID: 48873
+Submitting cosine_simple experiment...
+  Job ID: 48874
+Submitting cosine_hybrid experiment...
+  Job ID: 48875
+Submitting cosine_vlb experiment...
+  Job ID: 48876
+Submitting ours_simple experiment...
+  Job ID: 48877
+Submitting ours_hybrid experiment...
+  Job ID: 48878
+Submitting ours_vlb experiment...
+  Job ID: 48879
+==========================================
+ALL EXPERIMENTS SUBMITTED SUCCESSFULLY!
+==========================================
+Job IDs:
+  linear_simple:  48872
+  linear_hybrid:  48873
+  cosine_simple:  48874
+  cosine_hybrid:  48875
+  cosine_vlb:     48876
+  ours_simple:    48877
+  ours_hybrid:    48878
+  ours_vlb:       48879
+
+Monitor jobs with:
+  squeue -u $USER
+
+View output files in the 'slurm_logs/' directory, for example:
+  tail -f slurm_logs/train_linear_simple_48872.out
+
+Expected runtime: ~12-24 hours per experiment
+All experiments will run in parallel

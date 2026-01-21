@@ -113,13 +113,22 @@ class LossSecondMomentResampler(LossAwareSampler):
         if not self._warmed_up():
             return np.ones([self.diffusion.num_timesteps], dtype=np.float64)
         weights = np.sqrt(np.mean(self._loss_history**2, axis=-1))
-        weights /= np.sum(weights)
+        # Guard against non-finite or degenerate weights.
+        weights = np.where(np.isfinite(weights), weights, 0.0)
+        total = float(np.sum(weights))
+        if not np.isfinite(total) or total <= 0.0:
+            # Fall back to uniform if weights are invalid (prevents NaNs in sampling).
+            return np.ones([self.diffusion.num_timesteps], dtype=np.float64)
+        weights /= total
         weights *= 1 - self.uniform_prob
         weights += self.uniform_prob / len(weights)
         return weights
 
     def update_with_all_losses(self, ts, losses):
         for t, loss in zip(ts, losses):
+            # Skip non-finite losses; otherwise they can poison the sampler state.
+            if not np.isfinite(loss):
+                continue
             if self._loss_counts[t] == self.history_per_term:
                 # Shift out the oldest loss term.
                 self._loss_history[t, :-1] = self._loss_history[t, 1:]

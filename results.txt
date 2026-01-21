@@ -1,0 +1,173 @@
+COMPREHENSIVE MODEL EVALUATION RESULTS
+======================================
+Date: Mon Jan 19 09:42:08 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+cifar10_cosine_hybrid    : 3.206410 bits/dimension
+cifar10_cosine_simple    : 3.297760 bits/dimension
+cifar10_cosine_vlb       : 2.981262 bits/dimension
+cifar10_linear_hybrid    : 3.295664 bits/dimension
+cifar10_linear_simple    : 3.418753 bits/dimension
+cifar10_ours_hybrid      : 3.849221 bits/dimension
+cifar10_ours_simple      : 4.041157 bits/dimension
+cifar10_ours_vlb         : 3.814094 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+cifar10_cosine_hybrid    : 5.335558
+cifar10_cosine_simple    : 17.186164
+cifar10_cosine_vlb       : 12.094966
+cifar10_linear_hybrid    : 7.649157
+cifar10_linear_simple    : 42.086996
+cifar10_ours_hybrid      : 7.855418
+cifar10_ours_simple      : 74.493533
+cifar10_ours_vlb         : 11.494107
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+cifar10_cosine_hybrid    : 0.027623
+cifar10_cosine_simple    : 0.018837
+cifar10_cosine_vlb       : 0.022374
+cifar10_linear_hybrid    : 0.036534
+cifar10_linear_simple    : 0.024835
+cifar10_ours_hybrid      : 0.044405
+cifar10_ours_simple      : 0.033351
+cifar10_ours_vlb         : 0.028133
+
+SAMPLE GENERATION STATUS (for FID calculation):
+==============================================
+cifar10_cosine_hybrid    : Samples generated successfully
+cifar10_cosine_simple    : Samples generated successfully
+cifar10_cosine_vlb       : Samples generated successfully
+cifar10_linear_hybrid    : Samples generated successfully
+cifar10_linear_simple    : Samples generated successfully
+cifar10_ours_hybrid      : Samples generated successfully
+cifar10_ours_simple      : Samples generated successfully
+cifar10_ours_vlb         : Samples generated successfully
+
+PAPER BASELINE COMPARISON:
+=========================
+From Table 2 of the paper:
+- linear, L_simple (ours: linear_simple) : 3.37 bpd
+- linear, L_hybrid (ours: linear_hybrid) : 3.26 bpd
+- cosine, L_simple (ours: cosine_simple) : 3.26 bpd
+- cosine, L_hybrid (ours: cosine_hybrid) : 3.17 bpd
+- cosine, L_vlb    (ours: cosine_vlb)    : 2.94 bpd
+
+Your custom 'ours' schedule can be compared against these baselines.
+
+------------------------------------------------------------------------------------------
+
+
+FASHION-MNIST MODEL EVALUATION RESULTS
+======================================
+Date: Mon Jan 19 09:46:39 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+fashionmnist_cosine_hybrid    : 0.827814 bits/dimension
+fashionmnist_cosine_simple    : 1.214588 bits/dimension
+fashionmnist_cosine_vlb       : 0.816545 bits/dimension
+fashionmnist_linear_hybrid    : 0.947985 bits/dimension
+fashionmnist_linear_simple    : 1.453089 bits/dimension
+fashionmnist_ours_hybrid      : 1.655086 bits/dimension
+fashionmnist_ours_simple      : 2.315787 bits/dimension
+fashionmnist_ours_vlb         : 1.816869 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+fashionmnist_cosine_hybrid    : 2.585525
+fashionmnist_cosine_simple    : 4.784493
+fashionmnist_cosine_vlb       : 1.962695
+fashionmnist_linear_hybrid    : 2.858012
+fashionmnist_linear_simple    : 15.736649
+fashionmnist_ours_hybrid      : 4.103015
+fashionmnist_ours_simple      : 61.811054
+fashionmnist_ours_vlb         : 2.510389
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+fashionmnist_cosine_hybrid    : 0.036248
+fashionmnist_cosine_simple    : 0.081344
+fashionmnist_cosine_vlb       : 0.031598
+fashionmnist_linear_hybrid    : 0.030241
+fashionmnist_linear_simple    : 0.156371
+fashionmnist_ours_hybrid      : 0.033632
+fashionmnist_ours_simple      : 0.211850
+fashionmnist_ours_vlb         : 0.028816
+
+SAMPLE GENERATION STATUS:
+========================
+fashionmnist_cosine_hybrid    : Samples generated successfully
+fashionmnist_cosine_simple    : Samples generated successfully
+fashionmnist_cosine_vlb       : Samples generated successfully
+fashionmnist_linear_hybrid    : Samples generated successfully
+fashionmnist_linear_simple    : Samples generated successfully
+fashionmnist_ours_hybrid      : Samples generated successfully
+fashionmnist_ours_simple      : Samples generated successfully
+fashionmnist_ours_vlb         : Samples generated successfully
+
+------------------------------------------------------------------------------------------
+
+MNIST MODEL EVALUATION RESULTS
+==============================
+Date: Wed Jan 21 09:00:09 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+mnist_cosine_hybrid      : 0.345971 bits/dimension
+mnist_cosine_simple      : 0.754527 bits/dimension
+mnist_cosine_vlb         : 0.315672 bits/dimension
+mnist_linear_hybrid      : 0.387858 bits/dimension
+mnist_linear_simple      : 0.959397 bits/dimension
+mnist_ours_hybrid        : 0.654725 bits/dimension
+mnist_ours_simple        : 1.566126 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+mnist_cosine_hybrid      : 2.416245
+mnist_cosine_simple      : 4.926124
+mnist_cosine_vlb         : 0.503760
+mnist_linear_hybrid      : 2.786145
+mnist_linear_simple      : 18.671314
+mnist_ours_hybrid        : 2.743038
+mnist_ours_simple        : 69.891059
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+mnist_cosine_hybrid      : 0.030025
+mnist_cosine_simple      : 0.133641
+mnist_cosine_vlb         : 0.014850
+mnist_linear_hybrid      : 0.030617
+mnist_linear_simple      : 0.272224
+mnist_ours_hybrid        : 0.030924
+mnist_ours_simple        : 0.354533
+
+SAMPLE GENERATION STATUS:
+========================
+mnist_cosine_hybrid      : Samples generated successfully
+mnist_cosine_simple      : Samples generated successfully
+mnist_cosine_vlb         : Samples generated successfully
+mnist_linear_hybrid      : Samples generated successfully
+mnist_linear_simple      : Samples generated successfully
+mnist_ours_hybrid        : Samples generated successfully
+mnist_ours_simple        : Samples generated successfully
