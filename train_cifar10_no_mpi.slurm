@@ -136,6 +136,7 @@ echo "This script trains ONE experiment at a time."
 echo "To reproduce full paper results, run all 5 scripts:"
 echo "  1. train_cifar10_linear_simple.slurm"
 echo "  2. train_cifar10_linear_hybrid.slurm"
+echo "  2b. train_cifar10_linear_vlb.slurm (extra, not in paper Table 2)"
 echo "  3. train_cifar10_cosine_simple.slurm"
 echo "  4. train_cifar10_cosine_hybrid.slurm"
 echo "  5. train_cifar10_cosine_vlb.slurm"
@@ -221,6 +222,29 @@ case $EXPERIMENT in
             --learn_sigma True \
             --use_kl False \
             --rescale_learned_sigmas True \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        ;;
+
+    linear_vlb)
+        echo "=========================================="
+        echo "EXPERIMENT: Linear schedule, L_vlb (extra)"
+        echo "NOTE: Not reported in Table 2 of the paper"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_vlb
+        mkdir -p $OPENAI_LOGDIR
+        
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule linear \
+            --dropout 0.1 \
+            --learn_sigma True \
+            --use_kl True \
+            --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
@@ -365,7 +389,7 @@ case $EXPERIMENT in
         
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
         exit 1
         ;;
 esac

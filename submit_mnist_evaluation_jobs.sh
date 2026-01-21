@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Submits 8 parallel Slurm jobs to evaluate each of the 8 MNIST models.
+# Submits 9 parallel Slurm jobs to evaluate each of the MNIST models.
 # Each job runs on its own dedicated GPU and computes NLL + FID + TV.
 
 PARENT_EVAL_DIR="/project_gpfs/bjin0/mnist_evaluation_parallel_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$PARENT_EVAL_DIR"
-echo "Submitting 8 parallel MNIST evaluation jobs."
+echo "Submitting 9 parallel MNIST evaluation jobs."
 echo "Results will be saved in: $PARENT_EVAL_DIR"
 
 mkdir -p "slurm_logs"
@@ -16,6 +16,7 @@ EXPERIMENTS=(
     "mnist_linear_simple"
     "mnist_cosine_simple"
     "mnist_linear_hybrid"
+    "mnist_linear_vlb"
     "mnist_cosine_hybrid"
     "mnist_cosine_vlb"
     "mnist_ours_hybrid"

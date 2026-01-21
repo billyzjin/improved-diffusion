@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=eval_single_model
 
-# NOTE: The --output and --error flags are now set by the submit_evaluation_jobs.sh script.
+# NOTE: The --output and --error flags are now set by the submit_cifar10_evaluation_jobs.sh script.
 
 echo "=========================================="
 echo "EVALUATING SINGLE MODEL"
@@ -108,7 +108,6 @@ evaluate_model() {
     elif [[ "$exp_name" == *"vlb"* ]]; then
         learn_sigma="True"
         use_kl="True"
-        dropout="0.3"
         # When use_kl=True, loss_type is KL/RESCALED_KL; rescale_learned_sigmas is ignored.
         rescale_learned_sigmas="True"
     fi

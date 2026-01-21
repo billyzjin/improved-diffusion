@@ -79,7 +79,6 @@ evaluate_model() {
     elif [[ "$exp_name" == *"vlb"* ]]; then
         learn_sigma="True"
         use_kl="True"
-        dropout="0.3"
         rescale_learned_sigmas="True"
     fi
 

@@ -165,6 +165,23 @@ case $EXPERIMENT in
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
+    linear_vlb)
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_vlb
+        mkdir -p "$OPENAI_LOGDIR"
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./fashion_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule linear \
+            --dropout 0.1 \
+            --learn_sigma True \
+            --use_kl True \
+            --schedule_sampler loss-second-moment \
+            --class_cond False \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        ;;
     cosine_simple)
         if [ -z "$RESUME_LOGDIR" ]; then
             export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_simple
@@ -279,7 +296,7 @@ case $EXPERIMENT in
         ;;
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
         exit 1
         ;;
 esac

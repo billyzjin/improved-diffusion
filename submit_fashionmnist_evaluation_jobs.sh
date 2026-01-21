@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Submits 8 parallel Slurm jobs to evaluate each of the 8 Fashion-MNIST models.
+# Submits 9 parallel Slurm jobs to evaluate each of the Fashion-MNIST models.
 # Each job runs on its own dedicated GPU and computes NLL + FID.
 
 PARENT_EVAL_DIR="/project_gpfs/bjin0/fashion_evaluation_parallel_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$PARENT_EVAL_DIR"
-echo "Submitting 8 parallel Fashion-MNIST evaluation jobs."
+echo "Submitting 9 parallel Fashion-MNIST evaluation jobs."
 echo "Results will be saved in: $PARENT_EVAL_DIR"
 
 mkdir -p "slurm_logs"
@@ -16,6 +16,7 @@ EXPERIMENTS=(
     "fashionmnist_linear_simple"
     "fashionmnist_cosine_simple"
     "fashionmnist_linear_hybrid"
+    "fashionmnist_linear_vlb"
     "fashionmnist_cosine_hybrid"
     "fashionmnist_cosine_vlb"
     "fashionmnist_ours_hybrid"
@@ -33,7 +34,7 @@ for exp_name in "${EXPERIMENTS[@]}"; do
 done
 
 echo ""
-echo "All 8 Fashion-MNIST evaluation jobs have been submitted."
+echo "All 9 Fashion-MNIST evaluation jobs have been submitted."
 echo "======================================================================="
 echo "After ALL jobs have completed successfully, run:"
 echo "  bash aggregate_fashionmnist_evaluation_results.sh $PARENT_EVAL_DIR"
