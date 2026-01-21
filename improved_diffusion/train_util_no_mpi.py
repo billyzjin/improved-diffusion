@@ -205,7 +205,7 @@ class TrainLoop:
         self.resume_step = parse_resume_step_from_filename(checkpoint)
 
         # Always load on single GPU.
-            state_dict = dist_util.load_state_dict(checkpoint, map_location=dist_util.dev())
+        state_dict = dist_util.load_state_dict(checkpoint, map_location=dist_util.dev())
         self.model.load_state_dict(state_dict)
 
     def run_loop(self):

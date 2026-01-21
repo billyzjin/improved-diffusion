@@ -114,6 +114,13 @@ evaluate_model() {
         2>&1 | tee "$exp_dir/nll_results.txt"
 
     echo "Generating samples for FID..."
+    RESPACING_FLAG=""
+    if [ -n "${EVAL_TIMESTEP_RESPACING:-}" ]; then
+        RESPACING_FLAG="--timestep_respacing ${EVAL_TIMESTEP_RESPACING}"
+        echo "Using timestep respacing for sampling: ${EVAL_TIMESTEP_RESPACING}"
+    else
+        echo "Using full sampling (no timestep respacing)."
+    fi
     python3 scripts/image_sample_no_mpi.py \
         --model_path "$model_path" \
         --num_samples 50000 \
@@ -130,7 +137,7 @@ evaluate_model() {
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
-        --timestep_respacing 250 \
+        $RESPACING_FLAG \
         --class_cond False \
         --use_checkpoint False \
         --rescale_timesteps True \
