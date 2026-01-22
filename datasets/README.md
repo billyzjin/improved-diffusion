@@ -4,7 +4,17 @@ This directory includes instructions and scripts for downloading ImageNet, LSUN 
 
 ## ImageNet-64
 
-To download unconditional ImageNet-64, go to [this page on image-net.org](http://www.image-net.org/small/download.php) and click on "Train (64x64)". Simply download the file and unzip it, and use the resulting directory as the data directory (the `--data_dir` argument for the training script).
+To download unconditional ImageNet-64, use the ImageNet website's **"Download downsampled image data (32x32, 64x64)"** section.
+
+Recent versions of the ImageNet site provide 64x64 as:
+
+- Train(64x64) part1, **npz** format
+- Train(64x64) part2, **npz** format
+- Val(64x64), **npz** format
+
+Convert these `.npz` files into `imagenet64/train/` and `imagenet64/val/` directories (compatible with our loader and SLURM scripts) with:
+
+- `datasets/imagenet64.py`
 
 ## Class-conditional ImageNet
 
