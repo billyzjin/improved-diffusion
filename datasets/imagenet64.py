@@ -52,8 +52,6 @@ Afterwards, point your SLURM scripts at:
   IMAGENET_VAL_DIR=<out_root>/val
 """
 
-from __future__ import annotations
-
 import argparse
 import os
 import shutil
@@ -61,6 +59,7 @@ import tarfile
 import urllib.request
 import zipfile
 from pathlib import Path
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 
 def _download(url: str, out_path: Path) -> None:
@@ -107,7 +106,7 @@ def _maybe_flatten_single_topdir(out_dir: Path) -> None:
         top.rmdir()
 
 
-def _count_images(root: Path, limit: int = 20000) -> tuple[int, bool]:
+def _count_images(root: Path, limit: int = 20000) -> Tuple[int, bool]:
     """
     Count up to `limit` images quickly, to sanity-check extraction.
     Returns (count, hit_limit).
@@ -123,7 +122,7 @@ def _count_images(root: Path, limit: int = 20000) -> tuple[int, bool]:
     return n, hit
 
 
-def _npz_pick_arrays(npz: "dict[str, object]"):
+def _npz_pick_arrays(npz: Dict[str, Any]):
     """
     Try to infer (images, labels) arrays from a variety of common ImageNet-downsampled npz formats.
     Returns (imgs, labels) where labels may be None.
@@ -159,7 +158,7 @@ def _npz_pick_arrays(npz: "dict[str, object]"):
     return imgs, labels
 
 
-def _npz_iter_images(imgs, labels, image_size: int = 64):
+def _npz_iter_images(imgs: Any, labels: Optional[Any], image_size: int = 64) -> Iterator[Tuple[int, Any, Optional[int]]]:
     """
     Yield (idx, img_hwc_uint8, label_int_or_None).
     Handles common shapes:
@@ -195,7 +194,7 @@ def _npz_iter_images(imgs, labels, image_size: int = 64):
             # Some formats store uint8 already; if not, try to convert safely.
             x = np.clip(x, 0, 255).astype(np.uint8)
 
-        y = None
+        y = None  # type: Optional[int]
         if labels is not None:
             yv = labels[i]
             # labels may be scalar array type.
