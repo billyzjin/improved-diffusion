@@ -273,6 +273,16 @@ def main() -> None:
     ap.add_argument("--train_npz_part2", default="", help="Local path to ImageNet-64 train npz part2")
     ap.add_argument("--val_npz", default="", help="Local path to ImageNet-64 val npz")
     ap.add_argument(
+        "--train_npz_dir_part1",
+        default="",
+        help="Directory containing ImageNet64 train shards for part1 (e.g. train_data_batch_1..5.npz).",
+    )
+    ap.add_argument(
+        "--train_npz_dir_part2",
+        default="",
+        help="Directory containing ImageNet64 train shards for part2 (e.g. train_data_batch_6..10.npz).",
+    )
+    ap.add_argument(
         "--make_val_from_train",
         type=float,
         default=0.0,
@@ -344,17 +354,38 @@ def main() -> None:
     # Prefer NPZ conversion if provided; otherwise fall back to extracting archives.
     shard_by_class = not args.no_shard_by_class
 
-    if args.train_npz_part1 or args.train_npz_part2 or args.val_npz:
+    if args.train_npz_dir_part1 or args.train_npz_dir_part2 or args.train_npz_part1 or args.train_npz_part2 or args.val_npz:
         # Validate NPZ inputs.
-        if not args.train_npz_part1 or not args.train_npz_part2:
-            raise SystemExit("For ImageNet-64 npz conversion, provide both --train_npz_part1 and --train_npz_part2.")
         if not args.val_npz:
             raise SystemExit("For ImageNet-64 npz conversion, provide --val_npz.")
 
-        train_p1 = Path(args.train_npz_part1)
-        train_p2 = Path(args.train_npz_part2)
+        # Determine train shard lists.
+        train_files_p1 = []
+        train_files_p2 = []
+
+        if args.train_npz_dir_part1 or args.train_npz_dir_part2:
+            if not args.train_npz_dir_part1 or not args.train_npz_dir_part2:
+                raise SystemExit("Provide both --train_npz_dir_part1 and --train_npz_dir_part2.")
+            d1 = Path(args.train_npz_dir_part1)
+            d2 = Path(args.train_npz_dir_part2)
+            if not d1.is_dir():
+                raise SystemExit(f"train_npz_dir_part1 is not a directory: {d1}")
+            if not d2.is_dir():
+                raise SystemExit(f"train_npz_dir_part2 is not a directory: {d2}")
+            train_files_p1 = sorted(d1.glob("train_data_batch_*.npz"))
+            train_files_p2 = sorted(d2.glob("train_data_batch_*.npz"))
+            if not train_files_p1:
+                raise SystemExit(f"No train_data_batch_*.npz found in {d1}")
+            if not train_files_p2:
+                raise SystemExit(f"No train_data_batch_*.npz found in {d2}")
+        else:
+            if not args.train_npz_part1 or not args.train_npz_part2:
+                raise SystemExit("Provide both --train_npz_part1 and --train_npz_part2, or use --train_npz_dir_part1/--train_npz_dir_part2.")
+            train_files_p1 = [Path(args.train_npz_part1)]
+            train_files_p2 = [Path(args.train_npz_part2)]
+
         val_p = Path(args.val_npz)
-        for p in [train_p1, train_p2, val_p]:
+        for p in train_files_p1 + train_files_p2 + [val_p]:
             if not p.exists():
                 raise SystemExit(f"NPZ file not found: {p}")
 
@@ -362,22 +393,24 @@ def main() -> None:
             print(f"Skipping train npz conversion; directory not empty: {train_out}")
         else:
             idx0 = 0
-            idx0 = _write_npz_as_images(
-                train_p1,
-                train_out,
-                split="train",
-                start_index=idx0,
-                shard_by_class=shard_by_class,
-                max_images=args.max_images_per_split,
-            )
-            _write_npz_as_images(
-                train_p2,
-                train_out,
-                split="train",
-                start_index=idx0,
-                shard_by_class=shard_by_class,
-                max_images=args.max_images_per_split,
-            )
+            for p in train_files_p1:
+                idx0 = _write_npz_as_images(
+                    p,
+                    train_out,
+                    split="train",
+                    start_index=idx0,
+                    shard_by_class=shard_by_class,
+                    max_images=args.max_images_per_split,
+                )
+            for p in train_files_p2:
+                idx0 = _write_npz_as_images(
+                    p,
+                    train_out,
+                    split="train",
+                    start_index=idx0,
+                    shard_by_class=shard_by_class,
+                    max_images=args.max_images_per_split,
+                )
 
         if val_out.exists() and any(val_out.iterdir()):
             print(f"Skipping val npz conversion; directory not empty: {val_out}")

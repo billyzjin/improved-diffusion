@@ -32,8 +32,8 @@ cd /home/bjin0/improved-diffusion || exit 1
 #---------------------------------------------------------------------------------
 # Inputs (override via sbatch --export or environment)
 #---------------------------------------------------------------------------------
-TRAIN_NPZ_PART1=${TRAIN_NPZ_PART1:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part1_npz/train_data_batch_1.npz}
-TRAIN_NPZ_PART2=${TRAIN_NPZ_PART2:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part2_npz/train_data_batch_6.npz}
+TRAIN_NPZ_DIR_PART1=${TRAIN_NPZ_DIR_PART1:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part1_npz}
+TRAIN_NPZ_DIR_PART2=${TRAIN_NPZ_DIR_PART2:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part2_npz}
 VAL_NPZ=${VAL_NPZ:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_val_npz/val_data.npz}
 
 # Output root directory (will create train/ and val/ under this)
@@ -42,18 +42,18 @@ OUT_ROOT=${OUT_ROOT:-/project_gpfs/bjin0/imagenet64}
 # Optional: set MAX_IMAGES_PER_SPLIT for a quick smoke test (0 = full dataset).
 MAX_IMAGES_PER_SPLIT=${MAX_IMAGES_PER_SPLIT:-0}
 
-echo "TRAIN_NPZ_PART1      = $TRAIN_NPZ_PART1"
-echo "TRAIN_NPZ_PART2      = $TRAIN_NPZ_PART2"
+echo "TRAIN_NPZ_DIR_PART1  = $TRAIN_NPZ_DIR_PART1"
+echo "TRAIN_NPZ_DIR_PART2  = $TRAIN_NPZ_DIR_PART2"
 echo "VAL_NPZ              = $VAL_NPZ"
 echo "OUT_ROOT             = $OUT_ROOT"
 echo "MAX_IMAGES_PER_SPLIT = $MAX_IMAGES_PER_SPLIT"
 
-if [ ! -f "$TRAIN_NPZ_PART1" ]; then
-  echo "ERROR: TRAIN_NPZ_PART1 not found: $TRAIN_NPZ_PART1"
+if [ ! -d "$TRAIN_NPZ_DIR_PART1" ]; then
+  echo "ERROR: TRAIN_NPZ_DIR_PART1 not found or not a directory: $TRAIN_NPZ_DIR_PART1"
   exit 1
 fi
-if [ ! -f "$TRAIN_NPZ_PART2" ]; then
-  echo "ERROR: TRAIN_NPZ_PART2 not found: $TRAIN_NPZ_PART2"
+if [ ! -d "$TRAIN_NPZ_DIR_PART2" ]; then
+  echo "ERROR: TRAIN_NPZ_DIR_PART2 not found or not a directory: $TRAIN_NPZ_DIR_PART2"
   exit 1
 fi
 if [ ! -f "$VAL_NPZ" ]; then
@@ -72,8 +72,8 @@ mkdir -p "$OUT_ROOT"
 
 echo "Starting ImageNet64 conversion..."
 python3 datasets/imagenet64.py \
-  --train_npz_part1 "$TRAIN_NPZ_PART1" \
-  --train_npz_part2 "$TRAIN_NPZ_PART2" \
+  --train_npz_dir_part1 "$TRAIN_NPZ_DIR_PART1" \
+  --train_npz_dir_part2 "$TRAIN_NPZ_DIR_PART2" \
   --val_npz "$VAL_NPZ" \
   --out_root "$OUT_ROOT" \
   --max_images_per_split "$MAX_IMAGES_PER_SPLIT"
