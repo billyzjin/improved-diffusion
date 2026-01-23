@@ -3,11 +3,14 @@
 # Submits 9 parallel Slurm jobs to evaluate each ImageNet-64 model.
 # Each job computes NLL + FID + TV and writes results under a shared parent directory.
 
-if [ -z "${IMAGENET_TRAIN_DIR:-}" ] || [ -z "${IMAGENET_VAL_DIR:-}" ]; then
-  echo "ERROR: Please export IMAGENET_TRAIN_DIR and IMAGENET_VAL_DIR before running."
-  echo "Example:"
-  echo "  export IMAGENET_TRAIN_DIR=/path/to/imagenet64/train"
-  echo "  export IMAGENET_VAL_DIR=/path/to/imagenet64/val"
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
+
+if [ ! -d "$IMAGENET_TRAIN_DIR" ] || [ ! -d "$IMAGENET_VAL_DIR" ]; then
+  echo "ERROR: Default ImageNet dirs not found."
+  echo "IMAGENET_TRAIN_DIR=$IMAGENET_TRAIN_DIR"
+  echo "IMAGENET_VAL_DIR=$IMAGENET_VAL_DIR"
+  echo "Set IMAGENET_TRAIN_DIR/IMAGENET_VAL_DIR if your dataset lives elsewhere."
   exit 1
 fi
 

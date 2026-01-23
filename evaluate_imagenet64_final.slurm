@@ -9,6 +9,8 @@
 
 # NOTE: The --output and --error flags are set by the submit script.
 
+set -euo pipefail
+
 echo "=========================================="
 echo "EVALUATING SINGLE IMAGENET-64 MODEL"
 echo "Job ID: $SLURM_JOB_ID"
@@ -37,12 +39,8 @@ python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(
 
 cd /home/bjin0/improved-diffusion || exit 1
 
-IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-""}
-IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-""}
-if [ -z "$IMAGENET_TRAIN_DIR" ] || [ -z "$IMAGENET_VAL_DIR" ]; then
-  echo "ERROR: IMAGENET_TRAIN_DIR and IMAGENET_VAL_DIR must be set for evaluation."
-  exit 1
-fi
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
 
 if [ ! -d "$IMAGENET_TRAIN_DIR" ]; then
   echo "ERROR: IMAGENET_TRAIN_DIR does not exist: $IMAGENET_TRAIN_DIR"
@@ -167,6 +165,7 @@ evaluate_model() {
   else
     echo "ERROR: Sample file not found in $OPENAI_LOGDIR"
     ls -la "$OPENAI_LOGDIR" 2>/dev/null || true
+    return 1
   fi
 
   # FID: compare generated samples vs ImageNet train stats (computed once and cached).

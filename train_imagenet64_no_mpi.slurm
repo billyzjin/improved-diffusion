@@ -43,15 +43,8 @@ fi
 #---------------------------------------------------------------------------------
 # Dataset locations (must be provided by user/environment)
 #---------------------------------------------------------------------------------
-IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-""}
-IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-""}
-
-if [ -z "$IMAGENET_TRAIN_DIR" ] || [ -z "$IMAGENET_VAL_DIR" ]; then
-  echo "ERROR: IMAGENET_TRAIN_DIR and IMAGENET_VAL_DIR must be set."
-  echo "Example:"
-  echo "  sbatch --export=EXPERIMENT=cosine_simple,IMAGENET_TRAIN_DIR=/path/to/imagenet64/train,IMAGENET_VAL_DIR=/path/to/imagenet64/val train_imagenet64_no_mpi.slurm"
-  exit 1
-fi
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
 
 if [ ! -d "$IMAGENET_TRAIN_DIR" ]; then
   echo "ERROR: IMAGENET_TRAIN_DIR does not exist: $IMAGENET_TRAIN_DIR"

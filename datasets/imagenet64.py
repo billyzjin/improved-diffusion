@@ -225,7 +225,8 @@ def _write_npz_as_images(
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"Loading npz: {npz_path}")
     with np.load(npz_path, allow_pickle=False) as z:
-        imgs, labels = _npz_pick_arrays(dict(z))
+        # NpzFile is dict-like but not always safe to wrap with dict(z) across numpy versions.
+        imgs, labels = _npz_pick_arrays({k: z[k] for k in z.files})
 
     written = 0
     next_index = start_index
@@ -338,12 +339,20 @@ def main() -> None:
         val_archive = dl_dir / fname
         _download(args.val_url, val_archive)
 
+    using_npz = bool(
+        args.train_npz_dir_part1
+        or args.train_npz_dir_part2
+        or args.train_npz_part1
+        or args.train_npz_part2
+        or args.val_npz
+    )
+
     if not train_archive:
         # If no archive, maybe we're using npz inputs.
-        if not args.train_npz_part1 and not args.train_npz_part2:
+        if not using_npz:
             raise SystemExit(
                 "You must provide a train source.\n"
-                "Use --train_archive/--train_url OR --train_npz_part1/--train_npz_part2."
+                "Use --train_archive/--train_url OR --train_npz_dir_part1/--train_npz_dir_part2 OR --train_npz_part1/--train_npz_part2."
             )
 
     if train_archive and (not train_archive.exists()):
@@ -354,7 +363,7 @@ def main() -> None:
     # Prefer NPZ conversion if provided; otherwise fall back to extracting archives.
     shard_by_class = not args.no_shard_by_class
 
-    if args.train_npz_dir_part1 or args.train_npz_dir_part2 or args.train_npz_part1 or args.train_npz_part2 or args.val_npz:
+    if using_npz:
         # Validate NPZ inputs.
         if not args.val_npz:
             raise SystemExit("For ImageNet-64 npz conversion, provide --val_npz.")
@@ -372,8 +381,16 @@ def main() -> None:
                 raise SystemExit(f"train_npz_dir_part1 is not a directory: {d1}")
             if not d2.is_dir():
                 raise SystemExit(f"train_npz_dir_part2 is not a directory: {d2}")
-            train_files_p1 = sorted(d1.glob("train_data_batch_*.npz"))
-            train_files_p2 = sorted(d2.glob("train_data_batch_*.npz"))
+            def _batch_num(p: Path) -> int:
+                # train_data_batch_10.npz -> 10
+                stem = p.stem
+                try:
+                    return int(stem.split("_")[-1])
+                except Exception:
+                    return 10**9
+
+            train_files_p1 = sorted(d1.glob("train_data_batch_*.npz"), key=_batch_num)
+            train_files_p2 = sorted(d2.glob("train_data_batch_*.npz"), key=_batch_num)
             if not train_files_p1:
                 raise SystemExit(f"No train_data_batch_*.npz found in {d1}")
             if not train_files_p2:
@@ -432,53 +449,55 @@ def main() -> None:
             _extract(train_archive, train_out)
             _maybe_flatten_single_topdir(train_out)
 
-    if val_archive:
-        if val_out.exists() and any(val_out.iterdir()):
-            print(f"Skipping val extraction; directory not empty: {val_out}")
+    # If using NPZ inputs, we already created val_out from args.val_npz above.
+    if not using_npz:
+        if val_archive:
+            if val_out.exists() and any(val_out.iterdir()):
+                print(f"Skipping val extraction; directory not empty: {val_out}")
+            else:
+                val_out.mkdir(parents=True, exist_ok=True)
+                _extract(val_archive, val_out)
+                _maybe_flatten_single_topdir(val_out)
         else:
-            val_out.mkdir(parents=True, exist_ok=True)
-            _extract(val_archive, val_out)
-            _maybe_flatten_single_topdir(val_out)
-    else:
-        # Optional: make a val split directory from the extracted train files.
-        if args.make_val_from_train <= 0:
-            raise SystemExit(
-                "No val archive provided.\n"
-                "Either provide --val_archive/--val_url or set --make_val_from_train (e.g. 0.01)."
-            )
-        if val_out.exists() and any(val_out.iterdir()):
-            print(f"Skipping val split creation; directory not empty: {val_out}")
-        else:
-            import random
+            # Optional: make a val split directory from the extracted train files.
+            if args.make_val_from_train <= 0:
+                raise SystemExit(
+                    "No val archive provided.\n"
+                    "Either provide --val_archive/--val_url or set --make_val_from_train (e.g. 0.01)."
+                )
+            if val_out.exists() and any(val_out.iterdir()):
+                print(f"Skipping val split creation; directory not empty: {val_out}")
+            else:
+                import random
 
-            all_imgs = [p for p in train_out.rglob("*") if p.suffix.lower() in [".png", ".jpg", ".jpeg"]]
-            if not all_imgs:
-                raise SystemExit(f"No images found under extracted train dir: {train_out}")
+                all_imgs = [p for p in train_out.rglob("*") if p.suffix.lower() in [".png", ".jpg", ".jpeg"]]
+                if not all_imgs:
+                    raise SystemExit(f"No images found under extracted train dir: {train_out}")
 
-            rnd = random.Random(args.val_split_seed)
-            rnd.shuffle(all_imgs)
-            k = max(1, int(len(all_imgs) * args.make_val_from_train))
-            val_imgs = all_imgs[:k]
+                rnd = random.Random(args.val_split_seed)
+                rnd.shuffle(all_imgs)
+                k = max(1, int(len(all_imgs) * args.make_val_from_train))
+                val_imgs = all_imgs[:k]
 
-            val_out.mkdir(parents=True, exist_ok=True)
-            print(
-                f"Creating val split from train: {k}/{len(all_imgs)} images "
-                f"({args.make_val_from_train:.4f}) via {args.val_split_link}"
-            )
+                val_out.mkdir(parents=True, exist_ok=True)
+                print(
+                    f"Creating val split from train: {k}/{len(all_imgs)} images "
+                    f"({args.make_val_from_train:.4f}) via {args.val_split_link}"
+                )
 
-            for src in val_imgs:
-                # Mirror relative path under train_out so classes/subdirs (if any) are preserved.
-                rel = src.relative_to(train_out)
-                dst = val_out / rel
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                if dst.exists():
-                    continue
-                if args.val_split_link == "symlink":
-                    dst.symlink_to(src)
-                elif args.val_split_link == "hardlink":
-                    os.link(src, dst)
-                else:
-                    shutil.copy2(src, dst)
+                for src in val_imgs:
+                    # Mirror relative path under train_out so classes/subdirs (if any) are preserved.
+                    rel = src.relative_to(train_out)
+                    dst = val_out / rel
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    if dst.exists():
+                        continue
+                    if args.val_split_link == "symlink":
+                        dst.symlink_to(src)
+                    elif args.val_split_link == "hardlink":
+                        os.link(src, dst)
+                    else:
+                        shutil.copy2(src, dst)
 
     train_n, train_hit = _count_images(train_out)
     val_n, val_hit = _count_images(val_out)
@@ -487,7 +506,7 @@ def main() -> None:
     print("ImageNet-64 prep complete.")
     print(f"Train dir: {train_out} (found at least {train_n}{'+' if train_hit else ''} images)")
     print(f"Val dir:   {val_out} (found at least {val_n}{'+' if val_hit else ''} images)")
-    if not val_archive:
+    if (not using_npz) and (not val_archive):
         print("")
         print("WARNING: val was created as a split from train (not an official validation set).")
     print("")
