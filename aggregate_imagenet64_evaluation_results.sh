@@ -7,7 +7,9 @@ if [ -n "$1" ]; then
   echo "Using provided evaluation directory: $EVAL_DIR"
 else
   echo "No directory provided. Searching for the latest one..."
-  EVAL_DIR=$(find /project_gpfs/bjin0 -name "imagenet64_evaluation_parallel_*" -type d 2>/dev/null | sort | tail -1)
+  # Avoid a slow recursive `find` over /project_gpfs (ImageNet contains millions of files).
+  # These eval dirs live at the top-level under /project_gpfs/bjin0.
+  EVAL_DIR=$(ls -1d /project_gpfs/bjin0/imagenet64_evaluation_parallel_* 2>/dev/null | sort | tail -1)
   if [ -z "$EVAL_DIR" ]; then
     echo "ERROR: No 'imagenet64_evaluation_parallel_*' directory was found in /project_gpfs/bjin0"
     exit 1
