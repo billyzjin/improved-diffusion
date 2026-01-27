@@ -179,7 +179,15 @@ evaluate_model() {
   IMAGENET_STATS_FILE="/project_gpfs/bjin0/imagenet64_train_stats.npz"
   if [ ! -f "$IMAGENET_STATS_FILE" ]; then
     echo "Precomputing ImageNet-64 train stats to: $IMAGENET_STATS_FILE"
-    python3 -m pytorch_fid "$IMAGENET_TRAIN_DIR" "$IMAGENET_STATS_FILE" --save-stats --device cuda 2>&1 | tee "$exp_dir/fid_stats_build.txt"
+    # NOTE: pytorch-fid --save-stats is often non-recursive; our ImageNet-64 train dir has class subfolders.
+    # Use our recursive helper to include all images.
+    python3 scripts/compute_fid_stats_from_dir_recursive.py \
+      --real_dir "$IMAGENET_TRAIN_DIR" \
+      --stats_npz "$IMAGENET_STATS_FILE" \
+      --device cuda \
+      --batch_size 64 \
+      --num_workers 4 \
+      2>&1 | tee "$exp_dir/fid_stats_build.txt"
   fi
 
   python3 scripts/compute_fid_from_npz.py \
