@@ -171,3 +171,108 @@ mnist_linear_hybrid      : Samples generated successfully
 mnist_linear_simple      : Samples generated successfully
 mnist_ours_hybrid        : Samples generated successfully
 mnist_ours_simple        : Samples generated successfully
+
+------------------------------------------------------------------
+
+FASHION-MNIST MODEL EVALUATION RESULTS
+======================================
+Date: Tue Jan 27 17:42:26 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+fashionmnist_cosine_hybrid    : 0.827938 bits/dimension
+fashionmnist_cosine_simple    : 1.214592 bits/dimension
+fashionmnist_cosine_vlb       : 0.816530 bits/dimension
+fashionmnist_linear_hybrid    : 0.947477 bits/dimension
+fashionmnist_linear_simple    : 1.452883 bits/dimension
+fashionmnist_linear_vlb       : 1.096259 bits/dimension
+fashionmnist_ours_hybrid      : 1.654291 bits/dimension
+fashionmnist_ours_simple      : 2.315839 bits/dimension
+fashionmnist_ours_vlb         : 1.816819 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+fashionmnist_cosine_hybrid    : 2.352145
+fashionmnist_cosine_simple    : 2.221193
+fashionmnist_cosine_vlb       : 1.772126
+fashionmnist_linear_hybrid    : 2.320925
+fashionmnist_linear_simple    : 2.435917
+fashionmnist_linear_vlb       : 1.277860
+fashionmnist_ours_hybrid      : 2.824703
+fashionmnist_ours_simple      : 2.669648
+fashionmnist_ours_vlb         : 1.665994
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+fashionmnist_cosine_hybrid    : 0.035869
+fashionmnist_cosine_simple    : 0.037592
+fashionmnist_cosine_vlb       : 0.038582
+fashionmnist_linear_hybrid    : 0.028943
+fashionmnist_linear_simple    : 0.028004
+fashionmnist_linear_vlb       : 0.020381
+fashionmnist_ours_hybrid      : 0.029692
+fashionmnist_ours_simple      : 0.030629
+fashionmnist_ours_vlb         : 0.029403
+
+-----------------------------------------------------------------
+
+COMPREHENSIVE MODEL EVALUATION RESULTS
+======================================
+Date: Tue Jan 27 17:41:08 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+cifar10_cosine_hybrid    : 3.206944 bits/dimension
+cifar10_cosine_simple    : 3.298120 bits/dimension
+cifar10_cosine_vlb       : 2.981294 bits/dimension
+cifar10_linear_hybrid    : 3.295683 bits/dimension
+cifar10_linear_simple    : 3.418211 bits/dimension
+cifar10_linear_vlb       : 3.090245 bits/dimension
+cifar10_ours_hybrid      : 3.849713 bits/dimension
+cifar10_ours_simple      : 4.040874 bits/dimension
+cifar10_ours_vlb         : 3.814094 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+cifar10_cosine_hybrid    : 5.474877
+cifar10_cosine_simple    : 5.549630
+cifar10_cosine_vlb       : 11.756001
+cifar10_linear_hybrid    : 8.420695
+cifar10_linear_simple    : 9.768684
+cifar10_linear_vlb       : 10.523915
+cifar10_ours_hybrid      : 7.996612
+cifar10_ours_simple      : 8.145359
+cifar10_ours_vlb         : 11.494107
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+cifar10_cosine_hybrid    : 0.017260
+cifar10_cosine_simple    : 0.016337
+cifar10_cosine_vlb       : 0.015399
+cifar10_linear_hybrid    : 0.027039
+cifar10_linear_simple    : 0.024988
+cifar10_linear_vlb       : 0.015822
+cifar10_ours_hybrid      : 0.029674
+cifar10_ours_simple      : 0.028646
+cifar10_ours_vlb         : 0.028133
+
+PAPER BASELINE COMPARISON:
+=========================
+From Table 2 of the paper:
+- linear, L_simple (ours: linear_simple) : 3.37 bpd
+- linear, L_hybrid (ours: linear_hybrid) : 3.26 bpd
+- cosine, L_simple (ours: cosine_simple) : 3.26 bpd
+- cosine, L_hybrid (ours: cosine_hybrid) : 3.17 bpd
+- cosine, L_vlb    (ours: cosine_vlb)    : 2.94 bpd
