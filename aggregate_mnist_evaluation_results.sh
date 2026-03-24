@@ -41,7 +41,8 @@ echo "==============================================" >> "$RESULTS_FILE"
 for exp_dir in "$EVAL_DIR"/mnist_*; do
     if [ -d "$exp_dir" ] && [ -f "$exp_dir/nll_results.txt" ]; then
         exp_name=$(basename "$exp_dir")
-        nll_score=$(grep "done .* samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | sed -E 's/.*bpd=([0-9.]+).*/\1/')
+        # Accept numeric bpd or "nan". If parsing fails, report an error instead of dumping the whole line.
+        nll_score=$(grep "done .* samples: bpd=" "$exp_dir/nll_results.txt" | tail -1 | sed -E 's/.*bpd=([0-9.]+|nan).*/\1/')
         if [ -n "$nll_score" ]; then
             printf "%-25s: %s bits/dimension\n" "$exp_name" "$nll_score" >> "$RESULTS_FILE"
         else
