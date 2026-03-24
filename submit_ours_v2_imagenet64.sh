@@ -12,11 +12,13 @@ echo "=========================================="
 IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
 IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
 
+# NOTE: /project_gpfs may not be mounted on the login node. Skip the check
+# here; the training SLURM script validates the paths on the compute node.
 if [ ! -d "$IMAGENET_TRAIN_DIR" ] || [ ! -d "$IMAGENET_VAL_DIR" ]; then
-  echo "ERROR: Default ImageNet dirs not found."
+  echo "WARNING: ImageNet dirs not visible from this node (may be compute-only)."
   echo "IMAGENET_TRAIN_DIR=$IMAGENET_TRAIN_DIR"
   echo "IMAGENET_VAL_DIR=$IMAGENET_VAL_DIR"
-  exit 1
+  echo "Submitting anyway — the compute node will validate."
 fi
 
 mkdir -p "slurm_logs"
