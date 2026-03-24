@@ -37,10 +37,9 @@ export OPENAI_LOG_FORMAT="stdout,log"
 
 mkdir -p "$OPENAI_LOGDIR"
 
-echo "Cleaning up old logs to free disk space..."
-find /project_gpfs/bjin0 -name "progress*.csv" -delete 2>/dev/null || true
-find /project_gpfs/bjin0 -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
-find /project_gpfs/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
+# NOTE: Aggressive cleanup of old .pt files was removed to avoid accidentally
+# deleting checkpoints from other experiments (e.g. ImageNet jobs).
+# Scratch space auto-cleans after 35 days anyway.
 
 cd /home/bjin0/improved-diffusion
 
@@ -166,8 +165,10 @@ case $EXPERIMENT in
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
     linear_vlb)
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_vlb
-        mkdir -p "$OPENAI_LOGDIR"
+        if [ -z "$RESUME_LOGDIR" ]; then
+            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_vlb
+            mkdir -p "$OPENAI_LOGDIR"
+        fi
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./fashion_train \
             $MODEL_FLAGS \
@@ -294,9 +295,65 @@ case $EXPERIMENT in
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         ;;
+    ours_v2_simple)
+        if [ -z "$RESUME_LOGDIR" ]; then
+            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_simple
+            mkdir -p "$OPENAI_LOGDIR"
+        fi
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./fashion_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma False \
+            --use_kl False \
+            --class_cond False \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        ;;
+    ours_v2_hybrid)
+        if [ -z "$RESUME_LOGDIR" ]; then
+            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_hybrid
+            mkdir -p "$OPENAI_LOGDIR"
+        fi
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./fashion_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma True \
+            --use_kl False \
+            --rescale_learned_sigmas True \
+            --class_cond False \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        ;;
+    ours_v2_vlb)
+        if [ -z "$RESUME_LOGDIR" ]; then
+            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_vlb
+            mkdir -p "$OPENAI_LOGDIR"
+        fi
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./fashion_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma True \
+            --use_kl True \
+            --schedule_sampler loss-second-moment \
+            --class_cond False \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        ;;
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb, ours_v2_simple, ours_v2_hybrid, ours_v2_vlb"
         exit 1
         ;;
 esac

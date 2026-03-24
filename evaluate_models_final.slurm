@@ -94,6 +94,9 @@ evaluate_model() {
     if [[ "$exp_name" == *"cosine"* ]]; then
         noise_schedule="cosine"
         dropout="0.3"  # Cosine schedule uses dropout=0.3
+    elif [[ "$exp_name" == *"ours_v2"* ]]; then
+        noise_schedule="ours_v2"
+        dropout="0.3"  # Optimal schedule follows cosine dropout
     elif [[ "$exp_name" == *"ours"* ]]; then
         noise_schedule="ours"
         dropout="0.3"  # Custom schedule follows cosine pattern

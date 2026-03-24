@@ -44,12 +44,9 @@ export OPENAI_LOG_FORMAT="stdout,log"
 # Create log directory
 mkdir -p $OPENAI_LOGDIR
 
-# Clean up old logs to free space (keep only recent experiments)
-echo "Cleaning up old logs to free disk space..."
-# Clean up old files to save space (scratch space will auto-cleanup after 35 days)
-find /project_gpfs/bjin0 -name "progress*.csv" -delete 2>/dev/null || true
-find /project_gpfs/bjin0 -name "tb*" -type d -exec rm -rf {} + 2>/dev/null || true
-find /project_gpfs/bjin0 -name "*.pt" -mtime +7 -delete 2>/dev/null || true
+# NOTE: Aggressive cleanup of old .pt files was removed to avoid accidentally
+# deleting checkpoints from other experiments (e.g. ImageNet jobs).
+# Scratch space auto-cleans after 35 days anyway.
 
 # Navigate to your project directory
 cd /home/bjin0/improved-diffusion
@@ -370,7 +367,7 @@ case $EXPERIMENT in
         echo "=========================================="
         export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_vlb
         mkdir -p $OPENAI_LOGDIR
-        
+
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -386,10 +383,81 @@ case $EXPERIMENT in
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
         TRAINING_EXIT_CODE=$?
         ;;
-        
+
+    ours_v2_simple)
+        echo "=========================================="
+        echo "EXPERIMENT: Optimal schedule (v2), L_simple"
+        echo "beta_t = 1/(T-t+1), theoretically optimal"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_simple
+        mkdir -p $OPENAI_LOGDIR
+
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma False \
+            --use_kl False \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    ours_v2_hybrid)
+        echo "=========================================="
+        echo "EXPERIMENT: Optimal schedule (v2), L_hybrid"
+        echo "beta_t = 1/(T-t+1), theoretically optimal"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_hybrid
+        mkdir -p $OPENAI_LOGDIR
+
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma True \
+            --use_kl False \
+            --rescale_learned_sigmas True \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    ours_v2_vlb)
+        echo "=========================================="
+        echo "EXPERIMENT: Optimal schedule (v2), L_vlb"
+        echo "beta_t = 1/(T-t+1), theoretically optimal"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_vlb
+        mkdir -p $OPENAI_LOGDIR
+
+        echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS \
+            $DIFFUSION_STEPS \
+            --noise_schedule ours_v2 \
+            --dropout 0.3 \
+            --learn_sigma True \
+            --use_kl True \
+            --schedule_sampler loss-second-moment \
+            $TRAIN_FLAGS \
+            --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb, ours_v2_simple, ours_v2_hybrid, ours_v2_vlb"
         exit 1
         ;;
 esac

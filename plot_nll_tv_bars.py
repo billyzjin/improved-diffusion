@@ -2,10 +2,10 @@
 """
 Parse results_summary-style text (like results.txt) and plot:
   1) NLL (bits/dim) bar chart
+  2) FID bar chart
   2) TV distance bar chart
 
-One bar per experiment (e.g. cifar10_cosine_hybrid), with bars colored by dataset.
-FID is ignored.
+One bar per experiment (e.g. cifar10_cosine_hybrid).
 
 Usage:
   python3 plot_nll_tv_bars.py --in_file results.txt
@@ -15,24 +15,27 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 import re
 from pathlib import Path
 
 
 def parse_results(text: str):
     # Dataset headers in your file.
-    dataset = None  # "cifar10" | "fashionmnist" | "mnist"
-    mode = None  # "nll" | "tv" | None
+    dataset = None  # "cifar10" | "fashionmnist" | "mnist" | "imagenet64"
+    mode = None  # "nll" | "fid" | "tv" | None
 
     # Keep insertion order (Python 3.7+ dict preserves order).
     nll = {}
+    fid = {}
     tv = {}
     exp_to_dataset = {}
 
     # Matches lines like:
     #   cifar10_cosine_hybrid    : 3.206410 bits/dimension
     #   mnist_linear_simple      : 0.272224
-    line_re = re.compile(r"^\s*([a-z0-9_]+)\s*:\s*([0-9]+(?:\.[0-9]+)?)")
+    # Also accept "nan" so we can skip/filter it gracefully.
+    line_re = re.compile(r"^\s*([a-z0-9_]+)\s*:\s*(nan|[0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
 
     for raw in text.splitlines():
         line = raw.strip()
@@ -51,6 +54,12 @@ def parse_results(text: str):
             dataset = "mnist"
             mode = None
             continue
+        if line.startswith("IMAGENET-64 MODEL EVALUATION RESULTS") or line.startswith(
+            "IMAGENET64 MODEL EVALUATION RESULTS"
+        ):
+            dataset = "imagenet64"
+            mode = None
+            continue
 
         if line.startswith("NLL RESULTS"):
             mode = "nll"
@@ -59,7 +68,7 @@ def parse_results(text: str):
             mode = "tv"
             continue
         if line.startswith("FID RESULTS"):
-            mode = None  # ignore
+            mode = "fid"
             continue
         if line.startswith("SAMPLE GENERATION STATUS"):
             mode = None
@@ -69,19 +78,26 @@ def parse_results(text: str):
             continue
 
         m = line_re.match(raw)
-        if not m or mode not in ("nll", "tv") or dataset is None:
+        if not m or mode not in ("nll", "fid", "tv") or dataset is None:
             continue
 
         exp = m.group(1).strip()
-        val = float(m.group(2))
-
+        v_str = m.group(2).strip().lower()
+        val = float("nan") if v_str == "nan" else float(v_str)
+        # Keep the experiment->dataset mapping even if the value is NaN.
         exp_to_dataset[exp] = dataset
+        # Skip non-finite values for plotting (these correspond to failed runs).
+        if not math.isfinite(val):
+            continue
+
         if mode == "nll":
             nll[exp] = val
+        elif mode == "fid":
+            fid[exp] = val
         elif mode == "tv":
             tv[exp] = val
 
-    return nll, tv, exp_to_dataset
+    return nll, fid, tv, exp_to_dataset
 
 
 def plot_bars(
@@ -95,7 +111,8 @@ def plot_bars(
 ):
     import matplotlib.pyplot as plt
 
-    items = list(values.items())
+    # Filter out NaNs/Infs defensively.
+    items = [(k, v) for k, v in values.items() if math.isfinite(float(v))]
     # Sort bars in decreasing order of value.
     items.sort(key=lambda kv: kv[1], reverse=True)
 
@@ -117,6 +134,8 @@ def plot_bars(
             colors.append("#4C78A8")  # blue
         elif short.startswith("cosine_"):
             colors.append("#F58518")  # orange
+        elif short.startswith("ours_v2_"):
+            colors.append("#E45756")  # red (optimal schedule)
         elif short.startswith("ours_"):
             colors.append("#54A24B")  # green
         else:
@@ -151,20 +170,28 @@ def main():
     out_dir = Path(args.out_dir)
 
     text = in_path.read_text()
-    nll, tv, exp_to_dataset = parse_results(text)
+    nll, fid, tv, exp_to_dataset = parse_results(text)
 
     if not nll:
         raise SystemExit(f"No NLL entries found in {in_path}")
+    if not fid:
+        raise SystemExit(f"No FID entries found in {in_path}")
     if not tv:
         raise SystemExit(f"No TV entries found in {in_path}")
 
-    datasets = [("cifar10", "CIFAR-10"), ("fashionmnist", "Fashion-MNIST"), ("mnist", "MNIST")]
+    datasets = [
+        ("cifar10", "CIFAR-10"),
+        ("fashionmnist", "Fashion-MNIST"),
+        ("mnist", "MNIST"),
+        ("imagenet64", "ImageNet-64"),
+    ]
 
     for ds_key, ds_label in datasets:
         nll_ds = {k: v for k, v in nll.items() if exp_to_dataset.get(k) == ds_key}
+        fid_ds = {k: v for k, v in fid.items() if exp_to_dataset.get(k) == ds_key}
         tv_ds = {k: v for k, v in tv.items() if exp_to_dataset.get(k) == ds_key}
 
-        if not nll_ds and not tv_ds:
+        if not nll_ds and not fid_ds and not tv_ds:
             continue
 
         if nll_ds:
@@ -173,6 +200,18 @@ def main():
                 title=f"{ds_label}: NLL (bits/dim) by experiment",
                 ylabel="NLL (bits/dim)",
                 values=nll_ds,
+                exp_to_dataset=exp_to_dataset,
+                out_path=out_path,
+                dataset_prefix_to_strip=f"{ds_key}_",
+            )
+            print(f"Wrote: {out_path}")
+
+        if fid_ds:
+            out_path = out_dir / f"{ds_key}_fid_bar_chart.png"
+            plot_bars(
+                title=f"{ds_label}: FID by experiment",
+                ylabel="FID",
+                values=fid_ds,
                 exp_to_dataset=exp_to_dataset,
                 out_path=out_path,
                 dataset_prefix_to_strip=f"{ds_key}_",

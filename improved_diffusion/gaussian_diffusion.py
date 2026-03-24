@@ -43,17 +43,27 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
         def compute_betas(T):
             betas = np.zeros(T+1)  # T+1 elements for timesteps 0 to T
             betas[T] = 0.999  # Set last timestep T to 0.999
-            
+
             for t in range(T-1, -1, -1):  # Start from T-1, go down to 0
                 # Your exact formula - no modifications for scientific validity
                 betas[t] = (((betas[t+1]**(1/2)*3/2)*(1-betas[t+1]) + betas[t+1]**(3/2))*(2/3))**2
-                
+
                 # Check for invalid values and raise error instead of fallback
                 if np.isnan(betas[t]) or np.isinf(betas[t]) or betas[t] < 0 or betas[t] > 1:
                     raise ValueError(f"Custom schedule produced invalid beta[{t}] = {betas[t]}")
-            
+
             return betas[:-1]
         return compute_betas(num_diffusion_timesteps)
+    elif schedule_name == "ours_v2":
+        # Optimal schedule from KL-minimization theory:
+        #   beta_t = 1/(T - t + 1),  t = 1, ..., T
+        # giving alpha_bar_t = (T - t)/T (linear signal decay).
+        # Clip beta_T to 0.999 for numerical stability (matches other schedules).
+        T = num_diffusion_timesteps
+        # t is 1-indexed in the theory; betas array is 0-indexed, so betas[i] = beta_{i+1}.
+        betas = np.array([1.0 / (T - i) for i in range(T)], dtype=np.float64)
+        betas = np.minimum(betas, 0.999)
+        return betas
     else:
         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
 
