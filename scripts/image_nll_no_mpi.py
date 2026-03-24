@@ -74,6 +74,12 @@ def run_bpd_evaluation(model, diffusion, data, num_samples, clip_denoised):
                 term_list.append(terms.detach().cpu().numpy())
 
             total_bpd = minibatch_metrics["total_bpd"]
+            # Fail fast on NaNs/Infs so downstream metrics (FID/TV) don't look "mysteriously bad".
+            if not th.isfinite(total_bpd).all().item():
+                raise RuntimeError(
+                    "Non-finite total_bpd encountered during NLL evaluation. "
+                    "This usually indicates a diverged checkpoint (NaNs/Infs in model outputs)."
+                )
             all_bpd.extend(total_bpd.cpu().numpy())
             num_complete += batch.shape[0]
 

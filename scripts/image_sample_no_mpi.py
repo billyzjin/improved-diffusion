@@ -52,6 +52,12 @@ def main():
             clip_denoised=args.clip_denoised,
             model_kwargs=model_kwargs,
         )
+        # Fail fast if sampling becomes non-finite (prevents silently saving garbage images).
+        if not th.isfinite(sample).all().item():
+            raise RuntimeError(
+                "Non-finite values encountered during sampling. "
+                "This typically indicates a diverged checkpoint (NaNs/Infs in model outputs)."
+            )
         sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
         sample = sample.permute(0, 2, 3, 1).contiguous()
 

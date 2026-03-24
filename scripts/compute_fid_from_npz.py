@@ -83,6 +83,11 @@ def main() -> None:
 
     if images.ndim != 4 or images.shape[-1] != 3:
         raise ValueError(f"Expected NHWC uint8 images, got shape={images.shape}")
+    if images.dtype != np.uint8:
+        raise ValueError(
+            f"Expected uint8 samples in arr_0, got dtype={images.dtype}. "
+            "Refusing to cast silently, since that can hide NaNs/Inf and produce misleading FIDs."
+        )
 
     # Create temp directory for images.
     tmp_kwargs = {}
