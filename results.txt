@@ -276,3 +276,63 @@ From Table 2 of the paper:
 - cosine, L_simple (ours: cosine_simple) : 3.26 bpd
 - cosine, L_hybrid (ours: cosine_hybrid) : 3.17 bpd
 - cosine, L_vlb    (ours: cosine_vlb)    : 2.94 bpd
+
+-------------------------------------------------------------
+
+IMAGENET-64 MODEL EVALUATION RESULTS
+====================================
+Date: Wed Jan 28 12:30:44 CST 2026
+
+EXPERIMENT TYPES:
+=================
+- Simple: learn_sigma=False, use_kl=False
+- Hybrid: learn_sigma=True, use_kl=False, rescale_learned_sigmas=True
+- VLB: learn_sigma=True, use_kl=True, schedule_sampler=loss-second-moment
+
+NLL RESULTS (bits/dimension - lower is better):
+==============================================
+imagenet64_cosine_hybrid    : 3.783328 bits/dimension
+imagenet64_cosine_simple    : 3.829042 bits/dimension
+imagenet64_cosine_vlb       : 3.735592 bits/dimension
+imagenet64_linear_hybrid    : 3.801615 bits/dimension
+imagenet64_linear_simple    : 3.899004 bits/dimension
+imagenet64_linear_vlb       : 3.663513 bits/dimension
+imagenet64_ours_hybrid      : 4.116948 bits/dimension
+imagenet64_ours_simple      : 4.365797 bits/dimension
+imagenet64_ours_vlb         : 3.915347 bits/dimension
+
+FID RESULTS (lower is better):
+==============================
+imagenet64_cosine_hybrid    : 13.164316
+imagenet64_cosine_simple    : 14.900750
+imagenet64_cosine_vlb       : 29.936082
+imagenet64_linear_hybrid    : 10.866806
+imagenet64_linear_simple    : 14.385173
+imagenet64_linear_vlb       : 31.413560
+imagenet64_ours_hybrid      : 11.356402
+imagenet64_ours_simple      : 10.432489
+imagenet64_ours_vlb         : 29.826167
+
+TOTAL VARIATION (TV) RESULTS (lower is better):
+===============================================
+imagenet64_cosine_hybrid    : 0.048143
+imagenet64_cosine_simple    : 0.056038
+imagenet64_cosine_vlb       : 0.102715
+imagenet64_linear_hybrid    : 0.037480
+imagenet64_linear_simple    : 0.033862
+imagenet64_linear_vlb       : 0.157666
+imagenet64_ours_hybrid      : 0.054272
+imagenet64_ours_simple      : 0.032472
+imagenet64_ours_vlb         : 0.071467
+
+SAMPLE GENERATION STATUS:
+========================
+imagenet64_cosine_hybrid    : Samples generated successfully
+imagenet64_cosine_simple    : Samples generated successfully
+imagenet64_cosine_vlb       : Samples generated successfully
+imagenet64_linear_hybrid    : Samples generated successfully
+imagenet64_linear_simple    : Samples generated successfully
+imagenet64_linear_vlb       : Samples generated successfully
+imagenet64_ours_hybrid      : Samples generated successfully
+imagenet64_ours_simple      : Samples generated successfully
+imagenet64_ours_vlb         : Samples generated successfully
