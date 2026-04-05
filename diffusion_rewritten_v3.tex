@@ -1,0 +1,1432 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsthm,amsmath,amssymb,mathtools}
+\usepackage{cleveref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{graphicx}
+
+\def\E{\mathbb{E}}
+\def\R{\mathbb{R}}
+\def\Pbb{\mathbb{P}}
+
+%% Make l's look prettier in math mode
+\mathcode`l="8000
+\begingroup
+\makeatletter
+\lccode`\~=`\l
+\DeclareMathSymbol{\lsb@l}{\mathalpha}{letters}{`\l}
+\lowercase{\gdef~{\ifnum\the\mathgroup=\m@ne \ell \else \lsb@l \fi}}%
+\endgroup
+
+\DeclarePairedDelimiterX{\infdivx}[2]{(}{)}{%
+  #1\;\delimsize\|\;#2%
+}
+\newcommand{\kl}{D_{\mathrm{KL}}\infdivx}
+\newcommand{\norm}[1]{\|#1\|}
+\newcommand{\tvnorm}[1]{\|#1\|_{\mathrm{TV}}}
+\newcommand{\ip}[2]{\langle #1,#2\rangle}
+\newcommand{\tr}{\mathrm{tr}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\opnorm}[1]{\|#1\|_{\mathrm{op}}}
+\newcommand{\frobnorm}[1]{\|#1\|_{\mathrm{F}}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\PsiFn}{\Psi}
+\newcommand{\Law}{\mathcal{L}}
+
+\newtheorem{assumption}{Assumption}
+\newtheorem{lemma}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{thm}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+
+\title{Optimal Noise Schedules in Diffusion Models}
+\author{Baris Ata \and Harsha Honnappa \and Billy Jin}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We study the model error in discrete-time diffusion models: even with a perfect denoiser, forcing the reverse transitions to be Gaussian introduces error.
+We derive an exact identity for the averaged one-step Gaussianization error as a function of the noise level, and use it to prove an upper bound that requires no distributional assumptions on the data beyond finite moments from the second step onward. We derive the noise schedule that minimizes the upper bound in closed form, and show that it makes the noise-to-signal odds ratio grow geometrically in the step index.
+\end{abstract}
+
+\section{Introduction}
+
+Denoising diffusion probabilistic models (DDPMs) \cite{sohl2015deep,ho2020denoising} generate samples by reversing a noise-adding Markov chain. The forward chain progressively corrupts data with Gaussian noise, and the reverse chain undoes this by applying a learned sequence of Gaussian denoising steps. Even when the denoiser is perfect -- that is, when each reverse Gaussian transition is the best possible Gaussian fit to the true reverse conditional -- some error remains, because the true reverse conditional is not exactly Gaussian. This irreducible mismatch is the \emph{model error}, and it is the focus of this paper.
+
+\medskip
+
+We work in the standard DDPM framework. The forward process is a Markov chain \((X_t)_{t=0}^T\) in \(\R^d\) defined by
+\begin{equation}
+\label{eq:forward_chain}
+X_t = \sqrt{1-\beta_t}\,X_{t-1} + \sqrt{\beta_t}\,Z_t,
+\qquad
+Z_t \sim \mathcal N(0,I_d),
+\end{equation}
+where \(\beta_1,\dots,\beta_T\in(0,1]\) are the noise parameters. Writing
+\[
+\bar\alpha_t := \prod_{i=1}^t (1-\beta_i),
+\qquad
+\bar\alpha_0:=1,
+\]
+we have the explicit representation
+\[
+X_t = \sqrt{\bar\alpha_t}\,X_0 + \sqrt{1-\bar\alpha_t}\,Z,
+\qquad
+Z\sim\mathcal N(0,I_d).
+\]
+Thus \(X_t\) is a progressively Gaussianized version of \(X_0\).
+
+To sample in reverse, one starts from \(\widetilde X_T\sim\mathcal N(0,I_d)\) and generates
+\[
+\widetilde X_{t-1}\mid \widetilde X_t \sim \widetilde P(\widetilde X_{t-1}\mid \widetilde X_t),
+\]
+where \(\widetilde P(\cdot\mid \widetilde X_t)\) is taken to be Gaussian. We assume throughout that each Gaussian reverse kernel is the KL-best Gaussian approximation to the true reverse conditional. The question is then:
+
+\medskip
+\emph{How should the schedule \(\beta_1,\dots,\beta_T\) be chosen in order to minimize the total model error?}
+\medskip
+
+The paper is organized as follows. \Cref{sec:kl_decomposition} recalls the pathwise KL decomposition that reduces the global model error to a sum of per-step terms. \Cref{sec:gaussian_smoothing} develops cumulant identities for Gaussian convolutions that are the technical building blocks of the argument. \Cref{sec:one_step_formula}, the heart of the paper, derives the exact derivative formula for the averaged one-step error and the resulting upper bound. \Cref{sec:application_diffusion} specializes the generic result to the DDPM forward chain. \Cref{sec:schedule_implications} solves the schedule optimization problem to obtain the $\beta_1, \ldots, \beta_T$ that minimize the upper bound.
+
+\section{Setup and pathwise KL decomposition}
+\label{sec:kl_decomposition}
+
+Let \(P_t\) denote the law of \(X_t\) under the forward chain \eqref{eq:forward_chain}. For each \(t\in\{1,\dots,T\}\), write
+\[
+q_t(\cdot\mid y) := P(X_{t-1}\in \cdot \mid X_t=y)
+\]
+for the true reverse kernel, and let \(g_t^\star(\cdot\mid y)\) be the Gaussian density minimizing \(\kl{q_t(\cdot\mid y)}{g}\) over all Gaussian densities \(g\) on \(\R^d\). The \emph{Gaussian reverse chain} starts from \(\widetilde X_T\sim\mathcal N(0,I_d)\) and applies the kernels \(g_t^\star\) in reverse; we write \(\widetilde P_0\) for the resulting law at time \(0\).
+
+Our goal is to bound \(\kl{P_0}{\widetilde P_0}\), the KL divergence between the true data distribution and the output of the Gaussian reverse chain. However, this quantity is difficult to analyze directly, because the marginal divergence does not decompose into per-step contributions. To obtain such a decomposition, we lift the comparison from marginals to full path measures on \((X_T,\dots,X_0)\):
+\begin{itemize}[leftmargin=2.2em]
+    \item the \emph{true reverse law} \(P_{\mathrm{rev}}\), with \(X_T\sim P_T\) and \(X_{t-1}\mid X_t\sim q_t(\cdot\mid X_t)\);
+    \item the \emph{Gaussian reverse law} \(\widetilde P_{\mathrm{rev}}\), with \(\widetilde X_T\sim\mathcal N(0,I_d)\) and \(\widetilde X_{t-1}\mid \widetilde X_t\sim g_t^\star(\cdot\mid \widetilde X_t)\).
+\end{itemize}
+Since \(P_0\) and \(\widetilde P_0\) are the time-\(0\) marginals of these two path measures, the data processing inequality \cite[Theorem~2.8.1]{cover2006elements} gives
+\begin{equation}
+\label{eq:data_processing}
+\kl{P_0}{\widetilde P_0}
+\leq
+\kl{P_{\mathrm{rev}}}{\widetilde P_{\mathrm{rev}}}.
+\end{equation}
+The chain rule for KL divergence \cite[Theorem~2.5.3]{cover2006elements} then decomposes the right-hand side into per-step terms:
+\begin{equation}
+\label{eq:path_kl_decomposition}
+\kl{P_{\mathrm{rev}}}{\widetilde P_{\mathrm{rev}}}
+=
+\underbrace{\kl{P_T}{\mathcal N(0,I_d)}}_{\text{terminal}}
++
+\sum_{t=1}^T
+\underbrace{\E\!\left[
+\kl{q_t(\cdot\mid X_t)}{g_t^\star(\cdot\mid X_t)}
+\right]}_{\text{per-step Gaussianization cost}}.
+\end{equation}
+The terminal term measures how far the forward chain is from pure noise at time \(T\). Each per-step term is the expected KL cost of replacing the true reverse conditional at step \(t\) by its best Gaussian approximation. The remainder of the paper is devoted to bounding these individual terms and optimizing the schedule.
+
+\section{Exact identities for Gaussian smoothing}
+\label{sec:gaussian_smoothing}
+
+Before turning to the main analysis, we collect two standalone tools about random vectors observed through additive Gaussian noise. These results will be applied in \Cref{sec:one_step_formula} to derive the bounds for our diffusion model problem. 
+
+The first tool (\Cref{lem:conditional_mgf_Z} and \Cref{cor:posterior_mean_cov}) expresses the derivatives of the log-density of the observation in terms of conditional cumulants of the noise. The second tool (\Cref{prop:avg_third_derivative}) bounds the averaged squared Frobenius norm of the third derivative.
+
+\subsection{A conditional mgf identity}
+
+Let \(V\) be an arbitrary random vector in \(\R^d\), let \(Z\sim\mathcal N(0,I_d)\) be independent of \(V\), fix \(\sigma>0\), and define
+\[
+Y := V + \sigma Z.
+\]
+Since \(Y\) is a Gaussian convolution, its density \(p(y)=\E[\phi_\sigma(y-V)]\) (where \(\phi_\sigma\) is the density of \(\mathcal N(0,\sigma^2 I_d)\)) is everywhere positive and \(C^\infty\). In particular, \(\ell:=\log p\) is a well-defined smooth function on all of \(\R^d\).
+
+\begin{lemma}[Conditional mgf of the Gaussian noise]
+\label{lem:conditional_mgf_Z}
+For every \(u\in\R^d\) and every \(y\in\R^d\),
+\begin{equation}
+\label{eq:conditional_mgf_Z}
+\E\big[e^{u^\top Z}\mid Y=y\big]
+=
+\exp\!\left(\frac12\norm{u}^2\right)
+\frac{p(y-\sigma u)}{p(y)}.
+\end{equation}
+Consequently,
+\begin{align}
+\label{eq:Ez_given_Y}
+\E[Z\mid Y=y]
+&= -\sigma\,\nabla \ell(y), \\
+\label{eq:CovZ_given_Y}
+\Cov(Z\mid Y=y)
+&= I_d + \sigma^2\nabla^2 \ell(y), \\
+\label{eq:kappa3_Z_given_Y}
+\kappa_3(Z\mid Y=y)
+&= -\sigma^3\nabla^3 \ell(y).
+\end{align}
+Here \(\kappa_3(Z\mid Y=y)\) is the conditional third cumulant tensor, defined as the third-order tensor with entries
+\[
+\kappa_3(Z\mid Y=y)_{ijk}
+:=
+\E\big[(Z_i-\mu_i)(Z_j-\mu_j)(Z_k-\mu_k)\mid Y=y\big],
+\qquad
+\mu:=\E[Z\mid Y=y].
+\]
+\end{lemma}
+
+\begin{proof}
+We will show that \(\E[e^{u^\top Z}f(Y)] = \E[g_u(Y)f(Y)]\) for every bounded Borel function \(f\), where \(g_u(y):=e^{\norm{u}^2/2}\,p(y-\sigma u)/p(y)\). Since a random variable is determined by its expectation against all bounded Borel functions of \(Y\), this identifies \(g_u(Y)\) as \(\E[e^{u^\top Z}\mid Y]\).
+
+Fix \(u\in\R^d\) and let \(f:\R^d\to\R\) be bounded and Borel. Using the Gaussian identity \(e^{u^\top z}\phi(z)=e^{\norm{u}^2/2}\phi(z-u)\) and substituting \(w=z-u\),
+\begin{align*}
+\E\big[e^{u^\top Z}f(Y)\big]
+&=
+\E\!\left[\int_{\R^d} e^{u^\top z} f(V+\sigma z)\,\phi(z)\,dz\right] \\
+&=
+e^{\norm{u}^2/2}\,
+\E\!\left[\int_{\R^d} f(V+\sigma w+\sigma u)\,\phi(w)\,dw\right]
+=
+e^{\norm{u}^2/2}\,\E\big[f(Y+\sigma u)\big].
+\end{align*}
+Since \(Y\) has density \(p\), the right-hand side equals \(e^{\norm{u}^2/2}\int f(y)\,p(y-\sigma u)\,dy\). Therefore
+\[
+\E\big[e^{u^\top Z}f(Y)\big]
+=
+\int f(y)\,e^{\norm{u}^2/2}\,p(y-\sigma u)\,dy
+\]
+for every bounded Borel \(f\). Writing \(g_u(y):=e^{\norm{u}^2/2}\,p(y-\sigma u)/p(y)\) (which is well-defined since \(p>0\) everywhere), the right-hand side equals \(\int f(y)\,g_u(y)\,p(y)\,dy = \E[g_u(Y)f(Y)]\). Since
+\[
+\E\big[e^{u^\top Z}f(Y)\big] = \E\big[g_u(Y)f(Y)\big]
+\]
+holds for every bounded Borel \(f\), we conclude \(\E[e^{u^\top Z}\mid Y=y]=g_u(y)\) for every \(y\), proving~\eqref{eq:conditional_mgf_Z}.
+
+Taking logarithms gives the conditional cumulant generating function
+\[
+\log\E\big[e^{u^\top Z}\mid Y=y\big]
+=
+\tfrac12\norm{u}^2 + \ell(y-\sigma u)-\ell(y).
+\]
+Differentiating at \(u=0\) yields \eqref{eq:Ez_given_Y}--\eqref{eq:kappa3_Z_given_Y}.
+\end{proof}
+
+Since \(V = Y-\sigma Z\) given \(Y\), the preceding lemma immediately yields the posterior mean and covariance of \(V\).
+
+\begin{corollary}[Posterior mean and covariance]
+\label{cor:posterior_mean_cov}
+With the notation above,
+\begin{align*}
+\E[V\mid Y=y]
+&= y + \sigma^2\nabla\ell(y), \\
+\Cov(V\mid Y=y)
+&= \sigma^2\bigl(I_d+\sigma^2\nabla^2\ell(y)\bigr).
+\end{align*}
+Moreover,
+\begin{equation}
+\label{eq:kappa3_V_given_Y}
+\kappa_3(V\mid Y=y)=\sigma^6\nabla^3\ell(y).
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Since \(V=y-\sigma Z\) given \(Y=y\), we have \(\E[V\mid Y=y]=y-\sigma\E[Z\mid Y=y]\), \(\Cov(V\mid Y=y)=\sigma^2\Cov(Z\mid Y=y)\), and \(\kappa_3(V\mid Y=y)=(-\sigma)^3\kappa_3(Z\mid Y=y)\). Substituting \eqref{eq:Ez_given_Y}--\eqref{eq:kappa3_Z_given_Y} gives the result.
+\end{proof}
+
+\subsection{Averaged bounds for the third derivative of \(\log p\)}
+
+We write \(\frobnorm{\cdot}\) for the Frobenius norm of a matrix or tensor. For a third-order tensor \(T=(T_{ijk})\), this means
+\[
+\frobnorm{T}^2 := \sum_{i,j,k=1}^d T_{ijk}^2.
+\]
+
+\begin{prop}[Averaged third-derivative bounds for a Gaussian convolution]
+\label{prop:avg_third_derivative}
+Let \(Y=V+\sigma Z\) with \(\sigma>0\) and \(Z\sim\mathcal N(0,I_d)\) independent of \(V\). Let \(p\) be the density of \(Y\), and write \(\ell=\log p\). Then
+\begin{equation}
+\label{eq:avg_third_universal}
+\E\big[\frobnorm{\nabla^3\ell(Y)}^2\big]
+\le
+\frac{64\,d(d+2)(d+4)}{\sigma^6}.
+\end{equation}
+If, in addition, \(\E\norm{V}^6<\infty\), then
+\begin{equation}
+\label{eq:avg_third_refined}
+\E\big[\frobnorm{\nabla^3\ell(Y)}^2\big]
+\le
+\frac{64\,\E\norm{V}^6}{\sigma^{12}}.
+\end{equation}
+\end{prop}
+
+\begin{proof}
+By \eqref{eq:kappa3_Z_given_Y},
+\[
+\sigma^3\nabla^3\ell(Y) = -\kappa_3(Z\mid Y).
+\]
+Since third cumulants are translation-invariant, \(\kappa_3(Z\mid Y)\) equals the third moment tensor of \(Z-\E[Z\mid Y]\) given \(Y\):
+\[
+\kappa_3(Z\mid Y)
+=
+\E\big[(Z-\E[Z\mid Y])^{\otimes 3}\mid Y\big].
+\]
+Applying Jensen's inequality (with the convex function \(\frobnorm{\cdot}^2\)) to the conditional expectation, and using the identity \(\frobnorm{x^{\otimes 3}}^2=\norm{x}^6\), gives
+\[
+\frobnorm{\kappa_3(Z\mid Y)}^2
+\le
+\E\big[\frobnorm{(Z-\E[Z\mid Y])^{\otimes 3}}^2\mid Y\big]
+=
+\E\big[\norm{Z-\E[Z\mid Y]}^6\mid Y\big].
+\]
+Taking expectations and using the triangle inequality followed by \((a+b)^6\le 32(a^6+b^6)\),
+\begin{align*}
+\E\big[\frobnorm{\kappa_3(Z\mid Y)}^2\big]
+&\le
+\E\norm{Z-\E[Z\mid Y]}^6 \\
+&\le 32\,\E\norm{Z}^6 + 32\,\E\norm{\E[Z\mid Y]}^6.
+\end{align*}
+For the second term, Jensen's inequality gives \(\norm{\E[Z\mid Y]}^6\le \E[\norm{Z}^6\mid Y]\), so \(\E\norm{\E[Z\mid Y]}^6\le \E\norm{Z}^6\). Therefore
+\[
+\E\big[\frobnorm{\kappa_3(Z\mid Y)}^2\big]
+\le 64\,\E\norm{Z}^6
+= 64\,d(d+2)(d+4).
+\]
+Dividing by \(\sigma^6\) proves \eqref{eq:avg_third_universal}.
+
+For the refined bound, use \eqref{eq:kappa3_V_given_Y} instead:
+\[
+\sigma^6\nabla^3\ell(Y)=\kappa_3(V\mid Y).
+\]
+Exactly the same argument gives
+\[
+\E\big[\frobnorm{\kappa_3(V\mid Y)}^2\big]
+\le 64\,\E\norm{V}^6,
+\]
+which yields \eqref{eq:avg_third_refined} after dividing by \(\sigma^{12}\).
+\end{proof}
+
+\section{An exact formula for the averaged one-step error}
+\label{sec:one_step_formula}
+
+The identities of the previous section describe individual derivatives of the log-density of a Gaussian convolution. We now combine them to analyze the quantity that appears in the KL decomposition \eqref{eq:path_kl_decomposition}: the expected KL divergence between the exact posterior and its best Gaussian approximation.
+
+The strategy is to view this averaged error as a function of the noise level, derive an exact formula for its derivative, and then integrate. The derivative turns out to involve only the third spatial derivatives of the current log-density, which the bounds from \Cref{prop:avg_third_derivative} control.
+
+\subsection{A generic one-step setup}
+
+We work in a generic observation model that will later be matched to each step of the diffusion chain. Let \(U\) be a random vector in \(\R^d\) with \(\E\norm{U}^2<\infty\), let \(W,Z\sim\mathcal N(0,I_d)\) be independent of each other and of \(U\), and fix \(\eta>0\). Define
+\begin{equation}
+\label{eq:generic_setup}
+S := U + \sqrt{\eta}\,W,
+\qquad
+Y_u := S + \sqrt{u}\,Z,
+\qquad u\ge 0.
+\end{equation}
+For every \(u\ge 0\), let \(p_u\) be the density of \(Y_u\), and write
+\[
+\ell_u := \log p_u,
+\qquad
+H_u := \nabla^2 \ell_u,
+\qquad
+A_u := I_d + u H_u.
+\]
+Throughout, \(\partial_r:=\partial/\partial y_r\) denotes the partial derivative in the \(r\)-th coordinate of $y$, while \(\partial_u\) denotes the derivative in the noise level \(u\). All gradients, Hessians, and Laplacians (\(\nabla\), \(\nabla^2\), \(\Delta\)) are taken in the spatial variable \(y\).
+For each \(y\in\R^d\), let
+\[
+q_u(\cdot\mid y) := \Law(S\mid Y_u=y)
+\]
+be the exact posterior law.
+
+\begin{lemma}[The KL-best Gaussian is the moment-matched Gaussian]
+\label{lem:best_gaussian}
+Let \(Q\) be any probability measure on \(\R^d\) with finite second moment. Among all Gaussian distributions \(g\) on \(\R^d\), the quantity \(\kl{Q}{g}\) is minimized by the Gaussian with the same mean and covariance as \(Q\).
+\end{lemma}
+
+\begin{proof}
+Write \(G_\star:=N(m_Q,\Sigma_Q)\) for the moment-matched Gaussian (which may be degenerate) and let \(A:=m_Q+\mathrm{Ran}(\Sigma_Q)\). First, \(Q(A)=1\): if \(v\in\ker(\Sigma_Q)\), then \(\mathrm{Var}(v^\top X)=v^\top\Sigma_Q v=0\), so \(v^\top X=v^\top m_Q\) a.s., which forces \(X-m_Q\in\mathrm{Ran}(\Sigma_Q)\) a.s. Moreover, \(A\) is the smallest affine subspace carrying full \(Q\)-mass.
+
+Let \(G\) be any Gaussian measure on \(\R^d\). If \(\kl{Q}{G}=+\infty\) there is nothing to prove. Otherwise \(Q\ll G\). Let \(B\) be the affine support of \(G\), so \(G(B)=1\) and hence \(Q(B)=1\). By minimality of \(A\), we have \(A\subseteq B\). If \(A\subsetneq B\), then \(A\) is a proper affine subspace of \(B\), so \(G(A)=0\), contradicting \(Q\ll G\) and \(Q(A)=1\). Therefore \(B=A\).
+
+Thus both \(G\) and \(G_\star\) have strictly positive densities \(g\) and \(g_\star\) with respect to Lebesgue measure \(\lambda_A\) on \(A\). Since \(Q\ll G\ll \lambda_A\), write \(q:=dQ/d\lambda_A\). Now \(\log(g_\star/g)\) is a polynomial of degree at most two on \(A\), and \(Q\) and \(G_\star\) share the same mean and covariance, so
+\[
+\int_A \log\frac{g_\star}{g}\,dQ
+=
+\int_A \log\frac{g_\star}{g}\,dG_\star
+=
+\kl{G_\star}{G}.
+\]
+Hence
+\[
+\kl{Q}{G}
+=
+\int_A \log\frac{q}{g_\star}\,dQ + \int_A \log\frac{g_\star}{g}\,dQ
+=
+\kl{Q}{G_\star} + \kl{G_\star}{G}
+\ge
+\kl{Q}{G_\star}.
+\]
+If \(\kl{Q}{G_\star}<\infty\), equality holds if and only if \(G=G_\star\).
+\end{proof}
+
+By \Cref{lem:best_gaussian}, the optimal Gaussian approximation to \(q_u(\cdot\mid y)\) is simply the Gaussian with mean \(\E[S\mid Y_u=y]\) and covariance \(\Cov(S\mid Y_u=y)\).
+
+\begin{corollary}[Posterior mean and covariance in the generic setup]
+\label{cor:generic_posterior_mean_cov}
+For the setup \eqref{eq:generic_setup}, the KL-best Gaussian posterior is
+\[
+g_u^\star(\cdot\mid y)=N\bigl(m_u(y),\Sigma_u(y)\bigr),
+\]
+where
+\begin{align}
+\label{eq:generic_posterior_mean}
+m_u(y)
+&= y + u\nabla \ell_u(y), \\
+\label{eq:generic_posterior_cov}
+\Sigma_u(y)
+&= uA_u(y)=u\bigl(I_d + u\nabla^2 \ell_u(y)\bigr).
+\end{align}
+Moreover,
+\[
+A_u(y)\succeq 0
+\qquad\text{for all }u>0,\ y\in\R^d.
+\]
+\end{corollary}
+
+\begin{proof}
+Apply \Cref{cor:posterior_mean_cov} with \(V=S\), \(\sigma=\sqrt{u}\), and \(Y=Y_u\). This gives \eqref{eq:generic_posterior_mean} and \eqref{eq:generic_posterior_cov}. Since \(\Sigma_u(y)\) is a covariance matrix, it is positive semidefinite, and therefore so is \(A_u(y)=u^{-1}\Sigma_u(y)\).
+
+\end{proof}
+
+Define the averaged one-step Gaussianization error
+\begin{equation}
+\label{eq:K_u_def}
+\mathcal K(u)
+:=
+\E_{Y_u}\Big[\kl{q_u(\cdot\mid Y_u)}{g_u^\star(\cdot\mid Y_u)}\Big].
+\end{equation}
+
+\subsection{An entropy representation}
+
+The first formula is purely information-theoretic.
+
+\begin{prop}[Entropy representation of \(\mathcal K(u)\)]
+\label{prop:entropy_representation}
+For every \(u>0\),
+\begin{equation}
+\label{eq:entropy_representation}
+\mathcal K(u)
+=
+ h(Y_u)-h(S)
++
+\frac12\,\E\big[\log\det A_u(Y_u)\big].
+\end{equation}
+\end{prop}
+
+\begin{proof}
+For a Gaussian density \(g\), \(\log g(x)\) is a quadratic polynomial in \(x\), so \(\int\log g\,dQ\) depends on \(Q\) only through its mean and covariance. When \(G\) is the moment-matched Gaussian (same mean and covariance as \(Q\)), this gives \(\int\log g\,dQ = \int\log g\,dG = -h(G)\), and therefore \(\kl{Q}{G}=-h(Q)+h(G)\). Applying this pointwise with \(Q=q_u(\cdot\mid y)\) and \(G=g_u^\star(\cdot\mid y)\):
+\[
+\kl{q_u(\cdot\mid y)}{g_u^\star(\cdot\mid y)}
+=
+ h\bigl(g_u^\star(\cdot\mid y)\bigr) - h\bigl(q_u(\cdot\mid y)\bigr).
+\]
+Average over \(Y_u\). The Gaussian entropy formula gives
+\[
+h\bigl(g_u^\star(\cdot\mid y)\bigr)
+=
+\frac12\log\Big((2\pi e)^d\det\Sigma_u(y)\Big).
+\]
+Using \eqref{eq:generic_posterior_cov},
+\[
+\det\Sigma_u(y)=u^d\det A_u(y).
+\]
+Therefore
+\[
+\E\big[h(g_u^\star(\cdot\mid Y_u))\big]
+=
+\frac d2\log(2\pi e u)
++
+\frac12\E\big[\log\det A_u(Y_u)\big].
+\]
+On the other hand, by the definition of conditional entropy,
+\[
+\E\big[h(q_u(\cdot\mid Y_u))\big]=h(S\mid Y_u).
+\]
+Finally, applying the chain rule for entropy gives
+\[
+h(S\mid Y_u)=h(S)+h(Y_u\mid S)-h(Y_u),
+\]
+and because \(Y_u=S+\sqrt{u}Z\),
+\[
+h(Y_u\mid S)=h(\sqrt{u}Z)=\frac d2\log(2\pi e u).
+\]
+Substituting these identities into the definition of \(\mathcal K(u)\) proves \eqref{eq:entropy_representation}.
+\end{proof}
+
+\begin{lemma}[Right-continuity of \(\mathcal K\) at the origin]
+\label{lem:K_continuity_at_zero}
+If \(\E\norm{U}^2<\infty\), then \(\mathcal K(u)\to 0\) as \(u\to 0^+\).
+\end{lemma}
+
+\begin{proof}
+By the entropy representation,
+\[
+\mathcal K(u)
+=
+\big[h(Y_u)-h(S)\big]
++
+\frac12\,\E\big[\log\det A_u(Y_u)\big],
+\]
+and we show that each term vanishes as \(u\to 0^+\).
+
+\emph{Entropy difference.} By de Bruijn's identity,
+\(h(Y_u)-h(S)=\tfrac12\int_0^u J(Y_s)\,ds\), where \(J(Y_s)=\E\norm{\nabla\ell_s(Y_s)}^2\) is the Fisher information. Since \(Y_s\) has total Gaussian smoothing \(\eta+s\ge\eta>0\), Stam's inequality applied to the Gaussian component yields \(J(Y_s)\le d/(\eta+s)\le d/\eta\). Hence \(|h(Y_u)-h(S)|\le du/(2\eta)\to 0\).
+
+\emph{Log-determinant term.} The lower bound \(A_u(y)\succeq \tfrac{\eta}{\eta+u}I_d\) gives
+\(\log\det A_u(y)\ge -d\log(1+u/\eta)\to 0\) uniformly in \(y\). For the upper bound, diagonalizing \(I_d+uH_u(y)\) and applying \(\log(1+x)\le x\) to each eigenvalue (each of which is positive, since \(A_u\succ 0\)) gives the pointwise inequality \(\log\det A_u(y)\le u\,\tr H_u(y)=u\,\Delta\ell_u(y)\). Taking expectations,
+\[
+\E\big[\log\det A_u(Y_u)\big]\le u\,\E[\Delta\ell_u(Y_u)]=u\int(\Delta\ell_u)p_u\,dy=-u\int\norm{\nabla\ell_u}^2 p_u\,dy=-u\,J(Y_u)\le 0,
+\]
+where the middle equality is the standard integration by parts \(\int(\Delta\ell_u)p_u=-\int\nabla\ell_u\cdot\nabla p_u=-\int\norm{\nabla\ell_u}^2 p_u\) (valid because \(p_u\) is a Gaussian convolution, so it and its gradient vanish at infinity and the boundary terms drop). Combining the two bounds, \(-d\log(1+u/\eta)\le \E[\log\det A_u(Y_u)]\le 0\), so \(\E[\log\det A_u(Y_u)]\to 0\).
+\end{proof}
+
+\subsection{The exact derivative formula}
+
+Before stating the main identity, we record a general calculus lemma that will be used in the proof. It says that when we differentiate the expectation of a \(u\)-dependent function along the Gaussian-convolution path \(Y_u\), we pick up two contributions: the explicit \(u\)-derivative of the integrand, and a Laplacian term coming from the heat equation for the density.
+
+\begin{lemma}[Heat expectation identity]
+\label{lem:heat_expectation_identity}
+Let \(p_u\) be the density of \(Y_u=U+\sqrt{\eta+u}\,W'\), so that \(p_u\) satisfies the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\). Let \(f_u:\R_{>0}\times\R^d\to\R\) be \(C^1\) in \(u\) and \(C^2\) in \(y\), and assume that \(f_u,\partial_u f_u,\nabla f_u,\Delta f_u\) all have at most polynomial growth in \(y\), locally uniformly in \(u\). Assume further that \(U\) has enough moments that every such polynomial bound is integrable against \(p_u\). Then for every \(u>0\),
+\begin{equation}
+\label{eq:heat_expectation_identity}
+\frac{d}{du}\E[f_u(Y_u)] = \E[\partial_u f_u(Y_u)] + \frac12\E[\Delta f_u(Y_u)].
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Write \(\E[f_u(Y_u)]=\int f_u(y)\,p_u(y)\,dy\). Under the polynomial-growth and moment hypotheses, this is a finite number, and differentiation under the integral is justified by dominated convergence (with a dominating function of the form ``polynomial in \(y\) times \(p_u\)''):
+\[
+\frac{d}{du}\int f_u\,p_u\,dy
+=
+\int(\partial_u f_u)\,p_u\,dy
++
+\int f_u\,(\partial_u p_u)\,dy.
+\]
+Using the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\), it remains to show
+\begin{equation}
+\label{eq:heat_lemma_ibp_goal}
+\int f_u\,\Delta p_u\,dy = \int (\Delta f_u)\,p_u\,dy.
+\end{equation}
+
+We prove \eqref{eq:heat_lemma_ibp_goal} by a cutoff argument. Fix a smooth radial cutoff \(\chi:\R^d\to[0,1]\) with \(\chi\equiv 1\) on \(B_1\), \(\chi\equiv 0\) outside \(B_2\), and set \(\chi_R(y):=\chi(y/R)\), so that \(\chi_R\equiv 1\) on \(B_R\), \(\chi_R\equiv 0\) outside \(B_{2R}\), and \(\norm{\nabla\chi_R}_\infty\le CR^{-1}\), \(\norm{\Delta\chi_R}_\infty\le CR^{-2}\) for a constant \(C\) depending only on \(\chi\). Because \(\chi_R f_u\) has compact support, standard integration by parts on compactly supported functions (with vanishing boundary contribution) gives
+\[
+\int \chi_R f_u\,\Delta p_u\,dy
+=
+\int p_u\,\Delta(\chi_R f_u)\,dy.
+\]
+Expanding \(\Delta(\chi_R f_u) = \chi_R\,\Delta f_u + 2\nabla\chi_R\cdot\nabla f_u + f_u\,\Delta\chi_R\),
+\begin{equation}
+\label{eq:heat_lemma_three_terms}
+\int \chi_R f_u\,\Delta p_u\,dy
+=
+\int \chi_R\,(\Delta f_u)\,p_u\,dy
++
+2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy
++
+\int p_u f_u\,\Delta\chi_R\,dy.
+\end{equation}
+
+We now let \(R\to\infty\). The polynomial-growth and moment hypotheses make each of \(|f_u|\,p_u\), \(|f_u\,\Delta p_u|=2|f_u\,\partial_u p_u|\), \(|\nabla f_u|\,p_u\), and \(|\Delta f_u|\,p_u\) integrable (in the second case, because \(\partial_u p_u=\tfrac12\Delta p_u\) inherits polynomial-times-Gaussian-derivative decay from the convolution form of \(p_u\)). By dominated convergence, the left-hand side of \eqref{eq:heat_lemma_three_terms} tends to \(\int f_u\,\Delta p_u\) and the first term on the right tends to \(\int (\Delta f_u)\,p_u\). The two cross terms vanish because
+\[
+\left|2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy\right|
+\le
+\frac{2C}{R}\int |\nabla f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
+\quad
+\left|\int p_u f_u\,\Delta\chi_R\,dy\right|
+\le
+\frac{C}{R^2}\int |f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
+\]
+using the uniform bounds on \(\nabla\chi_R\) and \(\Delta\chi_R\) together with finiteness of the remaining integrals. This proves \eqref{eq:heat_lemma_ibp_goal}, and hence \eqref{eq:heat_expectation_identity}.
+\end{proof}
+
+\begin{remark}[Generality of the technique]
+\label{rem:heat_lemma_generality}
+The polynomial-growth hypothesis is chosen because every application of \Cref{lem:heat_expectation_identity} in this paper is with an \(f_u\) of that type; verification is immediate and the hypothesis is easy to state. The cutoff argument in the proof uses nothing specific to polynomial growth, and gives the same identity whenever \(|f_u|\,p_u,\ |f_u\,\partial_u p_u|,\ |\nabla f_u|\,p_u,\ |\Delta f_u|\,p_u\) are all integrable and a locally uniform dominating function exists in the differentiation-under-the-integral step.
+\end{remark}
+
+The next theorem is the central identity of the paper.
+
+\begin{thm}[Exact derivative formula for averaged Gaussianization]
+\label{thm:exact_derivative_formula}
+For every \(u>0\), the function \(\mathcal K(u)\) is differentiable and
+\begin{equation}
+\label{eq:exact_derivative_formula}
+\mathcal K'(u)
+=
+\frac14\,
+\E\!\left[
+\sum_{r=1}^d
+\big\|A_u(Y_u)^{-1/2}\,(\partial_r A_u)(Y_u)\,A_u(Y_u)^{-1/2}\big\|_F^2
+\right].
+\end{equation}
+Equivalently, writing \(T_{u,r}:=\partial_r H_u\) for the \(r\)-th spatial derivative of the Hessian,
+\begin{equation}
+\label{eq:exact_derivative_formula_T}
+\mathcal K'(u)
+=
+\frac{u^2}{4}\,
+\E\!\left[
+\sum_{r=1}^d
+\big\|A_u(Y_u)^{-1/2}\,T_{u,r}(Y_u)\,A_u(Y_u)^{-1/2}\big\|_F^2
+\right].
+\end{equation}
+In particular, \(\mathcal K'(u)\ge 0\).
+\end{thm}
+
+\begin{remark}[Why differentiate?]
+\label{rem:why_differentiate}
+\Cref{prop:entropy_representation} gives an exact formula for \(\mathcal K(u)\), but its individual terms are difficult to bound directly. Differentiating yields a cleaner structure: the derivative \(\mathcal K'(u)\) depends only on the third-order residual, which is precisely what \Cref{prop:avg_third_derivative} controls. Integrating from \(\mathcal K(0)=0\) then gives the bound on \(\mathcal K(u)\).
+\end{remark}
+
+\begin{proof}
+We differentiate the entropy representation \eqref{eq:entropy_representation} term by term. We first compute the entropy derivative via de Bruijn's identity. We then compute the \(\log\det\) derivative using the heat equation and integration by parts. 
+
+Fix \(u>0\). Since \(Y_u\) is a Gaussian convolution with total Gaussian variance \(\eta+u\), the density \(p_u(y)\) is positive and \(C^\infty\) jointly in \((u,y)\), and so are \(\ell_u=\log p_u\), the Hessian \(H_u=\nabla^2\ell_u\), and \(A_u=I_d+uH_u\). Moreover, \(A_u(y)\succeq \frac{\eta}{\eta+u}I_d\succ 0\) for all \(y\) (by \eqref{eq:CovZ_given_Y} applied with \(\sigma=\sqrt{\eta+u}\)), so \(\log\det A_u(y)\) is well-defined and \(C^\infty\) jointly in \((u,y)\).
+
+\paragraph{Differentiate the entropy term.} Our goal here is to show that
+\[
+\frac{d}{du}h(Y_u) = -\frac12\E\big[\tr H_u(Y_u)\big].
+\]
+By de Bruijn's identity \cite{stam1959some},
+\[
+\frac{d}{du}h(Y_u)=\frac12\E\norm{\nabla\ell_u(Y_u)}^2.
+\]
+Using the fact that \(\nabla\ell_u(y) = \nabla p_u(y) / p_u(y)\), we have
+\[
+\E[\norm{\nabla\ell_u(Y_u)}^2]
+= \int \norm{\nabla\ell_u(x)}^2 p_u(x)\,dx
+= \int \nabla\ell_u(x) \cdot \nabla p_u(x)\,dx.
+\]
+Using integration by parts, we get
+\[
+\int \nabla\ell_u(x) \cdot \nabla p_u(x)\,dx
+= -\int \left(\sum_r \frac{\partial^2 \ell_u(x)}{\partial x_r^2}\right) p_u(x)\,dx
+= -\E[\tr(H_u(Y_u))].
+\]
+Thus, \( \E[\norm{\nabla\ell_u(Y_u)}^2] = -\E[\tr(H_u(Y_u))]\),
+so the entropy derivative is
+\begin{equation}
+\label{eq:entropy_derivative_again}
+\frac{d}{du}h(Y_u) = -\frac12\E\big[\tr H_u(Y_u)\big].
+\end{equation}
+
+\paragraph{Differentiate \(\E[\log\det A_u(Y_u)]\).}
+Set
+\[
+\Phi(u):=\E\big[\log\det A_u(Y_u)\big].
+\]
+Writing \(\Delta:=\sum_{i=1}^d\partial_{ii}\) for the Laplacian, we apply \Cref{lem:heat_expectation_identity} with
+\[
+f_u(y)=\log\det A_u(y),
+\]
+which gives
+\begin{equation}
+\label{eq:Phi_prime_from_heat_lemma}
+\Phi'(u)
+=
+\E[\partial_u\log\det A_u(Y_u)] + \frac12\E[\Delta\log\det A_u(Y_u)].
+\end{equation}
+The polynomial-growth hypothesis of \Cref{lem:heat_expectation_identity} holds for \(f_u=\log\det A_u\): the uniform bound \(A_u\succeq\frac{\eta}{\eta+u}I_d\) gives a positive lower bound on \(\det A_u\), so \(\log\det A_u\) is bounded below and grows at most logarithmically in \(y\); the spatial and \(u\)-derivatives of \(\log\det A_u\) are rational functions of entries of \(A_u^{-1}\) and of spatial derivatives of \(H_u=\nabla^2\ell_u\), each of which has polynomial growth in \(y\) under the moment assumptions on \(U\).
+Then
+\[
+\partial_u A_u = H_u + u\partial_u H_u.
+\]
+Hence
+\begin{equation}
+\label{eq:du_logdetA}
+\partial_u\log\det A_u = \tr\big(A_u^{-1}H_u\big) + u\tr\big(A_u^{-1}\partial_u H_u\big).
+\end{equation}
+Since $Y_u = S + \sqrt{u}Z$, its density $p_u$ satisfies the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\).  Rewriting this equation in terms of the log-density \(\ell_u=\log p_u\), we get
+\[
+\partial_u \ell_u = \frac12\Delta\ell_u + \frac12\norm{\nabla\ell_u}^2.
+\]
+Differentiating twice in \(y\) gives, for each pair \((i,j)\),
+\[
+\partial_u(H_u)_{ij}
+=
+\tfrac12\Delta(H_u)_{ij}
++
+\tfrac12\,\partial_{ij}\!\left[\sum_{r=1}^d (\partial_r\ell_u)^2\right].
+\]
+Expanding the last term by the product rule,
+\[
+\tfrac12\,\partial_{ij}\!\left[\sum_{r=1}^d (\partial_r\ell_u)^2\right]
+=
+\partial_j\!\left[\sum_{r=1}^d (\partial_r\ell_u)(\partial_{ir}\ell_u)\right]
+=
+\sum_{r=1}^d (\partial_r\ell_u)(\partial_{ijr}\ell_u)
++
+\sum_{r=1}^d (H_u)_{jr}(H_u)_{ir},
+\]
+Hence
+\[
+\partial_u (H_u)_{ij}
+=
+\frac12\Delta (H_u)_{ij}
++
+\sum_{r=1}^d (\partial_r\ell_u)(\partial_{ijr}\ell_u)
++
+\sum_{r=1}^d (H_u)_{ir}(H_u)_{jr}.
+\]
+In matrix notation, writing \(T_{u,r}:=\partial_r H_u\) for the matrix of \(r\)-th spatial derivatives of \(H_u\),
+\begin{equation}
+\label{eq:Hu_evolution_matrix}
+\partial_u H_u
+=
+\frac12\Delta H_u
++
+\sum_{r=1}^d (\partial_r\ell_u)T_{u,r}
++
+H_u^2.
+\end{equation}
+Substitute \eqref{eq:Hu_evolution_matrix} into \eqref{eq:du_logdetA}:
+\begin{align}
+\label{eq:du_logdetA_expanded}
+\partial_u\log\det A_u
+&=
+\tr\big(A_u^{-1}H_u\big)
++
+\frac{u}{2}\tr\big(A_u^{-1}\Delta H_u\big) \notag\\
+&\quad +
+ u\sum_{r=1}^d (\partial_r\ell_u)\tr\big(A_u^{-1}T_{u,r}\big)
++
+ u\tr\big(A_u^{-1}H_u^2\big).
+\end{align}
+Next, compute the Laplacian term in \eqref{eq:Phi_prime_from_heat_lemma}. Since \(\partial_r A_u = uT_{u,r}\),
+\[
+\partial_r \log\det A_u = u\tr\big(A_u^{-1}T_{u,r}\big).
+\]
+Differentiate once more. Using
+\[
+\partial_r(A_u^{-1}) = -A_u^{-1}(\partial_r A_u)A_u^{-1} = -uA_u^{-1}T_{u,r}A_u^{-1},
+\]
+we get
+\[
+\partial_{rr}\log\det A_u
+=
+ u\tr\big(A_u^{-1}\partial_r T_{u,r}\big)
+-
+ u^2\tr\big(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r}\big).
+\]
+Summing over \(r\),
+\begin{equation}
+\label{eq:Delta_logdetA}
+\Delta\log\det A_u
+=
+ u\tr\big(A_u^{-1}\Delta H_u\big)
+-
+ u^2\sum_{r=1}^d \tr\big(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r}\big).
+\end{equation}
+Now substitute \eqref{eq:du_logdetA_expanded} and \eqref{eq:Delta_logdetA} into \eqref{eq:Phi_prime_from_heat_lemma}. This gives
+\begin{align}
+\label{eq:Phi_prime_preIBP}
+\Phi'(u)
+&=
+\E\big[\tr(A_u^{-1}H_u)\big]
++
+ u\E\big[\tr(A_u^{-1}H_u^2)\big] \notag\\
+&\quad +
+ u\sum_{r=1}^d \E\Big[(\partial_r\ell_u)\tr(A_u^{-1}T_{u,r})\Big] \notag\\
+&\quad +
+ u\E\big[\tr(A_u^{-1}\Delta H_u)\big]
+-
+ \frac{u^2}{2}
+\E\Big[\sum_{r=1}^d \tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\Big].
+\end{align}
+The third and fourth terms simplify by integration by parts. For any sufficiently smooth scalar function \(f\),
+\[
+\E\big[(\partial_r\ell_u)(Y_u)f(Y_u)\big]
+=
+\int (\partial_r p_u)f
+=
+-\int p_u(\partial_r f)
+=
+-\E\big[(\partial_r f)(Y_u)\big],
+\]
+where the middle equality is the same integration-by-parts argument used in the proof of \Cref{lem:heat_expectation_identity}.
+Apply this with \(f(y)=\tr(A_u^{-1}(y)T_{u,r}(y))\). Since
+\[
+\partial_r f
+=
+\tr(A_u^{-1}\partial_r T_{u,r}) - u\tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r}),
+\]
+we obtain
+\[
+\E\Big[(\partial_r\ell_u)\tr(A_u^{-1}T_{u,r})\Big]
+=
+-\E\big[\tr(A_u^{-1}\partial_r T_{u,r})\big]
++
+ u\E\big[\tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\big].
+\]
+Summing over \(r\), and using \(\sum_r \partial_r T_{u,r}=\Delta H_u\), the third and fourth terms in \eqref{eq:Phi_prime_preIBP} combine to
+\[
+-u\E\big[\tr(A_u^{-1}\Delta H_u)\big]
++
+ u^2\E\Big[\sum_{r=1}^d \tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\Big]
++
+ u\E\big[\tr(A_u^{-1}\Delta H_u)\big],
+\]
+so the \(\Delta H_u\) terms cancel exactly. Therefore
+\begin{equation}
+\label{eq:Phi_prime_postIBP}
+\Phi'(u)
+=
+\E\big[\tr(A_u^{-1}H_u)\big]
++
+ u\E\big[\tr(A_u^{-1}H_u^2)\big]
++
+ \frac{u^2}{2}
+\E\Big[\sum_{r=1}^d \tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\Big].
+\end{equation}
+Factoring \(H_u\) on the right, \(H_u+uH_u^2=(I_d+uH_u)H_u=A_u H_u\), and therefore
+\[
+A_u^{-1}H_u + uA_u^{-1}H_u^2 = A_u^{-1}(H_u+uH_u^2) = A_u^{-1}A_u H_u = H_u.
+\]
+Taking traces and expectations, we arrive at
+\begin{equation}
+\label{eq:Phi_prime_final}
+\Phi'(u)
+=
+\E\big[\tr H_u(Y_u)\big]
++
+\frac{u^2}{2}
+\E\Big[\sum_{r=1}^d \tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\Big].
+\end{equation}
+
+\paragraph{Combine with the entropy derivative.}
+Differentiate \eqref{eq:entropy_representation}. Using \eqref{eq:entropy_derivative_again} and \eqref{eq:Phi_prime_final},
+\begin{align*}
+\mathcal K'(u)
+&=
+\frac{d}{du}h(Y_u) + \frac12\Phi'(u) \\
+&=
+-\frac12\E\big[\tr H_u(Y_u)\big]
++
+\frac12\E\big[\tr H_u(Y_u)\big]
++
+\frac{u^2}{4}
+\E\Big[\sum_{r=1}^d \tr(A_u^{-1}T_{u,r}A_u^{-1}T_{u,r})\Big].
+\end{align*}
+This matches \eqref{eq:exact_derivative_formula_T} after rewriting the trace as a Frobenius norm: for symmetric \(T\) and positive-definite \(A\), cyclicity gives 
+\[
+\tr\big(A^{-1}T\,A^{-1}T\big)
+=
+\tr\big((A^{-1/2}T A^{-1/2})^2\big)
+=
+\big\|A^{-1/2}T A^{-1/2}\big\|_F^2,
+\]
+applied here with \(T=T_{u,r}\) (symmetric, since \(H_u\) is) and \(A=A_u\). Since \(\partial_r A_u=uT_{u,r}\), \eqref{eq:exact_derivative_formula} follows as well. The nonnegativity of \(\mathcal K'(u)\) is automatic from the squared-norm form. 
+\end{proof}
+
+\subsection{A universal bound from pre-existing smoothing}
+
+The derivative formula becomes useful as soon as \(S\) already contains some Gaussian smoothing.
+
+\begin{thm}[One-step Gaussianization bound with pre-existing smoothing]
+\label{thm:generic_one_step_bound}
+Assume the setup \eqref{eq:generic_setup}. For every \(u\ge 0\),
+\begin{equation}
+\label{eq:generic_one_step_bound}
+\mathcal K(u)
+\le
+16\,d(d+2)(d+4)\,\PsiFn\!\left(\frac{u}{\eta}\right),
+\qquad
+\PsiFn(r):=\frac{r^2}{2}-r+\log(1+r).
+\end{equation}
+Moreover, if \(\E\norm{U}^6<\infty\), then
+\begin{equation}
+\label{eq:generic_one_step_refined}
+\mathcal K(u)
+\le
+\frac{16}{3}\,\E\norm{U}^6\,\frac{u^3}{\eta^3(\eta+u)^3}.
+\end{equation}
+Finally, for every \(r\in[0,1]\),
+\begin{equation}
+\label{eq:Psi_cubic_bound}
+\PsiFn(r)\le \frac{r^3}{3}.
+\end{equation}
+Therefore, if \(u\le \eta\), then
+\begin{equation}
+\label{eq:generic_one_step_cubic}
+\mathcal K(u)
+\le
+\frac{16}{3}\,d(d+2)(d+4)\left(\frac{u}{\eta}\right)^3.
+\end{equation}
+\end{thm}
+
+\begin{proof}
+Recall from \Cref{thm:exact_derivative_formula}, equation \eqref{eq:exact_derivative_formula_T}, that
+\[
+\mathcal K'(u)
+=
+\frac{u^2}{4}\,\E\Big[\sum_{r=1}^d \big\|A_u(Y_u)^{-1/2}\,T_{u,r}(Y_u)\,A_u(Y_u)^{-1/2}\big\|_F^2\Big].
+\]
+We bound the inner Frobenius norm pointwise in \(y\). For any two matrices \(M\) and \(B\), we have \(\frobnorm{BMB}\le \opnorm{B}^2\frobnorm{M}\). Applying this with \(M=T_{u,r}(y)\) and \(B=A_u(y)^{-1/2}\), and using \(\opnorm{A_u(y)^{-1/2}}^2=\opnorm{A_u(y)^{-1}}\),
+\[
+\big\|A_u(y)^{-1/2}\,T_{u,r}(y)\,A_u(y)^{-1/2}\big\|_F^2
+\le
+\opnorm{A_u(y)^{-1}}^2\,\frobnorm{T_{u,r}(y)}^2.
+\]
+Summing over \(r\) and using that \((T_{u,r})_{ij}=\partial_r\partial_i\partial_j\ell_u\) is the \(r\)-th slice of \(\nabla^3\ell_u\), so \(\sum_r \frobnorm{T_{u,r}(y)}^2=\frobnorm{\nabla^3\ell_u(y)}^2\), we obtain
+\begin{equation}
+\label{eq:Kprime_bound_opnorm}
+\mathcal K'(u)
+\le
+\frac{u^2}{4}\,\E\Big[\opnorm{A_u(Y_u)^{-1}}^2\,\frobnorm{\nabla^3\ell_u(Y_u)}^2\Big].
+\end{equation} 
+To proceed, we derive a uniform upper bound on \(\opnorm{A_u(y)^{-1}}\). Since
+\[
+Y_u = U + \sqrt{\eta+u}\,\widetilde Z
+\qquad\text{for }\widetilde Z\sim\mathcal N(0,I_d),
+\]
+\Cref{eq:CovZ_given_Y} applied with \(V=U\) and \(\sigma=\sqrt{\eta+u}\) gives
+\[
+I_d + (\eta+u)H_u(y) = \Cov(\widetilde Z\mid Y_u=y)\succeq 0,
+\qquad\text{so}\qquad
+H_u(y)\succeq -\frac{1}{\eta+u}I_d.
+\]
+Therefore
+\[
+A_u(y)=I_d+uH_u(y)\succeq \frac{\eta}{\eta+u}I_d,
+\qquad
+\opnorm{A_u(y)^{-1}}\le \frac{\eta+u}{\eta}
+\qquad\text{for all }y\in\R^d.
+\]
+Substituting this uniform bound into \eqref{eq:Kprime_bound_opnorm},
+\begin{equation}
+\label{eq:Kprime_bound_2}
+\mathcal K'(u)
+\le
+\frac{u^2}{4}\left(\frac{\eta+u}{\eta}\right)^2
+\E\big[\frobnorm{\nabla^3\ell_u(Y_u)}^2\big].
+\end{equation}
+We now use \Cref{prop:avg_third_derivative}. Since \(Y_u=U+\sqrt{\eta+u}\,\widetilde Z\), the universal bound \eqref{eq:avg_third_universal} gives
+\[
+\E\big[\frobnorm{\nabla^3\ell_u(Y_u)}^2\big]
+\le
+\frac{64\,d(d+2)(d+4)}{(\eta+u)^3}.
+\]
+Substitute this into \eqref{eq:Kprime_bound_2}:
+\[
+\mathcal K'(u)
+\le
+16\,d(d+2)(d+4)\,\frac{u^2}{\eta^2(\eta+u)}.
+\]
+Integrate from \(0\) to \(u\). By \Cref{lem:K_continuity_at_zero}, \(\mathcal K(s)\to \mathcal K(0)=0\) as \(s\downarrow 0\), so the fundamental theorem of calculus gives
+\[
+\mathcal K(u)
+\le
+16\,d(d+2)(d+4)
+\int_0^u \frac{s^2}{\eta^2(\eta+s)}\,ds.
+\]
+A direct calculation gives
+\[
+\int_0^u \frac{s^2}{\eta^2(\eta+s)}\,ds
+=
+\frac12\left(\frac{u}{\eta}\right)^2
+-\frac{u}{\eta}
++\log\left(1+\frac{u}{\eta}\right)
+=
+\PsiFn\!\left(\frac{u}{\eta}\right),
+\]
+which proves \eqref{eq:generic_one_step_bound}.
+
+For the refinement, use \eqref{eq:avg_third_refined} instead. Since \(Y_u=U+\sqrt{\eta+u}\,\widetilde Z\),
+\[
+\E\big[\frobnorm{\nabla^3\ell_u(Y_u)}^2\big]
+\le
+\frac{64\,\E\norm{U}^6}{(\eta+u)^6}.
+\]
+Substituting into \eqref{eq:Kprime_bound_2} gives
+\[
+\mathcal K'(u)
+\le
+16\,\E\norm{U}^6\,\frac{u^2}{\eta^2(\eta+u)^4}.
+\]
+Integrating from \(0\) to \(u\),
+\[
+\mathcal K(u)
+\le
+16\,\E\norm{U}^6\int_0^u \frac{s^2}{\eta^2(\eta+s)^4}\,ds.
+\]
+Another direct calculation yields
+\[
+\int_0^u \frac{s^2}{\eta^2(\eta+s)^4}\,ds
+=
+\frac{u^3}{3\eta^3(\eta+u)^3},
+\]
+which proves \eqref{eq:generic_one_step_refined}.
+
+Finally, define
+\[
+f(r):=\frac{r^3}{3}-\PsiFn(r).
+\]
+Then \(f(0)=0\), and
+\[
+f'(r)=r^2-r+1-\frac{1}{1+r}=\frac{r^3}{1+r}\ge 0
+\qquad (r\ge 0).
+\]
+Therefore \(f(r)\ge 0\) for all \(r\ge 0\), which proves \eqref{eq:Psi_cubic_bound}. The bound \eqref{eq:generic_one_step_cubic} follows immediately when \(u\le\eta\).
+\end{proof}
+
+\begin{remark}
+\Cref{thm:generic_one_step_bound} is the a quantification of the ``small-step reverse is approximately Gaussian'' intuition. The true small parameter is \(u/\eta\): the new noise added at this step must be small relative to the smoothing already present. This is why the first reverse step is fundamentally different from the later ones.
+\end{remark}
+
+\section{Application to the diffusion chain}
+\label{sec:application_diffusion}
+
+We now specialize the generic result to the DDPM forward chain \eqref{eq:forward_chain}. The idea is the following: at each step \(t\ge 2\), the signal entering the step already contains Gaussian noise accumulated from all previous steps. This accumulated noise plays the role of the ``pre-existing smoothing'' \(\eta\) in the generic setup, and the new noise \(\beta_t\) plays the role of \(u\).
+
+\subsection{The bulk steps \(t\ge 2\)}
+
+Define for each \(t\ge 2\) the rescaled previous state
+\[
+S_t := \sqrt{1-\beta_t}\,X_{t-1}.
+\]
+Then
+\[
+X_t = S_t + \sqrt{\beta_t}\,Z_t.
+\]
+Because
+\[
+X_{t-1}=\sqrt{\bar\alpha_{t-1}}X_0 + \sqrt{1-\bar\alpha_{t-1}}\,W,
+\qquad W\sim\mathcal N(0,I_d),
+\]
+we also have
+\begin{equation}
+\label{eq:S_t_decomposition}
+S_t = \sqrt{\bar\alpha_t}\,X_0 + \sqrt{\eta_t}\,W,
+\qquad
+\eta_t := (1-\beta_t)(1-\bar\alpha_{t-1}).
+\end{equation}
+Thus the signal entering step \(t\) already contains Gaussian smoothing of variance \(\eta_t\). 
+
+\begin{thm}[Bulk one-step Gaussianization bound]
+\label{thm:bulk_one_step_bound}
+For each \(t\ge 2\), define
+\[
+\mathcal K_t
+:=
+\E\Big[
+\kl{q_t(\cdot\mid X_t)}{g_t^\star(\cdot\mid X_t)}
+\Big].
+\]
+Then
+\begin{equation}
+\label{eq:Kt_universal_bound}
+\mathcal K_t
+\le
+16\,d(d+2)(d+4)
+\,\PsiFn\!\left(\frac{\beta_t}{\eta_t}\right)
+=
+16\,d(d+2)(d+4)
+\,\PsiFn\!\left(
+\frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}
+\right).
+\end{equation}
+If, in addition, \(\E\norm{X_0}^6<\infty\), then
+\begin{equation}
+\label{eq:Kt_refined_bound}
+\mathcal K_t
+\le
+\frac{16}{3}
+\frac{\bar\alpha_t^3\beta_t^3}{\eta_t^3(1-\bar\alpha_t)^3}
+\,\E\norm{X_0}^6.
+\end{equation}
+Finally, if \(\beta_t\le \eta_t\), then
+\begin{equation}
+\label{eq:Kt_cubic_bound}
+\mathcal K_t
+\le
+\frac{16}{3}\,d(d+2)(d+4)
+\left(\frac{\beta_t}{\eta_t}\right)^3.
+\end{equation}
+\end{thm}
+
+\begin{proof}
+By \eqref{eq:S_t_decomposition}, the rescaled variable \(S_t\) and the observation \(X_t = S_t+\sqrt{\beta_t}\,Z_t\) fit the generic setup \eqref{eq:generic_setup} with 
+\[
+U=\sqrt{\bar\alpha_t}\,X_0,\qquad \eta=\eta_t,\qquad u=\beta_t.
+\]
+Applying \Cref{thm:generic_one_step_bound} gives
+\begin{equation}
+\label{eq:Kt_bound_in_S_t}
+\E\Big[\kl{\Law(S_t\mid X_t)}{\widehat g_t^\star(\cdot\mid X_t)}\Big]
+\le
+16\,d(d+2)(d+4)\,\PsiFn\!\left(\frac{\beta_t}{\eta_t}\right),
+\end{equation}
+where \(\Law(S_t\mid X_t)\) denotes the conditional distribution of \(S_t\) given \(X_t\), and \(\widehat g_t^\star(\cdot\mid X_t)\) is its moment-matched Gaussian approximation.
+
+We would like to replace the left-hand side of \eqref{eq:Kt_bound_in_S_t} with \(\mathcal K_t\). The map \(\varphi(x)=\sqrt{1-\beta_t}\,x\) is an invertible affine bijection whose push-forward sends \(\Law(X_{t-1}\mid X_t)\) to \(\Law(S_t\mid X_t)\). Because affine maps preserve the first two moments, it also sends \(g_t^\star(\cdot\mid X_t)\) to the moment-matched Gaussian of \(\Law(S_t\mid X_t)\), namely \(\widehat g_t^\star(\cdot\mid X_t)\). By the invariance of KL under invertible affine maps,
+\[
+\kl{q_t(\cdot\mid X_t)}{g_t^\star(\cdot\mid X_t)}
+=
+\kl{\Law(S_t\mid X_t)}{\widehat g_t^\star(\cdot\mid X_t)}.
+\]
+Taking expectations identifies the left-hand side of \eqref{eq:Kt_bound_in_S_t} with \(\mathcal K_t\), which proves \eqref{eq:Kt_universal_bound}. The refined bound \eqref{eq:Kt_refined_bound} and the cubic bound \eqref{eq:Kt_cubic_bound} follow by the same argument, starting from \eqref{eq:generic_one_step_refined} and \eqref{eq:generic_one_step_cubic} in place of \eqref{eq:generic_one_step_bound}; for the refined bound, use \(\E\norm{U}^6=\bar\alpha_t^3\,\E\norm{X_0}^6\) and \(\eta_t+\beta_t=1-\bar\alpha_t\) to match the stated form.
+
+\end{proof}
+
+\begin{remark}[Why the first step is special]
+\label{rem:first_step_special}
+For \(t=1\), the quantity \(\eta_t=(1-\beta_t)(1-\bar\alpha_{t-1})\) is zero, because \(\bar\alpha_0=1\). In other words, before the first diffusion step there is no pre-existing Gaussian smoothing at all. In this regime, boundary-layer effects can survive and a uniform Gaussian approximation need not hold. The theorem therefore begins at \(t=2\).
+\end{remark}
+
+\begin{remark}[Bounding the first step under additional smoothness]
+\label{rem:first_step_smoothness}
+If \(P_0\) is itself a Gaussian convolution (that is, \(X_0 = U_0 + \sqrt{\eta_0}\,W_0\) for some \(\eta_0>0\) and \(W_0\sim\mathcal N(0,I_d)\) independent of \(U_0\)), then \Cref{thm:generic_one_step_bound} applies to \(t=1\) as well, giving
+\[
+\mathcal K_1
+\le
+16\,d(d+2)(d+4)\,\PsiFn\!\left(\frac{\beta_1}{(1-\beta_1)\eta_0}\right).
+\]
+For general \(P_0\), the first reverse step requires a different technique; the averaged-KL approach exploits pre-existing smoothing that is simply absent before the first forward step.
+\end{remark}
+
+\begin{remark}[Parallel with practice] 
+\label{rem:first_step_practice}
+The final reverse step is also treated separately in practice. \cite{ho2020denoising} and \cite{nichol2021improved} write the variational lower bound as
+\[
+L = L_T + \sum_{t\ge 2} L_{t-1} + L_0,
+\qquad L_0 := -\log p_\theta(X_0\mid X_1).
+\]
+The \(L_{t-1}\) for \(t\ge 2\) are KL divergences between Gaussians and are evaluated in closed form. The term \(L_0\) is different: \(p_\theta(X_0\mid X_1)\) is a discretized decoder that integrates a continuous Gaussian density over the 256 quantization bins for each pixel.
+
+The reason is the same in both cases. For image data \(P_0\) is supported either on a low-dimensional manifold or on the discrete pixel lattice, so \(\mathcal L(X_0\mid X_1)\) is not a smooth density, and a continuous-Gaussian approximation is qualitatively wrong at \(t=1\). Our bound \(A_u\succeq\frac{\eta}{\eta+u}I_d\) degenerates at \(\eta=0\) for the same reason that DDPM implementations need a quantization-aware decoder at the final step.
+\end{remark}
+
+\subsection{The terminal term}
+
+The terminal term is easier to bound and follows from the contraction properties of the Ornstein--Uhlenbeck semigroup.
+
+\begin{prop}[Terminal KL contraction]
+\label{prop:terminal_kl}
+For any initial law \(P_0\),
+\[
+\kl{P_T}{\mathcal N(0,I_d)}
+\le
+\bar\alpha_T\,\kl{P_0}{\mathcal N(0,I_d)}.
+\]
+\end{prop}
+
+\begin{proof}
+Write \(\gamma:=\mathcal N(0,I_d)\) throughout this proof. We first establish a one-step contraction. Let \(\mu\) be any probability measure on \(\R^d\), let \(X\sim\mu\), and set
+\[
+Y = \sqrt{1-\beta}\,X + \sqrt{\beta}\,Z,
+\qquad Z\sim\gamma \text{ independent of } X.
+\]
+Writing \(\tau=-\tfrac12\log(1-\beta)\),
+\[
+Y = e^{-\tau}X + \sqrt{1-e^{-2\tau}}\,Z,
+\]
+which is exactly one step of the Ornstein--Uhlenbeck semigroup at time \(\tau\) started at \(\mu\). Let \((\mu_s)_{s\ge 0}\) denote the resulting OU trajectory, so that \(\mu_0=\mu\) and \(\mu_\tau=\Law(Y)\). Then
+\[
+\frac{d}{ds}\kl{\mu_s}{\gamma} = -I(\mu_s\|\gamma),
+\]
+where \(I(\cdot\|\gamma)\) is the relative Fisher information. The Gaussian log-Sobolev inequality \cite[Prop.~5.5.1]{bakry2014analysis} says
+\[
+I(\mu_s\|\gamma)\ge 2\kl{\mu_s}{\gamma},
+\]
+so
+\[
+\frac{d}{ds}\kl{\mu_s}{\gamma}\le -2\kl{\mu_s}{\gamma},
+\]
+and Gr\"onwall's inequality yields
+\[
+\kl{\mu_\tau}{\gamma}\le e^{-2\tau}\kl{\mu}{\gamma}=(1-\beta)\kl{\mu}{\gamma}. 
+\]
+
+Applying this contraction to each forward step of the diffusion chain, with \(\mu=P_{t-1}\), \(\mu_\tau=P_t\), and \(\beta=\beta_t\), gives \(\kl{P_t}{\gamma}\le (1-\beta_t)\kl{P_{t-1}}{\gamma}\). Iterating from \(t=1\) to \(t=T\),
+\[
+\kl{P_T}{\gamma}
+\le
+\prod_{t=1}^T (1-\beta_t)\,\kl{P_0}{\gamma}
+=
+\bar\alpha_T\,\kl{P_0}{\mathcal N(0,I_d)}.
+\]
+\end{proof}
+
+\subsection{Global model-error bound}
+
+Let
+\[
+\mathcal K_1
+:=
+\E\Big[
+\kl{q_1(\cdot\mid X_1)}{g_1^\star(\cdot\mid X_1)}
+\Big].
+\]
+We leave this first-step term explicit, for the reason explained in \Cref{rem:first_step_special}. 
+
+\begin{corollary}[Global upper bound]
+\label{cor:global_upper_bound}
+Assume \(\kl{P_0}{\mathcal N(0,I_d)}<\infty\). Then
+\[
+\kl{P_0}{\widetilde P_0}
+\le
+\bar\alpha_T\,\kl{P_0}{\mathcal N(0,I_d)}
++
+\mathcal K_1
++
+16\,d(d+2)(d+4)
+\sum_{t=2}^T \PsiFn\!\left(\frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}\right).
+\]
+If, in addition, \(\E\norm{X_0}^6<\infty\), then
+\[
+\kl{P_0}{\widetilde P_0}
+\le
+\bar\alpha_T\,\kl{P_0}{\mathcal N(0,I_d)}
++
+\mathcal K_1
++
+\frac{16}{3}\,\E\norm{X_0}^6
+\sum_{t=2}^T
+\frac{\bar\alpha_t^3\beta_t^3}{\eta_t^3(1-\bar\alpha_t)^3}.
+\]
+Finally, if \(\beta_t\le \eta_t\) for every \(t\ge 2\), then
+\[
+\kl{P_0}{\widetilde P_0}
+\le
+\bar\alpha_T\,\kl{P_0}{\mathcal N(0,I_d)}
++
+\mathcal K_1
++
+\frac{16}{3}\,d(d+2)(d+4)
+\sum_{t=2}^T
+\left(\frac{\beta_t}{\eta_t}\right)^3.
+\]
+\end{corollary}
+
+\begin{proof}
+Insert \Cref{thm:bulk_one_step_bound} and \Cref{prop:terminal_kl} into the pathwise decomposition \eqref{eq:path_kl_decomposition}, and then use \eqref{eq:data_processing}. The refined and cubic forms follow in the same way from \eqref{eq:Kt_refined_bound} and \eqref{eq:Kt_cubic_bound}.
+\end{proof}
+
+\section{Schedule optimization}
+\label{sec:schedule_implications}
+
+\Cref{cor:global_upper_bound} splits the global model error into three pieces: the first-step term \(\mathcal K_1\), the terminal contraction \(\bar\alpha_T\kl{P_0}{\mathcal N(0,I_d)}\), and the bulk sum \(\sum_{t=2}^T\PsiFn(\beta_t/\eta_t)\). The schedule affects all three. However, the first two depend on the schedule only through the scalars \(\beta_1\) and \(\bar\alpha_T\), and they involve unknown quantities: \(\mathcal K_1\) is a black box (our argument does not apply at \(t=1\), see \Cref{rem:first_step_special}), and \(\kl{P_0}{\mathcal N(0,I_d)}\) is an unknown property of the data. We therefore hold \(\beta_1\) and \(\bar\alpha_T\) fixed as design parameters --- making the two boundary terms constants --- and optimize the bulk sum over the remaining degrees of freedom in the schedule.
+
+\paragraph{The optimization problem.} Let \(\beta_1^\star\in(0,1)\) be the prescribed first-step noise and \(\bar\alpha_T^\star\in(0,1)\) the prescribed terminal signal level. Choose \(\beta_1,\beta_2,\dots,\beta_T\in(0,1)\) to minimize
+\begin{equation}
+\label{eq:bulk_optimization_problem}
+\sum_{t=2}^T \PsiFn\!\left(\frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}\right)
+\end{equation}
+subject to
+\[
+\beta_1 = \beta_1^\star
+\qquad\text{and}\qquad
+\bar\alpha_T = \bar\alpha_T^\star,
+\]
+where \(\bar\alpha_t := \prod_{i=1}^t(1-\beta_i)\) as in \eqref{eq:forward_chain}. Note that the factor \(16\,d(d+2)(d+4)\) from \Cref{cor:global_upper_bound} is a constant in this problem, so we omit it throughout. 
+
+The obstacle is that the constraint \(\prod_{t=1}^T(1-\beta_t)=\bar\alpha_T^\star\) does not decouple nicely in the \(\beta_t\) variables, and the objective is a nontrivial function of each \(\beta_t\). Both difficulties disappear after a change of variables.
+
+\subsection{Change of variables}
+
+Define the odds variable
+\[
+z_t := \frac{1-\bar\alpha_t}{\bar\alpha_t}
+\qquad (t=0,1,\dots,T).
+\]
+Then \(z_0=0\), and for every \(t\ge 1\),
+\[
+\bar\alpha_t = \frac{1}{1+z_t}.
+\]
+For the steps \(t\ge 2\), also define
+\begin{equation}
+\label{eq:r_t_def}
+r_t := \frac{\beta_t}{\eta_t} = \frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}.
+\end{equation}
+The next lemma is the key algebraic relation.
+
+\begin{lemma}[Multiplicative dynamics in the odds variable]
+\label{lem:odds_dynamics}
+For every \(t\ge 2\),
+\begin{equation}
+\label{eq:odds_dynamics}
+1+r_t = \frac{z_t}{z_{t-1}}.
+\end{equation}
+Equivalently,
+\begin{equation}
+\label{eq:z_recursion}
+z_t = (1+r_t)z_{t-1}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since \(\bar\alpha_t=(1-\beta_t)\bar\alpha_{t-1}\), we have
+\[
+\frac{\beta_t}{1-\beta_t}
+=
+\frac{\bar\alpha_{t-1}-\bar\alpha_t}{\bar\alpha_t}.
+\]
+Divide both sides by \(1-\bar\alpha_{t-1}\):
+\[
+r_t
+=
+\frac{\bar\alpha_{t-1}-\bar\alpha_t}{\bar\alpha_t(1-\bar\alpha_{t-1})}.
+\]
+Now
+\[
+\frac{z_t}{z_{t-1}}
+=
+\frac{(1-\bar\alpha_t)/\bar\alpha_t}{(1-\bar\alpha_{t-1})/\bar\alpha_{t-1}}
+=
+\frac{\bar\alpha_{t-1}(1-\bar\alpha_t)}{\bar\alpha_t(1-\bar\alpha_{t-1})}
+=
+1+
+\frac{\bar\alpha_{t-1}-\bar\alpha_t}{\bar\alpha_t(1-\bar\alpha_{t-1})}
+=
+1+r_t.
+\]
+This proves the lemma.
+\end{proof}
+
+\subsection{Optimizing the schedule}
+
+In the odds coordinate, the constraints \(\beta_1 = \beta_1^\star\) and \(\bar\alpha_T = \bar\alpha_T^\star\) translate to fixing
+\[
+z_1 = \frac{\beta_1^\star}{1-\beta_1^\star}
+\qquad\text{and}\qquad
+z_T = \frac{1-\bar\alpha_T^\star}{\bar\alpha_T^\star},
+\]
+and the bulk objective \eqref{eq:bulk_optimization_problem} becomes
+\begin{equation}
+\label{eq:bulk_surrogate_exact}
+\mathcal S_{\mathrm{bulk}}
+:=
+\sum_{t=2}^T \PsiFn(r_t).
+\end{equation}
+
+\begin{thm}
+\label{thm:exact_bulk_optimization}
+Fix \(z_1>0\) and \(z_T>z_1\). Among all schedules with these endpoints, the expression \eqref{eq:bulk_surrogate_exact} is minimized when
+\begin{equation}
+\label{eq:geometric_z_optimal}
+z_t = z_1 q^{t-1},
+\qquad
+q:=\left(\frac{z_T}{z_1}\right)^{1/(T-1)},
+\qquad t=1,\dots,T.
+\end{equation}
+Equivalently,
+\[
+r_2 = r_3 = \cdots = r_T = q-1.
+\]
+In terms of the original schedule,
+\begin{equation}
+\label{eq:beta_from_q}
+\beta_t
+=
+\frac{(q-1)z_{t-1}}{1+q\,z_{t-1}},
+\qquad t=2,\dots,T.
+\end{equation}
+\end{thm}
+
+\begin{proof}
+The constraint \(\beta_1=\beta_1^\star\) fixes \(z_1\), leaving \(r_2,\dots,r_T\) as the free variables. Iterating the recursion \eqref{eq:z_recursion} telescopes to 
+\[
+z_T \;=\; z_1\prod_{t=2}^T(1+r_t),
+\]
+so the remaining constraint \(\bar\alpha_T=\bar\alpha_T^\star\) --- equivalently, \(z_T\) fixed to its prescribed value --- becomes the single additive condition
+\[
+\sum_{t=2}^T \log(1+r_t)\;=\;\log\!\left(\frac{z_T}{z_1}\right).
+\]
+The optimization problem is therefore:
+\[
+\min_{r_t\ge 0}
+\sum_{t=2}^T \PsiFn(r_t)
+\qquad\text{subject to}\qquad
+\sum_{t=2}^T \log(1+r_t)=\log\left(\frac{z_T}{z_1}\right).
+\]
+Introduce the variable
+\[
+s_t := \log(1+r_t)\qquad (t=2,\dots,T).
+\]
+Then \(r_t=e^{s_t}-1\), the constraint becomes
+\[
+\sum_{t=2}^T s_t = \log\left(\frac{z_T}{z_1}\right),
+\]
+and the objective becomes
+\[
+\sum_{t=2}^T F(s_t),
+\qquad
+F(s):=\PsiFn(e^s-1).
+\]
+A direct calculation gives
+\[
+F'(s)=(e^s-1)^2,
+\qquad
+F''(s)=2e^s(e^s-1)\ge 0
+\qquad (s\ge 0).
+\]
+Thus \(F\) is convex on \([0,\infty)\). Jensen's inequality therefore implies that \(\sum_{t=2}^T F(s_t)\) is minimized when all the \(s_t\) are equal:
+\[
+s_2=s_3=\cdots=s_T
+= \frac{1}{T-1}\log\left(\frac{z_T}{z_1}\right)
+=\log q.
+\]
+Hence all the \(r_t=e^{s_t}-1\) are equal to \(q-1\). Iterating \eqref{eq:z_recursion} gives
+\[
+z_t = z_1 q^{t-1},
+\]
+which is \eqref{eq:geometric_z_optimal}. Finally, solve \eqref{eq:r_t_def} for \(\beta_t\):
+\[
+\beta_t = r_t(1-\beta_t)(1-\bar\alpha_{t-1}) = r_t(1-\beta_t)\frac{z_{t-1}}{1+z_{t-1}}.
+\]
+Solving for \(\beta_t\) gives
+\[
+\beta_t = \frac{r_t z_{t-1}}{1+z_{t-1}+r_t z_{t-1}}
+= \frac{r_t z_{t-1}}{1+(1+r_t)z_{t-1}}.
+\]
+Substituting \(r_t=q-1\) and \(1+r_t=q\) proves \eqref{eq:beta_from_q}.\qedhere
+\end{proof}
+
+\paragraph{The complete recipe.} Collecting the pieces, \Cref{thm:exact_bulk_optimization} gives an explicit, closed-form prescription for the entire schedule. The inputs are the number of reverse steps \(T\) and two boundary parameters: the first-step noise \(\beta_1\in(0,1)\) and the terminal signal level \(\bar\alpha_T\in(0,1)\). The output is the full schedule \(\beta_1,\beta_2,\dots,\beta_T\), computed in three lines:
+\begin{enumerate}
+\item \textbf{Odds endpoints.} \(z_1 = \dfrac{\beta_1}{1-\beta_1}\), \qquad \(z_T = \dfrac{1-\bar\alpha_T}{\bar\alpha_T}\).
+\item \textbf{Geometric ratio.} \(q = \bigl(z_T/z_1\bigr)^{1/(T-1)}\).
+\item \textbf{Schedule.} \(z_t = z_1\,q^{t-1}\), and for \(t=2,\dots,T\),
+\(\beta_t = \dfrac{(q-1)\,z_{t-1}}{1+q\,z_{t-1}}\).
+\end{enumerate}
+This is the main practical takeaway of the paper.
+
+In practice, \(\beta_1\) and \(\bar\alpha_T\) can be  inherited from existing conventions in the diffusion-model literature. For instance, the DDPM linear schedule \cite{ho2020denoising} uses \(\beta_1=10^{-4}\) and \(T=1000\), which induces \(\bar\alpha_T\approx 4\times 10^{-5}\); substituting these into the three steps above gives a concrete schedule that uses the same computational budget and the same endpoints as DDPM, but re-distributes the noise optimally across the reverse steps. \Cref{fig:schedule_comparison} shows the result.
+
+
+\begin{remark}
+\label{rem:cubic_same_minimizer}
+If one uses the cubic approximation \(\PsiFn(r)\approx r^3/3\) valid for \(r\le 1\), the same geometric schedule remains optimal. Indeed, after writing \(r_t=e^{s_t}-1\), the objective becomes
+\[
+\sum_{t=2}^T (e^{s_t}-1)^3,
+\]
+and the function \(s\mapsto (e^s-1)^3\) is also convex on \([0,\infty)\).
+\end{remark}
+
+\subsection{Comparison of schedules}
+
+\Cref{fig:schedule_comparison} compares our geometric-odds schedule to the DDPM linear schedule \cite{ho2020denoising} and the cosine schedule \cite{nichol2021improved}, all with \(T=1000\) steps. The two baseline schedules have different endpoints --- DDPM linear uses \(\beta_1=10^{-4}\) and reaches \(\bar\alpha_T\approx 4\times 10^{-5}\), while the cosine schedule (with its standard \(\beta_t\)-clipping at \(0.999\)) uses \(\beta_1\approx 4\times 10^{-5}\) and drives \(\bar\alpha_T\) to \(\approx 2\times 10^{-9}\) --- so we plot two instances of our schedule, one matched to each set of endpoints. Panel~(b) shows that both versions of our schedule make \(z_t\) grow geometrically (a straight line on the log scale), as \eqref{eq:geometric_z_optimal} predicts. Panel~(c) shows that the noise-to-smoothing ratio \(r_t\) is constant under each of our schedules, while it varies by several orders of magnitude under both baselines. Panel~(d) shows the resulting per-step cost \(\PsiFn(r_t)\): our schedules distribute the cost uniformly across steps, whereas DDPM linear and cosine concentrate it on a handful of expensive endpoint steps.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=\textwidth]{optimal_schedule_comparison.pdf}
+\caption{Comparison of noise schedules with \(T=1000\). \textbf{(a)}~Signal retention \(\bar\alpha_t\). \textbf{(b)}~Odds variable \(z_t\) on a log scale; our schedule is a straight line in both endpoint configurations. \textbf{(c)}~Noise-to-smoothing ratio \(r_t = \beta_t/\eta_t\); constant under our schedule, and varying by several orders of magnitude under DDPM linear and cosine. \textbf{(d)}~Per-step cost \(\PsiFn(r_t)\); uniform under our schedule, and sharply concentrated at the endpoints under DDPM linear and cosine. Because the DDPM linear and cosine schedules use different \((\beta_1, \bar\alpha_T)\) endpoints, we plot two versions of our schedule, each matched to one of them.}
+\label{fig:schedule_comparison}
+\end{figure}
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
