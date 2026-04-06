@@ -493,68 +493,6 @@ where the middle equality is the standard integration by parts \(\int(\Delta\ell
 
 \subsection{The exact derivative formula}
 
-Before stating the main identity, we record a general calculus lemma that will be used in the proof. It says that when we differentiate the expectation of a \(u\)-dependent function along the Gaussian-convolution path \(Y_u\), we pick up two contributions: the explicit \(u\)-derivative of the integrand, and a Laplacian term coming from the heat equation for the density.
-
-\begin{lemma}[Heat expectation identity]
-\label{lem:heat_expectation_identity}
-Let \(p_u\) be the density of \(Y_u=U+\sqrt{\eta+u}\,W'\), so that \(p_u\) satisfies the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\). Let \(f_u:\R_{>0}\times\R^d\to\R\) be \(C^1\) in \(u\) and \(C^2\) in \(y\), and assume that \(f_u,\partial_u f_u,\nabla f_u,\Delta f_u\) all have at most polynomial growth in \(y\), locally uniformly in \(u\). Assume further that \(U\) has enough moments that every such polynomial bound is integrable against \(p_u\). Then for every \(u>0\),
-\begin{equation}
-\label{eq:heat_expectation_identity}
-\frac{d}{du}\E[f_u(Y_u)] = \E[\partial_u f_u(Y_u)] + \frac12\E[\Delta f_u(Y_u)].
-\end{equation}
-\end{lemma}
-
-\begin{proof}
-Write \(\E[f_u(Y_u)]=\int f_u(y)\,p_u(y)\,dy\). Under the polynomial-growth and moment hypotheses, this is a finite number, and differentiation under the integral is justified by dominated convergence (with a dominating function of the form ``polynomial in \(y\) times \(p_u\)''):
-\[
-\frac{d}{du}\int f_u\,p_u\,dy
-=
-\int(\partial_u f_u)\,p_u\,dy
-+
-\int f_u\,(\partial_u p_u)\,dy.
-\]
-Using the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\), it remains to show
-\begin{equation}
-\label{eq:heat_lemma_ibp_goal}
-\int f_u\,\Delta p_u\,dy = \int (\Delta f_u)\,p_u\,dy.
-\end{equation}
-
-We prove \eqref{eq:heat_lemma_ibp_goal} by a cutoff argument. Fix a smooth radial cutoff \(\chi:\R^d\to[0,1]\) with \(\chi\equiv 1\) on \(B_1\), \(\chi\equiv 0\) outside \(B_2\), and set \(\chi_R(y):=\chi(y/R)\), so that \(\chi_R\equiv 1\) on \(B_R\), \(\chi_R\equiv 0\) outside \(B_{2R}\), and \(\norm{\nabla\chi_R}_\infty\le CR^{-1}\), \(\norm{\Delta\chi_R}_\infty\le CR^{-2}\) for a constant \(C\) depending only on \(\chi\). Because \(\chi_R f_u\) has compact support, standard integration by parts on compactly supported functions (with vanishing boundary contribution) gives
-\[
-\int \chi_R f_u\,\Delta p_u\,dy
-=
-\int p_u\,\Delta(\chi_R f_u)\,dy.
-\]
-Expanding \(\Delta(\chi_R f_u) = \chi_R\,\Delta f_u + 2\nabla\chi_R\cdot\nabla f_u + f_u\,\Delta\chi_R\),
-\begin{equation}
-\label{eq:heat_lemma_three_terms}
-\int \chi_R f_u\,\Delta p_u\,dy
-=
-\int \chi_R\,(\Delta f_u)\,p_u\,dy
-+
-2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy
-+
-\int p_u f_u\,\Delta\chi_R\,dy.
-\end{equation}
-
-We now let \(R\to\infty\). The polynomial-growth and moment hypotheses make each of \(|f_u|\,p_u\), \(|f_u\,\Delta p_u|=2|f_u\,\partial_u p_u|\), \(|\nabla f_u|\,p_u\), and \(|\Delta f_u|\,p_u\) integrable (in the second case, because \(\partial_u p_u=\tfrac12\Delta p_u\) inherits polynomial-times-Gaussian-derivative decay from the convolution form of \(p_u\)). By dominated convergence, the left-hand side of \eqref{eq:heat_lemma_three_terms} tends to \(\int f_u\,\Delta p_u\) and the first term on the right tends to \(\int (\Delta f_u)\,p_u\). The two cross terms vanish because
-\[
-\left|2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy\right|
-\le
-\frac{2C}{R}\int |\nabla f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
-\quad
-\left|\int p_u f_u\,\Delta\chi_R\,dy\right|
-\le
-\frac{C}{R^2}\int |f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
-\]
-using the uniform bounds on \(\nabla\chi_R\) and \(\Delta\chi_R\) together with finiteness of the remaining integrals. This proves \eqref{eq:heat_lemma_ibp_goal}, and hence \eqref{eq:heat_expectation_identity}.
-\end{proof}
-
-\begin{remark}[Generality of the technique]
-\label{rem:heat_lemma_generality}
-The polynomial-growth hypothesis is chosen because every application of \Cref{lem:heat_expectation_identity} in this paper is with an \(f_u\) of that type; verification is immediate and the hypothesis is easy to state. The cutoff argument in the proof uses nothing specific to polynomial growth, and gives the same identity whenever \(|f_u|\,p_u,\ |f_u\,\partial_u p_u|,\ |\nabla f_u|\,p_u,\ |\Delta f_u|\,p_u\) are all integrable and a locally uniform dominating function exists in the differentiation-under-the-integral step.
-\end{remark}
-
 The next theorem is the central identity of the paper.
 
 \begin{thm}[Exact derivative formula for averaged Gaussianization]
@@ -626,7 +564,7 @@ Set
 \[
 \Phi(u):=\E\big[\log\det A_u(Y_u)\big].
 \]
-Writing \(\Delta:=\sum_{i=1}^d\partial_{ii}\) for the Laplacian, we apply \Cref{lem:heat_expectation_identity} with
+Writing \(\Delta:=\sum_{i=1}^d\partial_{ii}\) for the Laplacian, we apply \Cref{lem:heat_expectation_identity} (see \Cref{sec:technical_lemmas}) with
 \[
 f_u(y)=\log\det A_u(y),
 \]
@@ -754,7 +692,7 @@ The third and fourth terms simplify by integration by parts. For any sufficientl
 =
 -\E\big[(\partial_r f)(Y_u)\big],
 \]
-where the middle equality is the same integration-by-parts argument used in the proof of \Cref{lem:heat_expectation_identity}.
+where the middle equality is the same integration-by-parts argument used in the proof of \Cref{lem:heat_expectation_identity} (see \Cref{sec:technical_lemmas}).
 Apply this with \(f(y)=\tr(A_u^{-1}(y)T_{u,r}(y))\). Since
 \[
 \partial_r f
@@ -1404,6 +1342,12 @@ This is the main practical takeaway of the paper.
 
 In practice, \(\beta_1\) and \(\bar\alpha_T\) can be  inherited from existing conventions in the diffusion-model literature. For instance, the DDPM linear schedule \cite{ho2020denoising} uses \(\beta_1=10^{-4}\) and \(T=1000\), which induces \(\bar\alpha_T\approx 4\times 10^{-5}\); substituting these into the three steps above gives a concrete schedule that uses the same computational budget and the same endpoints as DDPM, but re-distributes the noise optimally across the reverse steps. \Cref{fig:schedule_comparison} shows the result.
 
+\begin{remark}[Endpoint selection]
+\label{rem:endpoint_selection}
+For a given number of steps \(T\), the geometric-odds schedule is fully determined by the two endpoint parameters \((\beta_1^\star,\bar\alpha_T^\star)\). In general, these can be tuned on a validation set with a two-dimensional grid search --- a substantial reduction from the \(T\)-dimensional search over arbitrary schedules.
+
+The search space can be reduced further to a single parameter by imposing the midpoint constraint \(\bar\alpha_{\lfloor T/2\rfloor}=\tfrac12\). This is a natural condition: it asks that the signal and noise contributions have equal variance at the temporal midpoint of the chain. Under the geometric-odds schedule, \(\bar\alpha_t=1/(1+z_t)\), so \(\bar\alpha_{\lfloor T/2\rfloor}=\tfrac12\) is equivalent to \(z_{\lfloor T/2\rfloor}=1\), which for large \(T\) reduces to \(z_1 z_T=1\), or equivalently \(\bar\alpha_T\approx \beta_1\). The schedule is then determined by \(\beta_1\) alone: \(\beta_1\) controls the noise at the signal end, and the noise end is fixed by symmetry.
+\end{remark}
 
 \begin{remark}
 \label{rem:cubic_same_minimizer}
@@ -1428,5 +1372,70 @@ and the function \(s\mapsto (e^s-1)^3\) is also convex on \([0,\infty)\).
 
 \bibliographystyle{plain}
 \bibliography{references}
+
+\appendix
+
+\section{Technical lemmas}
+\label{sec:technical_lemmas}
+
+\begin{lemma}[Heat expectation identity]
+\label{lem:heat_expectation_identity}
+Let \(p_u\) be the density of \(Y_u=U+\sqrt{\eta+u}\,W'\), so that \(p_u\) satisfies the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\). Let \(f_u:\R_{>0}\times\R^d\to\R\) be \(C^1\) in \(u\) and \(C^2\) in \(y\), and assume that \(f_u,\partial_u f_u,\nabla f_u,\Delta f_u\) all have at most polynomial growth in \(y\), locally uniformly in \(u\). Assume further that \(U\) has enough moments that every such polynomial bound is integrable against \(p_u\). Then for every \(u>0\),
+\begin{equation}
+\label{eq:heat_expectation_identity}
+\frac{d}{du}\E[f_u(Y_u)] = \E[\partial_u f_u(Y_u)] + \frac12\E[\Delta f_u(Y_u)].
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Write \(\E[f_u(Y_u)]=\int f_u(y)\,p_u(y)\,dy\). Under the polynomial-growth and moment hypotheses, this is a finite number, and differentiation under the integral is justified by dominated convergence (with a dominating function of the form ``polynomial in \(y\) times \(p_u\)''):
+\[
+\frac{d}{du}\int f_u\,p_u\,dy
+=
+\int(\partial_u f_u)\,p_u\,dy
++
+\int f_u\,(\partial_u p_u)\,dy.
+\]
+Using the heat equation \(\partial_u p_u=\tfrac12\Delta p_u\), it remains to show
+\begin{equation}
+\label{eq:heat_lemma_ibp_goal}
+\int f_u\,\Delta p_u\,dy = \int (\Delta f_u)\,p_u\,dy.
+\end{equation}
+
+We prove \eqref{eq:heat_lemma_ibp_goal} by a cutoff argument. Fix a smooth radial cutoff \(\chi:\R^d\to[0,1]\) with \(\chi\equiv 1\) on \(B_1\), \(\chi\equiv 0\) outside \(B_2\), and set \(\chi_R(y):=\chi(y/R)\), so that \(\chi_R\equiv 1\) on \(B_R\), \(\chi_R\equiv 0\) outside \(B_{2R}\), and \(\norm{\nabla\chi_R}_\infty\le CR^{-1}\), \(\norm{\Delta\chi_R}_\infty\le CR^{-2}\) for a constant \(C\) depending only on \(\chi\). Because \(\chi_R f_u\) has compact support, standard integration by parts on compactly supported functions (with vanishing boundary contribution) gives
+\[
+\int \chi_R f_u\,\Delta p_u\,dy
+=
+\int p_u\,\Delta(\chi_R f_u)\,dy.
+\]
+Expanding \(\Delta(\chi_R f_u) = \chi_R\,\Delta f_u + 2\nabla\chi_R\cdot\nabla f_u + f_u\,\Delta\chi_R\),
+\begin{equation}
+\label{eq:heat_lemma_three_terms}
+\int \chi_R f_u\,\Delta p_u\,dy
+=
+\int \chi_R\,(\Delta f_u)\,p_u\,dy
++
+2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy
++
+\int p_u f_u\,\Delta\chi_R\,dy.
+\end{equation}
+
+We now let \(R\to\infty\). The polynomial-growth and moment hypotheses make each of \(|f_u|\,p_u\), \(|f_u\,\Delta p_u|=2|f_u\,\partial_u p_u|\), \(|\nabla f_u|\,p_u\), and \(|\Delta f_u|\,p_u\) integrable (in the second case, because \(\partial_u p_u=\tfrac12\Delta p_u\) inherits polynomial-times-Gaussian-derivative decay from the convolution form of \(p_u\)). By dominated convergence, the left-hand side of \eqref{eq:heat_lemma_three_terms} tends to \(\int f_u\,\Delta p_u\) and the first term on the right tends to \(\int (\Delta f_u)\,p_u\). The two cross terms vanish because
+\[
+\left|2\int p_u\,\nabla\chi_R\cdot\nabla f_u\,dy\right|
+\le
+\frac{2C}{R}\int |\nabla f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
+\quad
+\left|\int p_u f_u\,\Delta\chi_R\,dy\right|
+\le
+\frac{C}{R^2}\int |f_u|\,p_u\,dy \xrightarrow[R\to\infty]{}0,
+\]
+using the uniform bounds on \(\nabla\chi_R\) and \(\Delta\chi_R\) together with finiteness of the remaining integrals. This proves \eqref{eq:heat_lemma_ibp_goal}, and hence \eqref{eq:heat_expectation_identity}.
+\end{proof}
+
+\begin{remark}[Generality of the technique]
+\label{rem:heat_lemma_generality}
+The polynomial-growth hypothesis is chosen because every application of \Cref{lem:heat_expectation_identity} in this paper is with an \(f_u\) of that type; verification is immediate and the hypothesis is easy to state. The cutoff argument in the proof uses nothing specific to polynomial growth, and gives the same identity whenever \(|f_u|\,p_u,\ |f_u\,\partial_u p_u|,\ |\nabla f_u|\,p_u,\ |\Delta f_u|\,p_u\) are all integrable and a locally uniform dominating function exists in the differentiation-under-the-integral step.
+\end{remark}
 
 \end{document}
