@@ -142,7 +142,7 @@ def main():
             if sched not in sched_dict:
                 continue
             data = np.load(sched_dict[sched])
-            vb = data["arr_0"]  # shape (T,)
+            vb = data["arr_0"][::-1]  # reverse: calc_bpd_loop stores t=T-1 first
             T = len(vb)
             timesteps = np.arange(T)
 
@@ -190,7 +190,7 @@ def main():
                 if sched not in sched_dict:
                     continue
                 data = np.load(sched_dict[sched])
-                vb = data["arr_0"]
+                vb = data["arr_0"][::-1]  # reverse: calc_bpd_loop stores t=T-1 first
                 T = len(vb)
                 timesteps = np.arange(T)
 
