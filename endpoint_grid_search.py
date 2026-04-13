@@ -241,7 +241,7 @@ def main():
     # ---- 2D grid ----
     print("\nRunning 2D grid...")
     beta1_2d = np.logspace(-7, -2.5, 300)
-    log_aT_2d = np.linspace(-12, -2, 300)
+    log_aT_2d = np.linspace(-12, np.log10(0.5), 300)  # extend up to alpha_bar_T = 0.5
     aT_2d = 10.0 ** log_aT_2d
 
     B1, AT = np.meshgrid(beta1_2d, aT_2d, indexing="ij")
@@ -339,8 +339,8 @@ def main():
     ax.grid(True, alpha=0.3)
 
     ax = axes[1]
-    for log_aT, color in [(-3, "#1f77b4"), (-5, "#ff7f0e"), (-7, "#2ca02c"),
-                            (-9, "#d62728"), (-11, "#9467bd")]:
+    for log_aT, color in [(-1, "#8c564b"), (-2, "#1f77b4"), (-4, "#ff7f0e"),
+                            (-6, "#2ca02c"), (-8, "#d62728"), (-10, "#9467bd")]:
         aT_val = 10.0 ** log_aT
         bk = C0 + C1 * np.array([bulk_sum_psi(b, aT_val, T) for b in beta1_fine])
         pr = prior_kl_bpd(aT_val, E_norm_sq, d)
@@ -409,7 +409,7 @@ def main():
     print(f"{'='*70}")
     print(f"{'log10(aT)':>10} {'opt_beta1':>14} {'opt_r':>12} "
           f"{'L0':>8} {'bulk':>8} {'L_T':>10} {'total':>8}")
-    for log_aT in [-3, -4, -5, -6, -7, -8, -9, -10, -11, -12]:
+    for log_aT in [np.log10(0.5), np.log10(0.3), -1, -2, -3, -4, -5, -6, -8, -10, -12]:
         aT_val = 10.0 ** log_aT
         bk = C0 + C1 * np.array([bulk_sum_psi(b, aT_val, T) for b in beta1_fine])
         pr = prior_kl_bpd(aT_val, E_norm_sq, d)
