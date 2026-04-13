@@ -64,6 +64,37 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
         betas = np.array([1.0 / (T - i) for i in range(T)], dtype=np.float64)
         betas = np.minimum(betas, 0.999)
         return betas
+    elif schedule_name in ("geometric_linear", "geometric_cosine"):
+        # Geometric-odds schedule from diffusion_rewritten_v3.tex (Theorem 5).
+        # The odds z_t = (1-alpha_bar_t)/alpha_bar_t grows geometrically:
+        #   z_t = z_1 * q^(t-1),  q = (z_T/z_1)^(1/(T-1))
+        # beta_1 and alpha_bar_T are matched to the DDPM linear or cosine schedule.
+        T = num_diffusion_timesteps
+        if schedule_name == "geometric_linear":
+            # Match DDPM linear endpoints
+            scale = 1000 / T
+            beta_1 = scale * 0.0001
+            betas_lin = np.linspace(scale * 0.0001, scale * 0.02, T, dtype=np.float64)
+            alpha_bar_T = np.prod(1.0 - betas_lin)
+        else:
+            # Match cosine endpoints
+            alpha_bar_fn = lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2
+            beta_1 = min(1 - alpha_bar_fn(1 / T) / alpha_bar_fn(0), 0.999)
+            betas_cos = betas_for_alpha_bar(T, alpha_bar_fn)
+            alpha_bar_T = np.prod(1.0 - betas_cos)
+
+        z_1 = beta_1 / (1.0 - beta_1)
+        z_T = (1.0 - alpha_bar_T) / alpha_bar_T
+        q = (z_T / z_1) ** (1.0 / (T - 1))
+
+        betas = np.zeros(T, dtype=np.float64)
+        betas[0] = beta_1
+        z_prev = z_1
+        for i in range(1, T):
+            betas[i] = (q - 1) * z_prev / (1.0 + q * z_prev)
+            z_prev *= q
+        betas = np.minimum(betas, 0.999)
+        return betas
     else:
         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
 

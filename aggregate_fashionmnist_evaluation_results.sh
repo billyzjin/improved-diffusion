@@ -8,9 +8,9 @@ if [ -n "$1" ]; then
 else
     echo "No directory provided. Searching for the latest one..."
     # Avoid a slow recursive `find` over /project_gpfs (ImageNet contains millions of files).
-    EVAL_DIR=$(ls -1d /project_gpfs/bjin0/fashion_evaluation_parallel_* 2>/dev/null | sort | tail -1)
+    EVAL_DIR=$(ls -1d /project_gpfs/bata0/bjin0/fashion_evaluation_parallel_* 2>/dev/null | sort | tail -1)
     if [ -z "$EVAL_DIR" ]; then
-        echo "ERROR: No 'fashion_evaluation_parallel_*' directory was found in /project_gpfs/bjin0"
+        echo "ERROR: No 'fashion_evaluation_parallel_*' directory was found in /project_gpfs/bata0/bjin0"
         exit 1
     fi
     echo "Found latest evaluation directory: $EVAL_DIR"

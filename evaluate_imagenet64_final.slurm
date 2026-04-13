@@ -39,8 +39,8 @@ python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(
 
 cd /home/bjin0/improved-diffusion || exit 1
 
-IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
-IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bata0/bjin0/imagenet64/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bata0/bjin0/imagenet64/val}
 
 if [ ! -d "$IMAGENET_TRAIN_DIR" ]; then
   echo "ERROR: IMAGENET_TRAIN_DIR does not exist: $IMAGENET_TRAIN_DIR"
@@ -73,7 +73,13 @@ evaluate_model() {
   local use_kl="False"
   local rescale_learned_sigmas="False"
 
-  if [[ "$exp_name" == *"cosine"* ]]; then
+  if [[ "$exp_name" == *"geometric_linear"* ]]; then
+    noise_schedule="geometric_linear"
+    dropout="0.3"
+  elif [[ "$exp_name" == *"geometric_cosine"* ]]; then
+    noise_schedule="geometric_cosine"
+    dropout="0.3"
+  elif [[ "$exp_name" == *"cosine"* ]]; then
     noise_schedule="cosine"
     dropout="0.3"
   elif [[ "$exp_name" == *"ours_v2"* ]]; then
@@ -101,6 +107,9 @@ evaluate_model() {
   mkdir -p "$OPENAI_LOGDIR"
 
   # NLL (approx bpd) on ImageNet-64 validation subset.
+  if [ "${SKIP_NLL:-0}" = "1" ]; then
+    echo "Skipping NLL (SKIP_NLL=1)"
+  else
   echo "Calculating NLL..."
   python3 scripts/image_nll_no_mpi.py \
     --model_path "$model_path" \
@@ -125,6 +134,7 @@ evaluate_model() {
     --predict_xstart False \
     --clip_denoised True \
     2>&1 | tee "$exp_dir/nll_results.txt"
+  fi
 
   # Samples for FID (default: full sampling; optionally set EVAL_TIMESTEP_RESPACING for fast sampling).
   echo "Generating samples for FID..."
@@ -179,7 +189,7 @@ evaluate_model() {
     return 1
   fi
 
-  IMAGENET_STATS_FILE="/project_gpfs/bjin0/imagenet64_train_stats.npz"
+  IMAGENET_STATS_FILE="/project_gpfs/bata0/bjin0/imagenet64_train_stats.npz"
   if [ ! -f "$IMAGENET_STATS_FILE" ]; then
     echo "Precomputing ImageNet-64 train stats to: $IMAGENET_STATS_FILE"
     # NOTE: pytorch-fid --save-stats is often non-recursive; our ImageNet-64 train dir has class subfolders.
@@ -197,7 +207,7 @@ evaluate_model() {
     --samples_npz "$exp_dir/samples.npz" \
     --stats_npz "$IMAGENET_STATS_FILE" \
     --device cuda \
-    --tmp_root "/project_gpfs/bjin0" \
+    --tmp_root "/project_gpfs/bata0/bjin0" \
     --output_txt "$exp_dir/fid_results.txt" \
     2>&1 | tee "$exp_dir/fid_compute_log.txt"
 
@@ -215,12 +225,12 @@ evaluate_model() {
 }
 
 # Find the newest EMA checkpoint for the experiment name.
-model_path=$(find /project_gpfs/bjin0 -name "ema_0.9999_200000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_200000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
 
 if [ -n "$model_path" ] && [ -f "$model_path" ]; then
   evaluate_model "$EVAL_MODEL_NAME" "$model_path"
 else
-  echo "FATAL: Model not found for $EVAL_MODEL_NAME (expected ema_0.9999_200000.pt under /project_gpfs/bjin0/**/logs/$EVAL_MODEL_NAME/)"
+  echo "FATAL: Model not found for $EVAL_MODEL_NAME (expected ema_0.9999_200000.pt under /project_gpfs/bata0/bjin0/**/logs/$EVAL_MODEL_NAME/)"
   exit 1
 fi
 

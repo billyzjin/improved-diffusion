@@ -455,9 +455,111 @@ case $EXPERIMENT in
         TRAINING_EXIT_CODE=$?
         ;;
 
+    geometric_linear_simple)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (linear endpoints), L_simple"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_simple
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_linear \
+            --dropout 0.3 \
+            --learn_sigma False --use_kl False \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    geometric_linear_hybrid)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (linear endpoints), L_hybrid"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_hybrid
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_linear \
+            --dropout 0.3 \
+            --learn_sigma True --use_kl False --rescale_learned_sigmas True \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    geometric_linear_vlb)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (linear endpoints), L_vlb"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_vlb
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_linear \
+            --dropout 0.3 \
+            --learn_sigma True --use_kl True --schedule_sampler loss-second-moment \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    geometric_cosine_simple)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_simple"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_simple
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_cosine \
+            --dropout 0.3 \
+            --learn_sigma False --use_kl False \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    geometric_cosine_hybrid)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_hybrid"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_hybrid
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_cosine \
+            --dropout 0.3 \
+            --learn_sigma True --use_kl False --rescale_learned_sigmas True \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
+    geometric_cosine_vlb)
+        echo "=========================================="
+        echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_vlb"
+        echo "=========================================="
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_vlb
+        mkdir -p $OPENAI_LOGDIR
+        python3 scripts/image_train_no_mpi.py \
+            --data_dir ./cifar_train \
+            $MODEL_FLAGS $DIFFUSION_STEPS \
+            --noise_schedule geometric_cosine \
+            --dropout 0.3 \
+            --learn_sigma True --use_kl True --schedule_sampler loss-second-moment \
+            $TRAIN_FLAGS --lr_anneal_steps 500000 \
+            2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=$?
+        ;;
+
     *)
         echo "ERROR: Unknown experiment: $EXPERIMENT"
-        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb, ours_v2_simple, ours_v2_hybrid, ours_v2_vlb"
+        echo "Valid options: linear_simple, linear_hybrid, linear_vlb, cosine_simple, cosine_hybrid, cosine_vlb, ours_simple, ours_hybrid, ours_vlb, ours_v2_simple, ours_v2_hybrid, ours_v2_vlb, geometric_linear_simple, geometric_linear_hybrid, geometric_linear_vlb, geometric_cosine_simple, geometric_cosine_hybrid, geometric_cosine_vlb"
         exit 1
         ;;
 esac

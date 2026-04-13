@@ -63,7 +63,13 @@ evaluate_model() {
     local use_kl="False"
     local rescale_learned_sigmas="False"
 
-    if [[ "$exp_name" == *"cosine"* ]]; then
+    if [[ "$exp_name" == *"geometric_linear"* ]]; then
+        noise_schedule="geometric_linear"
+        dropout="0.3"
+    elif [[ "$exp_name" == *"geometric_cosine"* ]]; then
+        noise_schedule="geometric_cosine"
+        dropout="0.3"
+    elif [[ "$exp_name" == *"cosine"* ]]; then
         noise_schedule="cosine"
         dropout="0.3"
     elif [[ "$exp_name" == *"ours_v2"* ]]; then
@@ -90,6 +96,9 @@ evaluate_model() {
     export OPENAI_LOG_FORMAT="stdout,log"
     mkdir -p "$OPENAI_LOGDIR"
 
+    if [ "${SKIP_NLL:-0}" = "1" ]; then
+        echo "Skipping NLL (SKIP_NLL=1)"
+    else
     echo "Calculating NLL..."
     python3 scripts/image_nll_no_mpi.py \
         --model_path "$model_path" \
@@ -114,6 +123,7 @@ evaluate_model() {
         --predict_xstart False \
         --clip_denoised True \
         2>&1 | tee "$exp_dir/nll_results.txt"
+    fi
 
     echo "Generating samples for FID..."
     RESPACING_FLAG=""
@@ -164,7 +174,7 @@ evaluate_model() {
         return 1
     fi
 
-    MNIST_STATS_FILE="/project_gpfs/bjin0/mnist_train_stats.npz"
+    MNIST_STATS_FILE="/project_gpfs/bata0/bjin0/mnist_train_stats.npz"
     if [ ! -f "$MNIST_STATS_FILE" ]; then
         echo "Precomputing MNIST train stats to: $MNIST_STATS_FILE"
         python3 -m pytorch_fid ./mnist_train "$MNIST_STATS_FILE" --save-stats --device cuda 2>&1 | tee "$exp_dir/fid_stats_build.txt"
@@ -174,7 +184,7 @@ evaluate_model() {
         --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
         --stats_npz "$MNIST_STATS_FILE" \
         --device cuda \
-        --tmp_root "/project_gpfs/bjin0" \
+        --tmp_root "/project_gpfs/bata0/bjin0" \
         --output_txt "$exp_dir/fid_results.txt" \
         2>&1 | tee "$exp_dir/fid_compute_log.txt"
 
@@ -190,7 +200,7 @@ evaluate_model() {
     echo ""
 }
 
-model_path=$(find /project_gpfs/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
 
 if [ -n "$model_path" ] && [ -f "$model_path" ]; then
     evaluate_model "$EVAL_MODEL_NAME" "$model_path"
