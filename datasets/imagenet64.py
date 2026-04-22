@@ -182,9 +182,10 @@ def _npz_iter_images(imgs: Any, labels: Optional[Any], image_size: int = 64) -> 
             else:
                 raise ValueError(f"Unexpected 3D image shape: {x.shape}")
         elif x.ndim == 1:
-            # Flattened
+            # The official downsampled ImageNet npz files store flattened
+            # images as channel planes: R[H*W], G[H*W], B[H*W].
             if x.shape[0] == image_size * image_size * 3:
-                x = x.reshape(image_size, image_size, 3)
+                x = x.reshape(3, image_size, image_size).transpose(1, 2, 0)
             else:
                 raise ValueError(f"Unexpected 1D image length: {x.shape[0]}")
         else:
@@ -518,4 +519,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
