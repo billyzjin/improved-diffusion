@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 #SBATCH --account=bata0-external
 #SBATCH --partition=long_hopper
 #SBATCH --cpus-per-task=8

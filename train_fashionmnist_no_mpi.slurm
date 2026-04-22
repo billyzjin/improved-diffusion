@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 #---------------------------------------------------------------------------------
 # Account information
@@ -31,7 +32,7 @@ module load python/booth/3.12
 #---------------------------------------------------------------------------------
 # Set environment variables
 # Default: write outputs to a job-specific directory. For resuming, you can override with RESUME_LOGDIR.
-export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_paper_repro
+export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_paper_repro
 export CUDA_VISIBLE_DEVICES=0
 export OPENAI_LOG_FORMAT="stdout,log"
 
@@ -105,7 +106,7 @@ fi
 
 # Optional: resume in-place from an existing experiment directory.
 # Usage example:
-#   sbatch --export=EXPERIMENT=cosine_simple,RESUME_LOGDIR=/project_gpfs/bjin0/$USER/<old_jobid>/logs/fashionmnist_cosine_simple train_fashionmnist_no_mpi.slurm
+#   sbatch --export=EXPERIMENT=cosine_simple,RESUME_LOGDIR=/project_gpfs/bata0/bjin0/$USER/<old_jobid>/logs/fashionmnist_cosine_simple train_fashionmnist_no_mpi.slurm
 RESUME_LOGDIR=${RESUME_LOGDIR:-""}
 if [ -n "$RESUME_LOGDIR" ]; then
     export OPENAI_LOGDIR="$RESUME_LOGDIR"
@@ -129,7 +130,7 @@ DIFFUSION_STEPS="--diffusion_steps 4000"
 case $EXPERIMENT in
     linear_simple)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_simple
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_simple
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -147,7 +148,7 @@ case $EXPERIMENT in
         ;;
     linear_hybrid)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_hybrid
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_hybrid
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -166,7 +167,7 @@ case $EXPERIMENT in
         ;;
     linear_vlb)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_vlb
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_linear_vlb
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -185,7 +186,7 @@ case $EXPERIMENT in
         ;;
     cosine_simple)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_simple
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_simple
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -203,7 +204,7 @@ case $EXPERIMENT in
         ;;
     cosine_hybrid)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_hybrid
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_hybrid
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -222,7 +223,7 @@ case $EXPERIMENT in
         ;;
     cosine_vlb)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_vlb
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_cosine_vlb
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -241,7 +242,7 @@ case $EXPERIMENT in
         ;;
     ours_simple)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_simple
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_simple
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -259,7 +260,7 @@ case $EXPERIMENT in
         ;;
     ours_hybrid)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_hybrid
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_hybrid
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -278,7 +279,7 @@ case $EXPERIMENT in
         ;;
     ours_vlb)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_vlb
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_vlb
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -297,7 +298,7 @@ case $EXPERIMENT in
         ;;
     ours_v2_simple)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_simple
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_simple
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -315,7 +316,7 @@ case $EXPERIMENT in
         ;;
     ours_v2_hybrid)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_hybrid
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_hybrid
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -334,7 +335,7 @@ case $EXPERIMENT in
         ;;
     ours_v2_vlb)
         if [ -z "$RESUME_LOGDIR" ]; then
-            export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_vlb
+            export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/fashionmnist_ours_v2_vlb
             mkdir -p "$OPENAI_LOGDIR"
         fi
         python3 scripts/image_train_no_mpi.py \
@@ -448,7 +449,7 @@ case $EXPERIMENT in
         ;;
 esac
 
-TRAINING_EXIT_CODE=$?
+TRAINING_EXIT_CODE=${PIPESTATUS[0]:-$?}
 if [ $TRAINING_EXIT_CODE -ne 0 ]; then
     echo "EXPERIMENT FAILED! Exit code: $TRAINING_EXIT_CODE"
     exit 1

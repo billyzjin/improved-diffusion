@@ -15,7 +15,8 @@ from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
 
 
-def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
+def get_named_beta_schedule(schedule_name, num_diffusion_timesteps,
+                            geometric_beta1=0.0, geometric_alpha_bar_T=0.0):
     """
     Get a pre-defined beta schedule for the given name.
 
@@ -85,6 +86,36 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
 
         z_1 = beta_1 / (1.0 - beta_1)
         z_T = (1.0 - alpha_bar_T) / alpha_bar_T
+        q = (z_T / z_1) ** (1.0 / (T - 1))
+
+        betas = np.zeros(T, dtype=np.float64)
+        betas[0] = beta_1
+        z_prev = z_1
+        for i in range(1, T):
+            betas[i] = (q - 1) * z_prev / (1.0 + q * z_prev)
+            z_prev *= q
+        betas = np.minimum(betas, 0.999)
+        return betas
+    elif schedule_name == "geometric":
+        # Generic geometric-odds schedule with user-specified endpoints.
+        T = num_diffusion_timesteps
+        beta_1 = geometric_beta1
+        alpha_bar_T_val = geometric_alpha_bar_T
+        if not (0 < beta_1 < 1):
+            raise ValueError(f"geometric schedule requires 0 < beta_1 < 1, got {beta_1}")
+        if not (0 < alpha_bar_T_val < 1):
+            raise ValueError(f"geometric schedule requires 0 < alpha_bar_T < 1, got {alpha_bar_T_val}")
+        if alpha_bar_T_val >= 1.0 - beta_1:
+            raise ValueError(
+                f"geometric schedule requires alpha_bar_T < 1 - beta_1 "
+                f"(i.e., z_T > z_1), got alpha_bar_T={alpha_bar_T_val}, "
+                f"1-beta_1={1.0 - beta_1}"
+            )
+        if T < 2:
+            raise ValueError(f"geometric schedule requires T >= 2, got {T}")
+
+        z_1 = beta_1 / (1.0 - beta_1)
+        z_T = (1.0 - alpha_bar_T_val) / alpha_bar_T_val
         q = (z_T / z_1) ** (1.0 / (T - 1))
 
         betas = np.zeros(T, dtype=np.float64)

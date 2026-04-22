@@ -55,12 +55,19 @@ def run_bpd_evaluation(model, diffusion, data, num_samples, clip_denoised):
     model.eval()
     all_bpd = []
     all_metrics = {"vb": [], "mse": [], "xstart_mse": []}
+    all_counts = []  # number of samples per batch
     num_complete = 0
 
     with th.no_grad():
         for batch, model_kwargs in data:
             if num_complete >= num_samples:
                 break
+
+            # Trim the last batch so we evaluate exactly num_samples
+            remaining = num_samples - num_complete
+            if batch.shape[0] > remaining:
+                batch = batch[:remaining]
+                model_kwargs = {k: v[:remaining] for k, v in model_kwargs.items()}
 
             batch = batch.to(dev())
             model_kwargs = {k: v.to(dev()) for k, v in model_kwargs.items()}
@@ -69,9 +76,11 @@ def run_bpd_evaluation(model, diffusion, data, num_samples, clip_denoised):
                 model, batch, clip_denoised=clip_denoised, model_kwargs=model_kwargs
             )
 
+            n = batch.shape[0]
             for key, term_list in all_metrics.items():
-                terms = minibatch_metrics[key].mean(dim=0)
+                terms = minibatch_metrics[key].sum(dim=0)  # sum over batch, not mean
                 term_list.append(terms.detach().cpu().numpy())
+            all_counts.append(n)
 
             total_bpd = minibatch_metrics["total_bpd"]
             # Fail fast on NaNs/Infs so downstream metrics (FID/TV) don't look "mysteriously bad".
@@ -81,15 +90,17 @@ def run_bpd_evaluation(model, diffusion, data, num_samples, clip_denoised):
                     "This usually indicates a diverged checkpoint (NaNs/Infs in model outputs)."
                 )
             all_bpd.extend(total_bpd.cpu().numpy())
-            num_complete += batch.shape[0]
+            num_complete += n
 
             logger.log(f"done {num_complete} samples: bpd={np.mean(all_bpd):.6f}")
 
-    # Save metrics
+    # Save per-step means across all evaluated samples.
+    total_count = sum(all_counts)
     for name, terms in all_metrics.items():
         out_path = os.path.join(logger.get_dir(), f"{name}_terms.npz")
         logger.log(f"saving {name} terms to {out_path}")
-        np.savez(out_path, np.mean(np.stack(terms), axis=0))
+        per_step_mean = np.sum(np.stack(terms, axis=0), axis=0) / total_count
+        np.savez(out_path, per_step_mean)
 
     logger.log(f"done {num_complete} samples: bpd={np.mean(all_bpd):.6f}")
 
@@ -110,5 +121,4 @@ def create_argparser():
 
 if __name__ == "__main__":
     main()
-
 

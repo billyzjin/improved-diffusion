@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 #---------------------------------------------------------------------------------
 # Account information
@@ -33,7 +34,7 @@ module load python/booth/3.12
 # Set environment variables
 # Use a persistent directory instead of /tmp to preserve results across runs
 # Use scratch space for logs (50TB available vs 14GB home directory)
-export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_paper_repro
+export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_paper_repro
 export CUDA_VISIBLE_DEVICES=0
 
 # OPTIMIZE LOGGING FOR DISK SPACE
@@ -185,7 +186,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_simple"
         echo "Target: FID = 2.90 (best FID in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -200,13 +201,14 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
         
     linear_hybrid)
         echo "=========================================="
         echo "EXPERIMENT: Linear schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -222,6 +224,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     linear_vlb)
@@ -229,7 +232,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_vlb (extra)"
         echo "NOTE: Not reported in Table 2 of the paper"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -245,13 +248,14 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
         
     cosine_simple)
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -266,13 +270,14 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
         
     cosine_hybrid)
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -288,6 +293,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
         
     cosine_vlb)
@@ -295,7 +301,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Cosine schedule, L_vlb"
         echo "Target: NLL = 2.94 bits/dim (best NLL in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -311,6 +317,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
     
     ours_simple)
@@ -318,7 +325,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_simple"
         echo "Identical to cosine_simple except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -333,7 +340,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
     
     ours_hybrid)
@@ -341,7 +348,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_hybrid"
         echo "Identical to cosine_hybrid except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -357,7 +364,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
     
     ours_vlb)
@@ -365,7 +372,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_vlb"
         echo "Identical to cosine_vlb except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_vlb
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -381,7 +388,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     ours_v2_simple)
@@ -389,7 +396,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_simple"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_simple
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -404,7 +411,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     ours_v2_hybrid)
@@ -412,7 +419,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_hybrid"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_hybrid
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -428,7 +435,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     ours_v2_vlb)
@@ -436,7 +443,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_vlb"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_vlb
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -452,7 +459,7 @@ case $EXPERIMENT in
             $TRAIN_FLAGS \
             --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_linear_simple)
@@ -469,7 +476,7 @@ case $EXPERIMENT in
             --learn_sigma False --use_kl False \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_linear_hybrid)
@@ -486,7 +493,7 @@ case $EXPERIMENT in
             --learn_sigma True --use_kl False --rescale_learned_sigmas True \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_linear_vlb)
@@ -503,7 +510,7 @@ case $EXPERIMENT in
             --learn_sigma True --use_kl True --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_cosine_simple)
@@ -520,7 +527,7 @@ case $EXPERIMENT in
             --learn_sigma False --use_kl False \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_cosine_hybrid)
@@ -537,7 +544,7 @@ case $EXPERIMENT in
             --learn_sigma True --use_kl False --rescale_learned_sigmas True \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     geometric_cosine_vlb)
@@ -554,7 +561,7 @@ case $EXPERIMENT in
             --learn_sigma True --use_kl True --schedule_sampler loss-second-moment \
             $TRAIN_FLAGS --lr_anneal_steps 500000 \
             2>&1 | tee "$OPENAI_LOGDIR/log.txt"
-        TRAINING_EXIT_CODE=$?
+        TRAINING_EXIT_CODE=${PIPESTATUS[0]}
         ;;
 
     *)
@@ -564,8 +571,7 @@ case $EXPERIMENT in
         ;;
 esac
 
-# Check if training completed successfully
-TRAINING_EXIT_CODE=$?
+# Check if training completed successfully (TRAINING_EXIT_CODE set inside each case arm via PIPESTATUS)
 if [ $TRAINING_EXIT_CODE -eq 0 ]; then
     echo ""
     echo "=========================================="

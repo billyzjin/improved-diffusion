@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 #---------------------------------------------------------------------------------
 # Account information
@@ -99,7 +100,7 @@ fi
 case $EXPERIMENT in
   linear_simple)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_simple
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_simple
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -115,7 +116,7 @@ case $EXPERIMENT in
     ;;
   linear_hybrid)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_hybrid
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_hybrid
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -132,7 +133,7 @@ case $EXPERIMENT in
     ;;
   linear_vlb)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_vlb
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_linear_vlb
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -149,7 +150,7 @@ case $EXPERIMENT in
     ;;
   cosine_simple)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_simple
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_simple
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -165,7 +166,7 @@ case $EXPERIMENT in
     ;;
   cosine_hybrid)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_hybrid
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_hybrid
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -182,7 +183,7 @@ case $EXPERIMENT in
     ;;
   cosine_vlb)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_vlb
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_cosine_vlb
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -199,7 +200,7 @@ case $EXPERIMENT in
     ;;
   ours_simple)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_simple
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_simple
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -215,7 +216,7 @@ case $EXPERIMENT in
     ;;
   ours_hybrid)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_hybrid
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_hybrid
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -232,7 +233,7 @@ case $EXPERIMENT in
     ;;
   ours_vlb)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_vlb
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_vlb
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -249,7 +250,7 @@ case $EXPERIMENT in
     ;;
   ours_v2_simple)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_simple
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_simple
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -265,7 +266,7 @@ case $EXPERIMENT in
     ;;
   ours_v2_hybrid)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_hybrid
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_hybrid
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -282,7 +283,7 @@ case $EXPERIMENT in
     ;;
   ours_v2_vlb)
     if [ -z "$RESUME_LOGDIR" ]; then
-      export OPENAI_LOGDIR=/project_gpfs/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_vlb
+      export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/imagenet64_ours_v2_vlb
       mkdir -p "$OPENAI_LOGDIR"
     fi
     python3 scripts/image_train_no_mpi.py \
@@ -394,7 +395,7 @@ case $EXPERIMENT in
     ;;
 esac
 
-EXIT_CODE=$?
+EXIT_CODE=${PIPESTATUS[0]:-$?}
 if [ $EXIT_CODE -ne 0 ]; then
   echo "Training failed with exit code: $EXIT_CODE"
   exit $EXIT_CODE

@@ -32,6 +32,8 @@ def model_and_diffusion_defaults():
         rescale_learned_sigmas=True,
         use_checkpoint=False,
         use_scale_shift_norm=True,
+        geometric_beta1=0.0,
+        geometric_alpha_bar_T=0.0,
     )
 
 
@@ -55,6 +57,8 @@ def create_model_and_diffusion(
     rescale_learned_sigmas,
     use_checkpoint,
     use_scale_shift_norm,
+    geometric_beta1,
+    geometric_alpha_bar_T,
 ):
     model = create_model(
         image_size,
@@ -79,6 +83,8 @@ def create_model_and_diffusion(
         rescale_timesteps=rescale_timesteps,
         rescale_learned_sigmas=rescale_learned_sigmas,
         timestep_respacing=timestep_respacing,
+        geometric_beta1=geometric_beta1,
+        geometric_alpha_bar_T=geometric_alpha_bar_T,
     )
     return model, diffusion
 
@@ -238,8 +244,14 @@ def create_gaussian_diffusion(
     rescale_timesteps=False,
     rescale_learned_sigmas=False,
     timestep_respacing="",
+    geometric_beta1=0.0,
+    geometric_alpha_bar_T=0.0,
 ):
-    betas = gd.get_named_beta_schedule(noise_schedule, steps)
+    betas = gd.get_named_beta_schedule(
+        noise_schedule, steps,
+        geometric_beta1=geometric_beta1,
+        geometric_alpha_bar_T=geometric_alpha_bar_T,
+    )
     if use_kl:
         loss_type = gd.LossType.RESCALED_KL
     elif rescale_learned_sigmas:
