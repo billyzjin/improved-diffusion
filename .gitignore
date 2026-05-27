@@ -1,6 +1,34 @@
 downloaded_samples/
 slurm_logs/
 
+# Local prepared datasets.
+.mnist_cache/
+cifar10_data/
+cifar_train/
+cifar_test/
+cifar_train_45k/
+cifar_val/
+fashion_train/
+fashion_test/
+mnist_train/
+mnist_test/
+
+# Generated cluster logs and local repair/cleanup outputs.
+*.out
+*.err
+*.log
+repair_imagenet64*.log
+imagenet_cleanup_tmux.log
+audit_package/imagenet64_repair_smoke/
+audit_package/imagenet64_incomplete_train_dirs_*.txt
+datasets/repair_imagenet64_layout.py
+repair_imagenet64_layout.slurm
+improved_diffusion/train_util_patched.py
+
+# Local Codex metadata.
+.codex
+.codex/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -84,4 +112,3 @@ venv.bak/
 
 # macOS
 .DS_Store
-

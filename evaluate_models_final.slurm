@@ -50,6 +50,10 @@ echo "Working directory: $(pwd)"
 # The parent evaluation directory is now passed in as an environment variable
 EVAL_DIR="$PARENT_EVAL_DIR"
 echo "Evaluation results will be saved to sub-directories within: $EVAL_DIR"
+CLASS_COND=${CLASS_COND:-False}
+NUM_CLASSES=${NUM_CLASSES:-1000}
+echo "Class conditional: $CLASS_COND"
+echo "Num classes:       $NUM_CLASSES"
 
 # List of all experiments to evaluate (comprehensive)
 # NOTE: This is no longer used. The model to evaluate is passed via $EVAL_MODEL_NAME
@@ -151,7 +155,8 @@ evaluate_model() {
         --rescale_learned_sigmas "$rescale_learned_sigmas" \
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
-        --class_cond False \
+        --class_cond "$CLASS_COND" \
+        --num_classes "$NUM_CLASSES" \
         --use_checkpoint False \
         --rescale_timesteps True \
         --predict_xstart False \
@@ -190,7 +195,8 @@ evaluate_model() {
         --diffusion_steps 4000 \
         --noise_schedule "$noise_schedule" \
         $RESPACING_FLAG \
-        --class_cond False \
+        --class_cond "$CLASS_COND" \
+        --num_classes "$NUM_CLASSES" \
         --use_checkpoint False \
         --rescale_timesteps True \
         --predict_xstart False \

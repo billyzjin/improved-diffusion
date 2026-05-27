@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --partition=long_hopper
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=06:00:00
+#SBATCH --time=16:00:00
 #SBATCH --account=bata0-external
 
 # Probe run for geometric schedule endpoint tuning.
@@ -20,6 +20,27 @@
 #          --job-name=probe_b1e-6 train_probe_geometric.slurm
 
 set -euo pipefail
+
+module load python/booth/3.12
+
+if module load cuda/12.8 2>/dev/null; then
+    echo "Loaded cuda/12.8"
+elif module load cuda/12.4 2>/dev/null; then
+    echo "Loaded cuda/12.4"
+elif module load cuda/12.2 2>/dev/null; then
+    echo "Loaded cuda/12.2"
+elif module load cuda/11.8 2>/dev/null; then
+    echo "Loaded cuda/11.8"
+else
+    echo "ERROR: No CUDA module found"
+    exit 1
+fi
+
+echo "Testing PyTorch..."
+python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')" || { echo "ERROR: PyTorch test failed"; exit 1; }
+
+# Make the in-repo package importable without requiring a separate install step.
+export PYTHONPATH="/home/bjin0/improved-diffusion:${PYTHONPATH:-}"
 
 echo "=========================================="
 echo "GEOMETRIC ENDPOINT PROBE: ${PROBE_NAME}"
@@ -41,6 +62,8 @@ python3 scripts/image_train_no_mpi.py \
     --image_size 32 \
     --num_channels 128 \
     --num_res_blocks 3 \
+    --num_heads 4 \
+    --attention_resolutions 16,8 \
     --learn_sigma True \
     --dropout 0.3 \
     --diffusion_steps 4000 \
@@ -49,6 +72,9 @@ python3 scripts/image_train_no_mpi.py \
     --geometric_alpha_bar_T ${GEOMETRIC_ALPHA_BAR_T} \
     --lr 1e-4 \
     --batch_size 128 \
+    --class_cond False \
+    --use_checkpoint False \
+    --rescale_timesteps True \
     --rescale_learned_sigmas True \
     --use_scale_shift_norm True \
     --lr_anneal_steps 50000 \
@@ -80,12 +106,16 @@ python3 scripts/image_nll_no_mpi.py \
     --image_size 32 \
     --num_channels 128 \
     --num_res_blocks 3 \
+    --num_heads 4 \
+    --attention_resolutions 16,8 \
     --learn_sigma True \
     --dropout 0.3 \
     --diffusion_steps 4000 \
     --noise_schedule geometric \
     --geometric_beta1 ${GEOMETRIC_BETA1} \
     --geometric_alpha_bar_T ${GEOMETRIC_ALPHA_BAR_T} \
+    --class_cond False \
+    --use_checkpoint False \
     --rescale_learned_sigmas True \
     --use_scale_shift_norm True \
     --rescale_timesteps True \

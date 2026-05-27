@@ -1,0 +1,85 @@
+dataset	schedule	objective	beta_1	alpha_bar_T	nll_bpd	fid	nll_samples	fid_samples	sampling_steps	source
+mnist	linear	simple			0.959524	2.598570	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_linear_simple
+mnist	linear	hybrid			0.387824	2.573753	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_linear_hybrid
+mnist	linear	vlb			0.476889	0.579668	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_linear_vlb
+mnist	cosine	simple			0.754538	2.173214	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_cosine_simple
+mnist	cosine	hybrid			0.346260	2.258499	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_cosine_hybrid
+mnist	cosine	vlb			0.315578	0.432768	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_20260128_083113/mnist_cosine_vlb
+mnist	geometric_linear	simple			0.647220	0.516012	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_linear_simple
+mnist	geometric_linear	hybrid			0.345607	0.494281	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_linear_hybrid
+mnist	geometric_linear	vlb			0.391178	0.609716	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_linear_vlb
+mnist	geometric_cosine	simple			0.343540	0.482725	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_cosine_simple
+mnist	geometric_cosine	hybrid			0.286482	0.434488	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_cosine_hybrid
+mnist	geometric_cosine	vlb			0.312752	0.450340	10000	50000	4000	/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_cosine_vlb
+mnist	tuned_nll	simple	1e-5	3e-3	0.407752	2.206091	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_nll	hybrid	1e-5	3e-3	0.327399	2.089425	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_nll	vlb	1e-5	3e-3	0.308944	1.616805	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_balanced	simple	3e-5	1e-3	0.809146	0.859855	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_balanced	hybrid	3e-5	1e-3	0.374347	0.720239	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_balanced	vlb	3e-5	1e-3	0.424255	0.961700	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_fid	simple	3e-3	1e-2	3.770517	7.988203	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_fid	hybrid	3e-3	1e-2	0.827381	7.757873	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+mnist	tuned_fid	vlb	3e-3	1e-2	1.068162	5.832300	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	linear	simple			1.452883	2.435917	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260121_095043/fashionmnist_linear_simple
+fashionmnist	linear	hybrid			0.947477	2.320925	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260121_095043/fashionmnist_linear_hybrid
+fashionmnist	linear	vlb			1.096259	1.277860	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260125_101550/fashionmnist_linear_vlb
+fashionmnist	cosine	simple			1.214592	2.221193	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260121_095043/fashionmnist_cosine_simple
+fashionmnist	cosine	hybrid			0.827938	2.352145	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260121_095043/fashionmnist_cosine_hybrid
+fashionmnist	cosine	vlb			0.816530	1.772126	10000	50000	4000	/project_gpfs/bata0/bjin0/fashion_evaluation_parallel_20260121_095043/fashionmnist_cosine_vlb
+fashionmnist	geometric_linear	simple			1.746214	1.512209	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_linear_simple
+fashionmnist	geometric_linear	hybrid			0.887216	1.546636	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_linear_hybrid
+fashionmnist	geometric_linear	vlb			0.921555	1.399474	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_linear_vlb
+fashionmnist	geometric_cosine	simple			0.862070	1.438355	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_cosine_simple
+fashionmnist	geometric_cosine	hybrid			0.761154	1.230924	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_cosine_hybrid
+fashionmnist	geometric_cosine	vlb			0.773261	1.254050	10000	50000	4000	/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_cosine_vlb
+fashionmnist	tuned_nll	simple	1e-5	3e-3	0.925271	4.263598	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_nll	hybrid	1e-5	3e-3	0.777678	4.637491	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_nll	vlb	1e-5	3e-3	0.772187	3.366427	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_balanced	simple	3e-5	1e-3	2.165292	2.108778	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_balanced	hybrid	3e-5	1e-3	0.928733	2.081516	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_balanced	vlb	3e-5	1e-3	0.984964	1.570319	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_fid	simple	3e-3	1e-2	10.282825	21.763115	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_fid	hybrid	3e-3	1e-2	2.517524	23.443041	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+fashionmnist	tuned_fid	vlb	3e-3	1e-2	2.380300	15.968571	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	linear	simple			3.418211	9.768684	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260121_095053/cifar10_linear_simple
+cifar10	linear	hybrid			3.295683	8.420695	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260121_095053/cifar10_linear_hybrid
+cifar10	linear	vlb			3.090245	10.523915	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260125_101538/cifar10_linear_vlb
+cifar10	cosine	simple			3.298120	5.549630	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260121_095053/cifar10_cosine_simple
+cifar10	cosine	hybrid			3.206944	5.474877	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260121_095053/cifar10_cosine_hybrid
+cifar10	cosine	vlb			2.981294	11.756001	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_20260121_095053/cifar10_cosine_vlb
+cifar10	geometric_linear	simple			8.921947	6.795889	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_linear_simple
+cifar10	geometric_linear	hybrid			3.012372	7.114203	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_linear_hybrid
+cifar10	geometric_linear	vlb			3.009022	11.289727	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_linear_vlb
+cifar10	geometric_cosine	simple			4.874985	9.684377	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_cosine_simple
+cifar10	geometric_cosine	hybrid			2.921334	9.037849	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_cosine_hybrid
+cifar10	geometric_cosine	vlb			2.924799	10.693692	10000	50000	4000	/project_gpfs/bata0/bjin0/evaluation_parallel_geometric_20260410_231224/cifar10_geometric_cosine_vlb
+cifar10	tuned_nll	simple	1e-5	3e-3	5.534384	7.541979	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_nll	hybrid	1e-5	3e-3	2.928191	7.261212	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_nll	vlb	1e-5	3e-3	2.919428	10.174017	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_balanced	simple	3e-5	1e-3	10.117078	6.214429	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_balanced	hybrid	3e-5	1e-3	3.055473	6.626218	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_balanced	vlb	3e-5	1e-3	3.023753	11.316232	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_fid	simple	3e-3	1e-2	23.078684	5.042053	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_fid	hybrid	3e-3	1e-2	4.325410	5.583151	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+cifar10	tuned_fid	vlb	3e-3	1e-2	4.460992	11.006580	10000	50000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	linear	simple			3.521594	30.746197	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_linear_simple
+imagenet64	linear	hybrid			3.397859	30.158692	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_linear_hybrid
+imagenet64	linear	vlb			3.341491	41.212610	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_linear_vlb
+imagenet64	cosine	simple			3.440620	27.780287	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_cosine_simple
+imagenet64	cosine	hybrid			3.366802	28.799262	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_cosine_hybrid
+imagenet64	cosine	vlb			3.357082	62.814386	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_cosine_vlb
+imagenet64	geometric_linear	simple			10.759519	35.093241	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_linear_simple
+imagenet64	geometric_linear	hybrid			3.328986	34.554963	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_linear_hybrid
+imagenet64	geometric_linear	vlb			3.327054	45.332546	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_linear_vlb
+imagenet64	geometric_cosine	simple			6.068291	39.101916	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_cosine_simple
+imagenet64	geometric_cosine	hybrid			3.315868	40.381191	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_cosine_hybrid
+imagenet64	geometric_cosine	vlb			3.310196	43.775487	10000	10000	4000	/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_cosine_vlb
+imagenet64	tuned_nll	simple	1e-5	3e-3	6.839398	36.412715	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_nll	hybrid	1e-5	3e-3	3.303356	36.056280	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_nll	vlb	1e-5	3e-3	3.305856	48.582325	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_balanced	simple	3e-5	1e-3	11.951459	32.898845	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_balanced	hybrid	3e-5	1e-3	3.335386	34.177528	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_balanced	vlb	3e-5	1e-3	3.334938	46.293956	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_fid	simple	3e-3	1e-2	20.956137	34.641486	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_fid	hybrid	3e-3	1e-2	4.113825	33.538778	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv
+imagenet64	tuned_fid	vlb	3e-3	1e-2	4.098191	49.854653	10000	10000	4000	/project_gpfs/bata0/bjin0/tuned_geometric_evaluation_20260523_092433/results_summary.tsv

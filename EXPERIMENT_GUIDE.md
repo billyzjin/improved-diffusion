@@ -32,7 +32,7 @@ All schedules are implemented in `improved_diffusion/gaussian_diffusion.py` in t
 | CIFAR-10 | 32x32 | 50,000 | 10,000 | `cifar_train/`, `cifar_test/` | PNG files, prepared by `datasets/cifar10.py` |
 | Fashion-MNIST | 32x32 | 60,000 | 10,000 | `fashion_train/`, `fashion_test/` | PNG files, prepared by `datasets/fashionmnist.py` |
 | MNIST | 32x32 | 60,000 | 10,000 | `mnist_train/`, `mnist_test/` | PNG files, prepared by `datasets/mnist.py` |
-| ImageNet-64 | 64x64 | ~1.28M | 50,000 | `/project_gpfs/bata0/bjin0/imagenet64/train`, `.../val` | Class subfolders, prepared by `datasets/imagenet64.py` via `prepare_imagenet64.slurm` |
+| ImageNet-64 | 64x64 | ~1.28M | 50,000 | `/project_gpfs/bata0/bjin0/imagenet64_fixed_20260423/train`, `.../val` | Class subfolders, prepared by `datasets/imagenet64.py` via `prepare_imagenet64.slurm` |
 
 CIFAR-10, Fashion-MNIST, and MNIST datasets live in the repo working directory (`/home/bjin0/improved-diffusion/`). ImageNet-64 lives on project storage because of its size.
 
@@ -65,7 +65,7 @@ All training checkpoints, evaluation outputs, and cached statistics live under `
 
 ```
 /project_gpfs/bata0/bjin0/
-├── imagenet64/                        # ImageNet-64 dataset (PNG images)
+├── imagenet64_fixed_20260423/         # Corrected ImageNet-64 dataset (PNG images)
 │   ├── train/                         #   ~1.28M images in class subfolders
 │   └── val/                           #   50K images in class subfolders
 │
@@ -101,7 +101,7 @@ All training checkpoints, evaluation outputs, and cached statistics live under `
 ├── cifar10_train_stats.npz            # Cached FID statistics for CIFAR-10
 ├── fashionmnist_train_stats.npz       # Cached FID statistics for Fashion-MNIST
 ├── mnist_train_stats.npz              # Cached FID statistics for MNIST
-└── imagenet64_train_stats.npz         # Cached FID statistics for ImageNet-64
+└── imagenet64_fixed_20260423_train_stats.npz  # Cached FID statistics for corrected ImageNet-64
 ```
 
 ## Model Architecture
@@ -157,7 +157,7 @@ ImageNet-64 requires a SLURM job because it processes large NPZ archives:
 bash submit_prepare_imagenet64.sh    # submits prepare_imagenet64.slurm
 ```
 
-This reads raw `.npz` archives and writes PNG images to `/project_gpfs/bata0/bjin0/imagenet64/{train,val}/`.
+This reads raw `.npz` archives and writes PNG images to `/project_gpfs/bata0/bjin0/imagenet64_fixed_20260423/{train,val}/`.
 
 ### Stage 1: Training
 

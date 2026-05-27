@@ -9,8 +9,9 @@ echo "  2. ours_v2_hybrid"
 echo "  3. ours_v2_vlb"
 echo "=========================================="
 
-IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}
-IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}
+IMAGENET_DATA_ROOT=${IMAGENET_DATA_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505}
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-${IMAGENET_DATA_ROOT}/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-${IMAGENET_DATA_ROOT}/val}
 
 # NOTE: /project_gpfs may not be mounted on the login node. Skip the check
 # here; the training SLURM script validates the paths on the compute node.
@@ -26,7 +27,7 @@ mkdir -p "slurm_logs"
 submit_one () {
   local exp="$1"
   sbatch \
-    --export=ALL,EXPERIMENT="$exp",IMAGENET_TRAIN_DIR="$IMAGENET_TRAIN_DIR",IMAGENET_VAL_DIR="$IMAGENET_VAL_DIR" \
+    --export=ALL,EXPERIMENT="$exp",IMAGENET_DATA_ROOT="$IMAGENET_DATA_ROOT",IMAGENET_TRAIN_DIR="$IMAGENET_TRAIN_DIR",IMAGENET_VAL_DIR="$IMAGENET_VAL_DIR" \
     --job-name="im64_train_${exp}" \
     --output="slurm_logs/im64_train_${exp}_%j.out" \
     --error="slurm_logs/im64_train_${exp}_%j.err" \

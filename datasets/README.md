@@ -16,6 +16,30 @@ Convert these `.npz` files into `imagenet64/train/` and `imagenet64/val/` direct
 
 - `datasets/imagenet64.py`
 
+For Nichol & Dhariwal unconditional ImageNet-64 reproduction runs, prefer the stricter verifier/rebuilder:
+
+- `download_imagenet64_official.slurm`
+- `submit_download_imagenet64_official.sh`
+- `datasets/verify_imagenet64_official.py`
+- `verify_imagenet64_official.slurm`
+- `submit_verify_imagenet64_official.sh`
+
+On the cluster, submit the direct official downloads with:
+
+```
+./submit_download_imagenet64_official.sh
+```
+
+This downloads the official `Imagenet64_train_part1_npz.zip`, `Imagenet64_train_part2_npz.zip`, and `Imagenet64_val_npz.zip` archives into `/project_gpfs/bata0/bjin0/imagenet64_downloads`, then extracts them under `unzipped/`.
+
+After the download job succeeds, submit the verifier/rebuilder with:
+
+```
+./submit_verify_imagenet64_official.sh
+```
+
+This path treats `train_data_batch_1.npz` through `train_data_batch_10.npz` plus `val_data.npz` as the source of truth, rebuilds a fresh output tree such as `/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505`, and writes a manifest with source metadata, counts, SHA256 hashes, converted-tree image audit results, sample grids, and source-to-PNG exact spot checks. Do not point full ImageNet training jobs at a converted tree until that manifest reports `ok: true` with exactly `1,281,167` train images and `50,000` validation images.
+
 ## Class-conditional ImageNet
 
 For our class-conditional models, we use the official ILSVRC2012 dataset with manual center cropping and downsampling. To obtain this dataset, navigate to [this page on image-net.org](http://www.image-net.org/challenges/LSVRC/2012/downloads) and sign in (or create an account if you do not already have one). Then click on the link reading "Training images (Task 1 & 2)". This is a 138GB tar file containing 1000 sub-tar files, one per class.

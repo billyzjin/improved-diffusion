@@ -13,12 +13,16 @@ echo "  5. geometric_cosine_hybrid"
 echo "  6. geometric_cosine_vlb"
 echo "=========================================="
 
+IMAGENET_DATA_ROOT=${IMAGENET_DATA_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505}
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-${IMAGENET_DATA_ROOT}/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-${IMAGENET_DATA_ROOT}/val}
+
 mkdir -p "slurm_logs"
 
 for obj in simple hybrid vlb; do
     for endpt in linear cosine; do
         exp="geometric_${endpt}_${obj}"
-        JOB=$(sbatch --export=EXPERIMENT=$exp \
+        JOB=$(sbatch --export=ALL,EXPERIMENT="$exp",IMAGENET_DATA_ROOT="$IMAGENET_DATA_ROOT",IMAGENET_TRAIN_DIR="$IMAGENET_TRAIN_DIR",IMAGENET_VAL_DIR="$IMAGENET_VAL_DIR" \
             --job-name="train_${exp}" \
             --output="slurm_logs/train_${exp}_%j.out" \
             --error="slurm_logs/train_${exp}_%j.err" \

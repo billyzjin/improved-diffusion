@@ -45,10 +45,11 @@ PY
 
 cd /home/bjin0/improved-diffusion || exit 1
 
-export IMAGENET_TRAIN_DIR="${IMAGENET_TRAIN_DIR:-/project_gpfs/bjin0/imagenet64/train}"
-export IMAGENET_VAL_DIR="${IMAGENET_VAL_DIR:-/project_gpfs/bjin0/imagenet64/val}"
-export IMAGENET_TRAIN_STATS="${IMAGENET_TRAIN_STATS:-/project_gpfs/bjin0/imagenet64_train_stats.npz}"
-export OUT_DIR="${OUT_DIR:-/project_gpfs/bjin0/imagenet64_real_vs_real_fid_${SLURM_JOB_ID}}"
+export IMAGENET_DATA_ROOT="${IMAGENET_DATA_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505}"
+export IMAGENET_TRAIN_DIR="${IMAGENET_TRAIN_DIR:-${IMAGENET_DATA_ROOT}/train}"
+export IMAGENET_VAL_DIR="${IMAGENET_VAL_DIR:-${IMAGENET_DATA_ROOT}/val}"
+export IMAGENET_TRAIN_STATS="${IMAGENET_TRAIN_STATS:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505_train_stats.npz}"
+export OUT_DIR="${OUT_DIR:-/project_gpfs/bata0/bjin0/imagenet64_real_vs_real_fid_${SLURM_JOB_ID}}"
 
 mkdir -p "$OUT_DIR"
 
@@ -137,4 +138,3 @@ echo "Done: $(date)"
 echo "Output dir: $OUT_DIR"
 echo "FID result:"
 cat "$OUT_DIR/real_vs_real_fid.txt"
-

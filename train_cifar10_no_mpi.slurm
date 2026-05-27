@@ -1,5 +1,4 @@
 #!/bin/bash
-set -o pipefail
 
 #---------------------------------------------------------------------------------
 # Account information
@@ -18,6 +17,8 @@ set -o pipefail
 #SBATCH --job-name=cifar10_paper_repro
 #SBATCH --output=cifar10_paper_%j.out
 #SBATCH --error=cifar10_paper_%j.err
+
+set -o pipefail
 
 #---------------------------------------------------------------------------------
 # Print some useful variables
@@ -85,7 +86,7 @@ fi
 #---------------------------------------------------------------------------------
 
 echo "Preparing CIFAR-10 dataset..."
-if [ ! -d "cifar_train" ]; then
+if [ ! -d "cifar_train" ] || [ ! -d "cifar_test" ]; then
     echo "ERROR: CIFAR-10 dataset not found in current directory!"
     echo ""
     echo "The script requires the real CIFAR-10 dataset to reproduce paper results."
@@ -96,26 +97,31 @@ if [ ! -d "cifar_train" ]; then
     exit 1
 fi
 
-# Verify dataset completeness
-TRAIN_COUNT=$(find cifar_train -name "*.png" | wc -l)
-TEST_COUNT=$(find cifar_test -name "*.png" | wc -l)
+# Verify dataset completeness unless explicitly skipped. The full count walks
+# 60k files and can become slow when many jobs start at once on shared storage.
+if [ "${SKIP_DATASET_VERIFY:-0}" = "1" ]; then
+    echo "Skipping CIFAR-10 file-count verification (SKIP_DATASET_VERIFY=1)"
+else
+    TRAIN_COUNT=$(find cifar_train -name "*.png" | wc -l)
+    TEST_COUNT=$(find cifar_test -name "*.png" | wc -l)
 
-echo "Found $TRAIN_COUNT training images and $TEST_COUNT test images"
+    echo "Found $TRAIN_COUNT training images and $TEST_COUNT test images"
 
-if [ $TRAIN_COUNT -lt 50000 ]; then
-    echo "ERROR: Incomplete CIFAR-10 dataset! Expected 50,000 training images, found $TRAIN_COUNT"
-    echo "Please re-download the dataset:"
-    echo "  rm -rf cifar_train cifar_test"
-    echo "  python3 datasets/cifar10.py"
-    exit 1
-fi
+    if [ $TRAIN_COUNT -lt 50000 ]; then
+        echo "ERROR: Incomplete CIFAR-10 dataset! Expected 50,000 training images, found $TRAIN_COUNT"
+        echo "Please re-download the dataset:"
+        echo "  rm -rf cifar_train cifar_test"
+        echo "  python3 datasets/cifar10.py"
+        exit 1
+    fi
 
-if [ $TEST_COUNT -lt 10000 ]; then
-    echo "ERROR: Incomplete CIFAR-10 dataset! Expected 10,000 test images, found $TEST_COUNT"
-    echo "Please re-download the dataset:"
-    echo "  rm -rf cifar_train cifar_test"
-    echo "  python3 datasets/cifar10.py"
-    exit 1
+    if [ $TEST_COUNT -lt 10000 ]; then
+        echo "ERROR: Incomplete CIFAR-10 dataset! Expected 10,000 test images, found $TEST_COUNT"
+        echo "Please re-download the dataset:"
+        echo "  rm -rf cifar_train cifar_test"
+        echo "  python3 datasets/cifar10.py"
+        exit 1
+    fi
 fi
 
 echo "CIFAR-10 dataset verified successfully"
@@ -163,6 +169,20 @@ echo ""
 # Note: channel_mult is hardcoded to (1,2,2,2) for image_size=32 in script_util.py
 MODEL_FLAGS="--image_size 32 --num_channels 128 --num_res_blocks 3"
 MODEL_FLAGS="$MODEL_FLAGS --num_heads 4 --attention_resolutions 16,8 --use_scale_shift_norm True"
+CLASS_COND=${CLASS_COND:-False}
+NUM_CLASSES=${NUM_CLASSES:-1000}
+MODEL_FLAGS="$MODEL_FLAGS --class_cond $CLASS_COND --num_classes $NUM_CLASSES"
+CIFAR_LOG_PREFIX=${CIFAR_LOG_PREFIX:-}
+if [ -z "$CIFAR_LOG_PREFIX" ]; then
+    if [[ "$CLASS_COND" == "True" || "$CLASS_COND" == "true" || "$CLASS_COND" == "1" ]]; then
+        CIFAR_LOG_PREFIX="cifar10_cond"
+    else
+        CIFAR_LOG_PREFIX="cifar10"
+    fi
+fi
+echo "Class conditional: $CLASS_COND"
+echo "Num classes:       $NUM_CLASSES"
+echo "Log prefix:        $CIFAR_LOG_PREFIX"
 
 # Training flags (from paper) - OPTIMIZED FOR DISK SPACE
 # Reduced log_interval from 100 to 1000 to cut logging by 10x (500,000 steps = 500 logs instead of 5,000)
@@ -186,7 +206,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_simple"
         echo "Target: FID = 2.90 (best FID in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_linear_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -208,7 +228,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Linear schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -232,7 +252,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Linear schedule, L_vlb (extra)"
         echo "NOTE: Not reported in Table 2 of the paper"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_linear_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_linear_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -255,7 +275,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -277,7 +297,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Cosine schedule, L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -301,7 +321,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Cosine schedule, L_vlb"
         echo "Target: NLL = 2.94 bits/dim (best NLL in paper)"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_cosine_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -325,7 +345,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_simple"
         echo "Identical to cosine_simple except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_simple
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -348,7 +368,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_hybrid"
         echo "Identical to cosine_hybrid except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_hybrid
         mkdir -p $OPENAI_LOGDIR
         
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -372,7 +392,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Our Custom schedule, L_vlb"
         echo "Identical to cosine_vlb except noise schedule"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_vlb
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -396,7 +416,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_simple"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_v2_simple
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -419,7 +439,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_hybrid"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_v2_hybrid
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -443,7 +463,7 @@ case $EXPERIMENT in
         echo "EXPERIMENT: Optimal schedule (v2), L_vlb"
         echo "beta_t = 1/(T-t+1), theoretically optimal"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_ours_v2_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_ours_v2_vlb
         mkdir -p $OPENAI_LOGDIR
 
         echo "Starting training with output redirected to: $OPENAI_LOGDIR/log.txt"
@@ -466,7 +486,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (linear endpoints), L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_linear_simple
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -483,7 +503,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (linear endpoints), L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_linear_hybrid
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -500,7 +520,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (linear endpoints), L_vlb"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_linear_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_linear_vlb
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -517,7 +537,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_simple"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_simple
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_cosine_simple
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -534,7 +554,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_hybrid"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_hybrid
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_cosine_hybrid
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \
@@ -551,7 +571,7 @@ case $EXPERIMENT in
         echo "=========================================="
         echo "EXPERIMENT: Geometric schedule (cosine endpoints), L_vlb"
         echo "=========================================="
-        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/cifar10_geometric_cosine_vlb
+        export OPENAI_LOGDIR=/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${CIFAR_LOG_PREFIX}_geometric_cosine_vlb
         mkdir -p $OPENAI_LOGDIR
         python3 scripts/image_train_no_mpi.py \
             --data_dir ./cifar_train \

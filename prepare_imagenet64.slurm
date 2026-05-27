@@ -37,7 +37,7 @@ TRAIN_NPZ_DIR_PART2=${TRAIN_NPZ_DIR_PART2:-/project_gpfs/bjin0/imagenet64_downlo
 VAL_NPZ=${VAL_NPZ:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_val_npz/val_data.npz}
 
 # Output root directory (will create train/ and val/ under this)
-OUT_ROOT=${OUT_ROOT:-/project_gpfs/bjin0/imagenet64}
+OUT_ROOT=${OUT_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_fixed_20260423}
 
 # Optional: set MAX_IMAGES_PER_SPLIT for a quick smoke test (0 = full dataset).
 MAX_IMAGES_PER_SPLIT=${MAX_IMAGES_PER_SPLIT:-0}
@@ -83,4 +83,3 @@ echo "ImageNet64 prep job complete."
 echo "Train dir: $OUT_ROOT/train"
 echo "Val dir:   $OUT_ROOT/val"
 echo "=========================================="
-

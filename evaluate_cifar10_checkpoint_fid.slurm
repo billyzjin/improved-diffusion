@@ -1,0 +1,226 @@
+#!/bin/bash
+#SBATCH --account=bata0-external
+#SBATCH --partition=long_hopper
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=24:00:00
+#SBATCH --gres=gpu:h100:1
+#SBATCH --job-name=cifar_fid_ckpt
+
+set -euo pipefail
+
+required_vars=(
+    EVAL_MODEL_NAME
+    MODEL_PATH
+    CHECKPOINT_STEP
+    PARENT_EVAL_DIR
+)
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var:-}" ]; then
+        echo "ERROR: required environment variable $var is not set"
+        exit 1
+    fi
+done
+
+NUM_SAMPLES=${NUM_SAMPLES:-10000}
+SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE:-256}
+KEEP_SAMPLES=${KEEP_SAMPLES:-0}
+FORCE=${FORCE:-0}
+CIFAR_STATS_FILE=${CIFAR_STATS_FILE:-/project_gpfs/bata0/bjin0/cifar10_train_stats.npz}
+
+echo "=========================================="
+echo "CIFAR-10 CHECKPOINT FID"
+echo "Job ID: ${SLURM_JOB_ID:-N/A}"
+echo "Experiment: $EVAL_MODEL_NAME"
+echo "Step: $CHECKPOINT_STEP"
+echo "Model: $MODEL_PATH"
+echo "Samples: $NUM_SAMPLES"
+echo "Node: ${SLURM_NODELIST:-N/A}"
+echo "=========================================="
+
+echo "Loading modules..."
+module load python/booth/3.12 || { echo "ERROR: failed to load python/booth/3.12"; exit 1; }
+
+if module load cuda/12.8 2>/dev/null; then
+    echo "Loaded cuda/12.8"
+elif module load cuda/12.4 2>/dev/null; then
+    echo "Loaded cuda/12.4"
+elif module load cuda/12.2 2>/dev/null; then
+    echo "Loaded cuda/12.2"
+elif module load cuda/11.8 2>/dev/null; then
+    echo "Loaded cuda/11.8"
+else
+    echo "ERROR: no CUDA module found"
+    exit 1
+fi
+
+cd /home/bjin0/improved-diffusion
+echo "Working directory: $(pwd)"
+
+python3 - <<'PY'
+import importlib.util
+import torch
+
+print(f"PyTorch version: {torch.__version__}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A'}")
+print(f"pytorch_fid available: {importlib.util.find_spec('pytorch_fid') is not None}")
+if not torch.cuda.is_available():
+    raise SystemExit("CUDA is required for this job")
+if importlib.util.find_spec("pytorch_fid") is None:
+    raise SystemExit("pytorch_fid is required for this job")
+PY
+
+if [ ! -f "$MODEL_PATH" ]; then
+    echo "ERROR: model checkpoint does not exist: $MODEL_PATH"
+    exit 1
+fi
+
+exp_dir="$PARENT_EVAL_DIR/${EVAL_MODEL_NAME}_step${CHECKPOINT_STEP}_n${NUM_SAMPLES}"
+mkdir -p "$exp_dir"
+
+if [ -s "$exp_dir/fid_results.txt" ] && [ "$FORCE" != "1" ]; then
+    echo "FID already exists and FORCE != 1; skipping: $exp_dir/fid_results.txt"
+    exit 0
+fi
+
+noise_schedule="linear"
+dropout="0.1"
+case "$EVAL_MODEL_NAME" in
+    *geometric_linear*)
+        noise_schedule="geometric_linear"
+        dropout="0.3"
+        ;;
+    *geometric_cosine*)
+        noise_schedule="geometric_cosine"
+        dropout="0.3"
+        ;;
+    *cosine*)
+        noise_schedule="cosine"
+        dropout="0.3"
+        ;;
+    *linear*)
+        noise_schedule="linear"
+        dropout="0.1"
+        ;;
+    *)
+        echo "ERROR: cannot infer noise schedule from $EVAL_MODEL_NAME"
+        exit 1
+        ;;
+esac
+
+learn_sigma="False"
+use_kl="False"
+rescale_learned_sigmas="False"
+case "$EVAL_MODEL_NAME" in
+    *_hybrid)
+        learn_sigma="True"
+        use_kl="False"
+        rescale_learned_sigmas="True"
+        ;;
+    *_vlb)
+        learn_sigma="True"
+        use_kl="True"
+        rescale_learned_sigmas="True"
+        ;;
+    *_simple)
+        ;;
+    *)
+        echo "ERROR: cannot infer objective from $EVAL_MODEL_NAME"
+        exit 1
+        ;;
+esac
+
+cat > "$exp_dir/metadata.tsv" <<EOF
+experiment	$EVAL_MODEL_NAME
+checkpoint_step	$CHECKPOINT_STEP
+model_path	$MODEL_PATH
+num_samples	$NUM_SAMPLES
+sample_batch_size	$SAMPLE_BATCH_SIZE
+noise_schedule	$noise_schedule
+dropout	$dropout
+learn_sigma	$learn_sigma
+use_kl	$use_kl
+rescale_learned_sigmas	$rescale_learned_sigmas
+timestep_respacing	${EVAL_TIMESTEP_RESPACING:-}
+keep_samples	$KEEP_SAMPLES
+start_time	$(date -Is)
+EOF
+
+export OPENAI_LOGDIR="$exp_dir/logger"
+export OPENAI_LOG_FORMAT="stdout,log"
+mkdir -p "$OPENAI_LOGDIR"
+rm -f "$OPENAI_LOGDIR"/samples_*.npz
+
+respacing_args=()
+if [ -n "${EVAL_TIMESTEP_RESPACING:-}" ]; then
+    respacing_args=(--timestep_respacing "$EVAL_TIMESTEP_RESPACING")
+    echo "Using timestep respacing: $EVAL_TIMESTEP_RESPACING"
+else
+    echo "Using full 4000-step sampling."
+fi
+
+echo "Sampling..."
+python3 scripts/image_sample_no_mpi.py \
+    --model_path "$MODEL_PATH" \
+    --num_samples "$NUM_SAMPLES" \
+    --batch_size "$SAMPLE_BATCH_SIZE" \
+    --image_size 32 \
+    --num_channels 128 \
+    --num_res_blocks 3 \
+    --num_heads 4 \
+    --attention_resolutions 16,8 \
+    --use_scale_shift_norm True \
+    --dropout "$dropout" \
+    --learn_sigma "$learn_sigma" \
+    --use_kl "$use_kl" \
+    --rescale_learned_sigmas "$rescale_learned_sigmas" \
+    --diffusion_steps 4000 \
+    --noise_schedule "$noise_schedule" \
+    "${respacing_args[@]}" \
+    --class_cond False \
+    --use_checkpoint False \
+    --rescale_timesteps True \
+    --predict_xstart False \
+    --clip_denoised True \
+    --use_ddim False \
+    2>&1 | tee "$exp_dir/sample_results.txt"
+
+sample_file=$(ls -1t "$OPENAI_LOGDIR"/samples_*.npz 2>/dev/null | head -1)
+if [ -z "$sample_file" ] || [ ! -f "$sample_file" ]; then
+    echo "ERROR: sample npz not found in $OPENAI_LOGDIR"
+    exit 1
+fi
+echo "Sample file: $sample_file"
+
+if [ ! -f "$CIFAR_STATS_FILE" ]; then
+    echo "Precomputing CIFAR-10 train stats: $CIFAR_STATS_FILE"
+    python3 -m pytorch_fid ./cifar_train "$CIFAR_STATS_FILE" --save-stats --device cuda \
+        2>&1 | tee "$exp_dir/fid_stats_build.txt"
+fi
+
+echo "Computing FID..."
+python3 scripts/compute_fid_from_npz.py \
+    --samples_npz "$sample_file" \
+    --stats_npz "$CIFAR_STATS_FILE" \
+    --device cuda \
+    --tmp_root "/project_gpfs/bata0/bjin0" \
+    --output_txt "$exp_dir/fid_results.txt" \
+    2>&1 | tee "$exp_dir/fid_compute_log.txt"
+
+if [ "$KEEP_SAMPLES" = "1" ]; then
+    stable_sample_file="$exp_dir/samples_${NUM_SAMPLES}x32x32x3.npz"
+    mv "$sample_file" "$stable_sample_file"
+    echo "Kept samples: $stable_sample_file"
+else
+    rm -f "$sample_file"
+    echo "Removed generated sample npz after FID computation (KEEP_SAMPLES=$KEEP_SAMPLES)."
+fi
+
+{
+    echo -e "end_time\t$(date -Is)"
+    echo -e "fid\t$(cat "$exp_dir/fid_results.txt")"
+} >> "$exp_dir/metadata.tsv"
+
+echo "Done. FID: $(cat "$exp_dir/fid_results.txt")"
+echo "Results: $exp_dir"

@@ -9,7 +9,7 @@ mkdir -p slurm_logs
 TRAIN_NPZ_DIR_PART1=${TRAIN_NPZ_DIR_PART1:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part1_npz}
 TRAIN_NPZ_DIR_PART2=${TRAIN_NPZ_DIR_PART2:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_train_part2_npz}
 VAL_NPZ=${VAL_NPZ:-/project_gpfs/bjin0/imagenet64_downloads/unzipped/Imagenet64_val_npz/val_data.npz}
-OUT_ROOT=${OUT_ROOT:-/project_gpfs/bjin0/imagenet64}
+OUT_ROOT=${OUT_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_fixed_20260423}
 
 # Optional smoke test: set to e.g. 2000 (0 = full dataset).
 MAX_IMAGES_PER_SPLIT=${MAX_IMAGES_PER_SPLIT:-0}
@@ -27,4 +27,3 @@ sbatch \
   --output=slurm_logs/im64_prepare_%j.out \
   --error=slurm_logs/im64_prepare_%j.err \
   prepare_imagenet64.slurm
-

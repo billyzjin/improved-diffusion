@@ -39,8 +39,15 @@ python3 -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(
 
 cd /home/bjin0/improved-diffusion || exit 1
 
-IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-/project_gpfs/bata0/bjin0/imagenet64/train}
-IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-/project_gpfs/bata0/bjin0/imagenet64/val}
+IMAGENET_DATA_ROOT=${IMAGENET_DATA_ROOT:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505}
+IMAGENET_TRAIN_DIR=${IMAGENET_TRAIN_DIR:-${IMAGENET_DATA_ROOT}/train}
+IMAGENET_VAL_DIR=${IMAGENET_VAL_DIR:-${IMAGENET_DATA_ROOT}/val}
+IMAGENET_TRAIN_STATS=${IMAGENET_TRAIN_STATS:-/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505_train_stats.npz}
+NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES:-10000}
+NUM_SAMPLES=${NUM_SAMPLES:-10000}
+SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE:-64}
+FORCE=${FORCE:-0}
+SKIP_TV=${SKIP_TV:-0}
 
 if [ ! -d "$IMAGENET_TRAIN_DIR" ]; then
   echo "ERROR: IMAGENET_TRAIN_DIR does not exist: $IMAGENET_TRAIN_DIR"
@@ -109,13 +116,15 @@ evaluate_model() {
   # NLL (approx bpd) on ImageNet-64 validation subset.
   if [ "${SKIP_NLL:-0}" = "1" ]; then
     echo "Skipping NLL (SKIP_NLL=1)"
+  elif [ -s "$exp_dir/nll_results.txt" ] && [ "$FORCE" != "1" ]; then
+    echo "Skipping NLL; existing result found: $exp_dir/nll_results.txt"
   else
   echo "Calculating NLL..."
   python3 scripts/image_nll_no_mpi.py \
     --model_path "$model_path" \
     --data_dir "$IMAGENET_VAL_DIR" \
-    --batch_size 64 \
-    --num_samples 10000 \
+    --batch_size "$SAMPLE_BATCH_SIZE" \
+    --num_samples "$NLL_NUM_SAMPLES" \
     --image_size 64 \
     --num_channels 128 \
     --num_res_blocks 3 \
@@ -137,7 +146,6 @@ evaluate_model() {
   fi
 
   # Samples for FID (default: full sampling; optionally set EVAL_TIMESTEP_RESPACING for fast sampling).
-  echo "Generating samples for FID..."
   RESPACING_FLAG=""
   if [ -n "${EVAL_TIMESTEP_RESPACING:-}" ]; then
     RESPACING_FLAG="--timestep_respacing ${EVAL_TIMESTEP_RESPACING}"
@@ -146,50 +154,55 @@ evaluate_model() {
     echo "Using full sampling (no timestep respacing)."
   fi
 
-  python3 scripts/image_sample_no_mpi.py \
-    --model_path "$model_path" \
-    --num_samples 10000 \
-    --batch_size 64 \
-    --image_size 64 \
-    --num_channels 128 \
-    --num_res_blocks 3 \
-    --num_heads 4 \
-    --attention_resolutions 16,8 \
-    --use_scale_shift_norm True \
-    --dropout "$dropout" \
-    --learn_sigma "$learn_sigma" \
-    --use_kl "$use_kl" \
-    --rescale_learned_sigmas "$rescale_learned_sigmas" \
-    --diffusion_steps 4000 \
-    --noise_schedule "$noise_schedule" \
-    $RESPACING_FLAG \
-    --class_cond False \
-    --use_checkpoint False \
-    --rescale_timesteps True \
-    --predict_xstart False \
-    --clip_denoised True \
-    --use_ddim False \
-    2>&1 | tee "$exp_dir/sample_results.txt"
-
-  sample_file_source=$(ls -1 "$OPENAI_LOGDIR"/samples_*.npz 2>/dev/null | head -1)
-  if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
-    cp "$sample_file_source" "$exp_dir/samples.npz"
-    echo "Samples saved to: $exp_dir/samples.npz"
+  if [ -s "$exp_dir/samples.npz" ] && [ "$FORCE" != "1" ]; then
+    echo "Skipping sampling; existing samples found: $exp_dir/samples.npz"
   else
-    echo "ERROR: Sample file not found in $OPENAI_LOGDIR"
-    ls -la "$OPENAI_LOGDIR" 2>/dev/null || true
-    return 1
+    echo "Generating samples for FID..."
+    rm -f "$OPENAI_LOGDIR"/samples_*.npz "$exp_dir/samples.npz"
+    python3 scripts/image_sample_no_mpi.py \
+      --model_path "$model_path" \
+      --num_samples "$NUM_SAMPLES" \
+      --batch_size "$SAMPLE_BATCH_SIZE" \
+      --image_size 64 \
+      --num_channels 128 \
+      --num_res_blocks 3 \
+      --num_heads 4 \
+      --attention_resolutions 16,8 \
+      --use_scale_shift_norm True \
+      --dropout "$dropout" \
+      --learn_sigma "$learn_sigma" \
+      --use_kl "$use_kl" \
+      --rescale_learned_sigmas "$rescale_learned_sigmas" \
+      --diffusion_steps 4000 \
+      --noise_schedule "$noise_schedule" \
+      $RESPACING_FLAG \
+      --class_cond False \
+      --use_checkpoint False \
+      --rescale_timesteps True \
+      --predict_xstart False \
+      --clip_denoised True \
+      --use_ddim False \
+      2>&1 | tee "$exp_dir/sample_results.txt"
+
+    sample_file_source=$(ls -1 "$OPENAI_LOGDIR"/samples_*.npz 2>/dev/null | head -1)
+    if [ -n "$sample_file_source" ] && [ -f "$sample_file_source" ]; then
+      cp "$sample_file_source" "$exp_dir/samples.npz"
+      echo "Samples saved to: $exp_dir/samples.npz"
+    else
+      echo "ERROR: Sample file not found in $OPENAI_LOGDIR"
+      ls -la "$OPENAI_LOGDIR" 2>/dev/null || true
+      return 1
+    fi
   fi
 
   # FID: compare generated samples vs ImageNet train stats (computed once and cached).
-  echo "Computing FID..."
   if ! python3 -c "import importlib.util; spec=importlib.util.find_spec('pytorch_fid'); print('pytorch_fid found:', spec is not None)" >/dev/null 2>&1; then
     echo "ERROR: pytorch_fid is not installed in this environment."
     echo "Please install it in your cluster environment (e.g. pip install pytorch-fid)."
     return 1
   fi
 
-  IMAGENET_STATS_FILE="/project_gpfs/bata0/bjin0/imagenet64_train_stats.npz"
+  IMAGENET_STATS_FILE="$IMAGENET_TRAIN_STATS"
   if [ ! -f "$IMAGENET_STATS_FILE" ]; then
     echo "Precomputing ImageNet-64 train stats to: $IMAGENET_STATS_FILE"
     # NOTE: pytorch-fid --save-stats is often non-recursive; our ImageNet-64 train dir has class subfolders.
@@ -203,21 +216,32 @@ evaluate_model() {
       2>&1 | tee "$exp_dir/fid_stats_build.txt"
   fi
 
-  python3 scripts/compute_fid_from_npz.py \
-    --samples_npz "$exp_dir/samples.npz" \
-    --stats_npz "$IMAGENET_STATS_FILE" \
-    --device cuda \
-    --tmp_root "/project_gpfs/bata0/bjin0" \
-    --output_txt "$exp_dir/fid_results.txt" \
-    2>&1 | tee "$exp_dir/fid_compute_log.txt"
+  if [ -s "$exp_dir/fid_results.txt" ] && [ "$FORCE" != "1" ]; then
+    echo "Skipping FID; existing result found: $exp_dir/fid_results.txt"
+  else
+    echo "Computing FID..."
+    python3 scripts/compute_fid_from_npz.py \
+      --samples_npz "$exp_dir/samples.npz" \
+      --stats_npz "$IMAGENET_STATS_FILE" \
+      --device cuda \
+      --tmp_root "/project_gpfs/bata0/bjin0" \
+      --output_txt "$exp_dir/fid_results.txt" \
+      2>&1 | tee "$exp_dir/fid_compute_log.txt"
+  fi
 
   # TV distance vs validation set (empirical pixel histogram TV).
-  echo "Computing TV distance..."
-  python3 scripts/compute_tv_from_npz.py \
-    --samples_npz "$exp_dir/samples.npz" \
-    --real_dir "$IMAGENET_VAL_DIR" \
-    --output_txt "$exp_dir/tv_results.txt" \
-    2>&1 | tee "$exp_dir/tv_compute_log.txt"
+  if [ "$SKIP_TV" = "1" ]; then
+    echo "Skipping TV distance (SKIP_TV=1)"
+  elif [ -s "$exp_dir/tv_results.txt" ] && [ "$FORCE" != "1" ]; then
+    echo "Skipping TV; existing result found: $exp_dir/tv_results.txt"
+  else
+    echo "Computing TV distance..."
+    python3 scripts/compute_tv_from_npz.py \
+      --samples_npz "$exp_dir/samples.npz" \
+      --real_dir "$IMAGENET_VAL_DIR" \
+      --output_txt "$exp_dir/tv_results.txt" \
+      2>&1 | tee "$exp_dir/tv_compute_log.txt"
+  fi
 
   echo "Completed evaluation for $exp_name"
   echo "End Time: $(date)"
@@ -238,4 +262,3 @@ echo "=========================================="
 echo "SINGLE MODEL EVALUATION COMPLETE!"
 echo "=========================================="
 echo "Results saved in: $EVAL_DIR/$EVAL_MODEL_NAME"
-

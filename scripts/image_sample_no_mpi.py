@@ -13,7 +13,6 @@ import torch as th
 from improved_diffusion import logger
 from improved_diffusion.dist_util_no_mpi import setup_dist, dev, load_state_dict
 from improved_diffusion.script_util import (
-    NUM_CLASSES,
     model_and_diffusion_defaults,
     create_model_and_diffusion,
     add_dict_to_argparser,
@@ -41,9 +40,20 @@ def main():
     while len(all_images) * args.batch_size < args.num_samples:
         model_kwargs = {}
         if args.class_cond:
-            classes = th.randint(
-                low=0, high=NUM_CLASSES, size=(args.batch_size,), device=dev()
-            )
+            if not 0 < args.num_classes:
+                raise ValueError(f"num_classes must be positive, got {args.num_classes}")
+            if args.class_label >= args.num_classes:
+                raise ValueError(
+                    f"class_label={args.class_label} is outside num_classes={args.num_classes}"
+                )
+            if args.class_label >= 0:
+                classes = th.full(
+                    (args.batch_size,), args.class_label, dtype=th.long, device=dev()
+                )
+            else:
+                classes = th.randint(
+                    low=0, high=args.num_classes, size=(args.batch_size,), device=dev()
+                )
             model_kwargs["y"] = classes
         sample_fn = diffusion.p_sample_loop if not args.use_ddim else diffusion.ddim_sample_loop
         sample = sample_fn(
@@ -88,6 +98,7 @@ def create_argparser():
         batch_size=16,
         use_ddim=False,
         model_path="",
+        class_label=-1,
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
@@ -97,5 +108,4 @@ def create_argparser():
 
 if __name__ == "__main__":
     main()
-
 
