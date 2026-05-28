@@ -11,12 +11,14 @@ The experiments should support the following core claim:
 The selected experiment set is:
 
 1. **Oracle Gaussianization-KL toy experiments**.
-2. **Cleaned matched-endpoint image experiments**, without multiple training seeds / standard deviations.
-3. **Additional metrics**: CMMD, KID, and fidelity/diversity diagnostics such as precision/recall or density/coverage.
-4. **NFE / respacing sweep**.
-5. **One additional dataset**: start with **FFHQ-64**.
+2. **Additional metrics**: CMMD, KID, and fidelity/diversity diagnostics such as precision/recall or density/coverage.
+3. **NFE / respacing sweep**.
+4. **One additional dataset**: start with **FFHQ-64**.
+5. **Linear-in-$\bar\alpha$ (linear-decay) schedule** on the existing setups (four datasets x three objectives), as the §6.3 cumulant-optimal counterpart to the geometric-odds schedule. See **Experiment 5**.
 
-Do **not** implement the hybrid schedule for now. Also do **not** prioritize COCO, endpoint-grid tuning, class-conditional CIFAR-10, or multiple training seeds in this round.
+The matched-endpoint image comparison (linear/cosine versus their geometric-odds counterparts, on the four datasets x three objectives) is **already complete**: those NLL/FID/TV results are in `evaluation_results_full.tsv` and Table 1 of the paper, so it is **not** re-run here. It only needs curation for the write-up (main table = `L_hybrid`/`L_vlb`, `L_simple` to an appendix), and the new metrics in item 2 can be layered onto its existing samples (see Phase 3).
+
+Do **not** implement the stitched geometric/linear-decay **hybrid** schedule for now. Note the distinction: the standalone linear-in-$\bar\alpha$ schedule (item 5) **is** in scope this round; the hybrid that combines it with geometric odds is **not**. Also do **not** prioritize COCO, endpoint-grid tuning, class-conditional CIFAR-10, or multiple training seeds in this round.
 
 ---
 
@@ -38,33 +40,33 @@ The final experiments section should make the following points, in this order:
 
 For a discrete schedule with `T` steps,
 
-\[
+
 X_t = \sqrt{1-\beta_t}X_{t-1}+\sqrt{\beta_t}Z_t,
 \qquad
 \bar\alpha_t=\prod_{i=1}^t(1-\beta_i).
-\]
+
 
 The noise-to-signal odds are
 
-\[
+
 z_t=\frac{1-\bar\alpha_t}{\bar\alpha_t}.
-\]
+
 
 For bulk steps `t >= 2`, define
 
-\[
+# 
 \eta_t=(1-\beta_t)(1-\bar\alpha_{t-1}),
 \qquad
 r_t=\frac{\beta_t}{\eta_t}
-=
+
 \frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}.
-\]
+
 
 The universal per-step proxy is
 
-\[
+
 \Psi(r)=\frac{r^2}{2}-r+\log(1+r).
-\]
+
 
 Use `log1p(r)` in code for numerical stability.
 
@@ -78,38 +80,38 @@ Given:
 
 compute:
 
-\[
+
 z_1=\frac{\beta_1}{1-\beta_1},
 \qquad
 z_T=\frac{1-\bar\alpha_T}{\bar\alpha_T},
-\]
 
-\[
+
+
 q=\left(\frac{z_T}{z_1}\right)^{1/(T-1)},
 \qquad
 z_t=z_1q^{t-1}, \quad t=1,\ldots,T.
-\]
+
 
 Then
 
-\[
+
 \bar\alpha_t=\frac{1}{1+z_t},
-\]
+
 
 and the correct beta formula is
 
-\[
+
 \beta_1 \text{ fixed},
 \qquad
 \beta_t=\frac{(q-1)z_{t-1}}{1+qz_{t-1}},
 \quad t=2,\ldots,T.
-\]
+
 
 Under this schedule, all bulk ratios satisfy
 
-\[
+
 r_2=r_3=\cdots=r_T=q-1.
-\]
+
 
 ### Reference implementation
 
@@ -191,6 +193,85 @@ For matched baselines, never hard-code endpoints except in toy experiments. Comp
 beta1_match = baseline_betas[0]
 alpha_bar_T_match = np.cumprod(1.0 - baseline_betas)[-1]
 geometric_betas = geometric_odds_betas(T, beta1_match, alpha_bar_T_match)
+```
+
+### Linear-in-$\bar\alpha$ (linear-decay) schedule
+
+**Naming warning.** This is the schedule whose cumulative product $\bar\alpha_t$ is linear in $t$. It is **not** the DDPM `linear` schedule, which is linear in $\beta_t$. To avoid confusion, name it `linabar` in filenames and "linear-$\bar\alpha$" (or "linear-decay", following the paper) in text. Never reuse the bare name `linear` for it.
+
+**Motivation.** This is the schedule the paper's §6.3 (`sec:t_dependent_prefactor`, eq. `linear_decay_optimal`) derives as the minimizer of the *refined*, cumulant-aware bulk objective $\sum_t r_t^3/z_t^3$, whereas the geometric-odds schedule minimizes the *universal* objective $\sum_t \Psi(r_t)$. Both bounds are proven; they disagree on the optimal shape. Testing linear-in-$\bar\alpha$ directly probes which proven bound better predicts trained-model behavior.
+
+**Paper form (one parameter, $\bar\alpha_T$ only).**
+
+\bar\alpha_t = 1 - (1-\bar\alpha_T)\frac{t}{T},
+\qquad
+\beta_t = 1 - \frac{\bar\alpha_t}{\bar\alpha_{t-1}}.
+
+This forces $\beta_1 = (1-\bar\alpha_T)/T$, so it matches $\bar\alpha_T$ but **not** $\beta_1$.
+
+**Matched-endpoint form (recommended for comparison).** To compare apples-to-apples against the baselines and the geometric schedule (which match *both* endpoints), interpolate $\bar\alpha_t$ linearly from $\bar\alpha_1 = 1-\beta_1$ (at $t=1$) to $\bar\alpha_T$ (at $t=T$). This matches both endpoints, so only the schedule shape differs. Produce two matched variants, `linabar-linear` and `linabar-cosine`, inheriting endpoints from the linear and cosine baselines respectively, exactly as `geometric-linear` / `geometric-cosine` do.
+
+**Late-step behavior / clipping.** Because $\bar\alpha_t$ decreases linearly, this schedule front-loads signal retention and dumps most of the noise into the final steps. The final $\beta_t$ is governed by $\bar\alpha_T$: for the linear endpoints ($\bar\alpha_T = 4\times10^{-5}$) the last $\beta_t \approx 0.86$ (large but fine); for the cosine endpoints ($\bar\alpha_T \approx 2\times10^{-9}$) the last $\beta_t \approx 0.99999$, an almost-total-noise step. Apply the same $\beta$-clipping convention the cosine baseline uses (clip at $0.999$) to the `linabar` variants, and record whether clipping changed the schedule. Expect `linabar-cosine` to be more delicate than `linabar-linear`.
+
+```python
+def linear_alphabar_betas(T: int, beta1: float, alpha_bar_T: float) -> np.ndarray:
+    """Matched-endpoint linear-in-alpha_bar schedule.
+
+    alpha_bar interpolates linearly from alpha_bar_1 = 1 - beta1 (at t=1)
+    to alpha_bar_T (at t=T), matching BOTH beta1 and alpha_bar_T so it is
+    directly comparable to geometric_odds_betas under the same endpoints.
+
+    NOTE: 'linear in alpha_bar', NOT the DDPM 'linear' (which is linear in beta).
+    """
+    if T < 2:
+        raise ValueError("T must be at least 2")
+    if not (0.0 < beta1 < 1.0):
+        raise ValueError("beta1 must be in (0, 1)")
+    if not (0.0 < alpha_bar_T < 1.0):
+        raise ValueError("alpha_bar_T must be in (0, 1)")
+
+    a1 = 1.0 - beta1
+    if not (a1 > alpha_bar_T):
+        raise ValueError("Need alpha_bar_1 > alpha_bar_T so the chain adds noise")
+
+    t = np.arange(1, T + 1, dtype=np.float64)                    # t = 1..T
+    alpha_bar = a1 + (alpha_bar_T - a1) * (t - 1.0) / (T - 1.0)   # a1 at t=1, alpha_bar_T at t=T
+
+    betas = np.empty(T, dtype=np.float64)
+    betas[0] = beta1
+    betas[1:] = 1.0 - alpha_bar[1:] / alpha_bar[:-1]
+    return betas
+
+
+def linear_alphabar_betas_pure(T: int, alpha_bar_T: float) -> np.ndarray:
+    """Paper's one-parameter linear-decay form: alpha_bar_t = 1 - (1-alpha_bar_T)*t/T.
+
+    beta1 is forced to (1 - alpha_bar_T)/T; matches alpha_bar_T only.
+    """
+    if T < 2:
+        raise ValueError("T must be at least 2")
+    if not (0.0 < alpha_bar_T < 1.0):
+        raise ValueError("alpha_bar_T must be in (0, 1)")
+    t = np.arange(1, T + 1, dtype=np.float64)
+    alpha_bar = 1.0 - (1.0 - alpha_bar_T) * t / T
+    betas = np.empty(T, dtype=np.float64)
+    betas[0] = 1.0 - alpha_bar[0]    # = (1 - alpha_bar_T)/T
+    betas[1:] = 1.0 - alpha_bar[1:] / alpha_bar[:-1]
+    return betas
+```
+
+Tests:
+
+```python
+betas = linear_alphabar_betas(4000, 1e-4, 4e-5)
+ab = np.cumprod(1.0 - betas)
+assert betas.shape == (4000,)
+assert np.all(betas > 0) and np.all(betas < 1)
+assert abs(betas[0] - 1e-4) < 1e-12
+assert abs(ab[-1] - 4e-5) / 4e-5 < 1e-8
+# alpha_bar must be linear in t => constant decrements:
+d = np.diff(ab)
+assert np.std(d) / abs(np.mean(d)) < 1e-6
 ```
 
 ---
@@ -277,29 +358,29 @@ outputs/<dataset>/<objective>/<schedule_name>/
 
 Directly estimate the object studied by the theory:
 
-\[
+
 K_t=\mathbb E_{X_t}
 D_{\mathrm{KL}}
 \left(
 \mathcal L(X_{t-1}\mid X_t)
-\,\|\,
+
 \text{best Gaussian approximation}
 \right),
-\]
+
 
 or equivalently after the affine rescaling used in the proof,
 
-\[
+
 K_t=\mathbb E_{X_t}
 D_{\mathrm{KL}}
 \left(
 \mathcal L(S_t\mid X_t)
-\,\|\,
+
 \text{moment-matched Gaussian}
 \right),
 \qquad
 S_t=\sqrt{1-\beta_t}X_{t-1}.
-\]
+
 
 This avoids neural-network training and directly tests whether the geometric-odds schedule reduces the actual finite-step Gaussianization error.
 
@@ -394,103 +475,103 @@ Use `T=4000` only if the estimator is fast enough.
 
 Assume
 
-\[
+
 X_0\mid C=c\sim N(\mu_c,\Sigma_c),
 \qquad
 P(C=c)=\pi_c.
-\]
+
 
 For diffusion step `t`, define
 
-\[
+
 S_t=\sqrt{\bar\alpha_t}X_0+\sqrt{\eta_t}W,
 \qquad
 X_t=S_t+\sqrt{\beta_t}Z,
-\]
+
 
 where
 
-\[
+
 \eta_t=(1-\beta_t)(1-\bar\alpha_{t-1}).
-\]
+
 
 Conditional on component `c`,
 
-\[
+
 S_t\mid C=c\sim N(m_c, P_c),
-\]
+
 
 with
 
-\[
+
 m_c=\sqrt{\bar\alpha_t}\mu_c,
 \qquad
 P_c=\bar\alpha_t\Sigma_c+\eta_t I.
-\]
+
 
 The observation is
 
-\[
+
 X_t\mid C=c\sim N(m_c, P_c+\beta_t I).
-\]
+
 
 Given `X_t = x`, posterior component weights are
 
-\[
-w_c(x)\propto \pi_c\,N(x;m_c,P_c+\beta_t I).
-\]
+
+w_c(x)\propto \pi_cN(x;m_c,P_c+\beta_t I).
+
 
 The component posterior is Gaussian:
 
-\[
+
 S_t\mid X_t=x,C=c\sim N(\tilde m_c(x),\tilde P_c),
-\]
+
 
 where
 
-\[
+
 K_c=P_c(P_c+\beta_t I)^{-1},
-\]
 
-\[
+
+
 \tilde m_c(x)=m_c+K_c(x-m_c),
-\]
 
-\[
+
+
 \tilde P_c=P_c-P_c(P_c+\beta_t I)^{-1}P_c.
-\]
+
 
 Thus the exact posterior is a mixture:
 
-\[
+
 q_t(s\mid x)=\sum_c w_c(x)N(s;\tilde m_c(x),\tilde P_c).
-\]
+
 
 The KL-best Gaussian is the moment-matched Gaussian:
 
-\[
+
 g_t^\star(s\mid x)=N(m(x),C(x)),
-\]
+
 
 with
 
-\[
-m(x)=\sum_c w_c(x)\tilde m_c(x),
-\]
 
-\[
+m(x)=\sum_c w_c(x)\tilde m_c(x),
+
+
+
 C(x)=\sum_c w_c(x)\left[\tilde P_c+
 (\tilde m_c(x)-m(x))(\tilde m_c(x)-m(x))^\top\right].
-\]
+
 
 Then estimate
 
-\[
-D_{\mathrm{KL}}(q_t(\cdot\mid x)\|g_t^\star(\cdot\mid x))
-=
+# 
+D_{\mathrm{KL}}(q_t(\cdot\mid x)g_t^\star(\cdot\mid x))
+
 \mathbb E_{s\sim q_t(\cdot\mid x)}
 \left[\log q_t(s\mid x)-\log g_t^\star(s\mid x)\right].
-\]
+
 
 Use Monte Carlo over both `x` and posterior samples `s`.
 
@@ -581,152 +662,7 @@ The experiment is successful if:
 
 ---
 
-# Experiment 2: Clean matched-endpoint image experiments
-
-## Goal
-
-Strengthen the current image experiments without adding multiple training seeds.
-
-The existing comparison structure is good: compare each baseline against its geometric-odds counterpart with the same `beta_1` and `alpha_bar_T`, so only the intermediate schedule shape changes.
-
-## Schedules
-
-Use four schedules:
-
-```text
-linear
-geometric-linear
-cosine
-geometric-cosine
-```
-
-Definitions:
-
-- `linear`: existing DDPM / Improved-Diffusion linear schedule.
-- `geometric-linear`: geometric odds with endpoints copied from `linear`.
-- `cosine`: existing cosine schedule with the same clipping convention as the baseline implementation.
-- `geometric-cosine`: geometric odds with endpoints copied from `cosine`.
-
-Do not add sigmoid / ACS baselines in this round unless all selected experiments are already complete.
-
-## Datasets
-
-Use the current datasets first:
-
-```text
-MNIST at 32x32
-Fashion-MNIST at 32x32
-CIFAR-10 at 32x32
-ImageNet-64 at 64x64, if the existing compute pipeline/checkpoints are available
-```
-
-## Objectives
-
-Main table:
-
-```text
-L_hybrid
-L_vlb
-```
-
-Optional appendix / diagnostic table:
-
-```text
-L_simple
-```
-
-Reason: `L_simple` is useful as a diagnostic but is not the cleanest likelihood comparison under schedule changes. The main text should focus on `L_hybrid` and `L_vlb`.
-
-## Training configuration
-
-Use the existing configuration unless there is a strong reason to change it:
-
-```text
-T = 4000
-learning rate = 1e-4
-batch size = 128
-EMA = 0.9999
-```
-
-Architecture:
-
-```text
-32x32 datasets:
-  U-Net, 128 base channels
-  3 residual blocks per resolution
-  attention at 16 and 8
-  channel multipliers = (1, 2, 2, 2)
-
-ImageNet-64:
-  U-Net, 128 base channels
-  3 residual blocks per resolution
-  attention at 16 and 8
-  channel multipliers = (1, 2, 3, 4)
-```
-
-Training length:
-
-```text
-MNIST/Fashion-MNIST/CIFAR-10: 500k iterations
-ImageNet-64: 200k iterations, or reuse existing checkpoints
-```
-
-No multiple seeds are required. Use one fixed training seed and record it.
-
-## Full-chain sampling
-
-Use the full `T=4000` reverse chain for the main image-table results.
-
-Generate:
-
-```text
-50k samples for 32x32 datasets
-10k or 50k samples for ImageNet-64, depending on compute
-```
-
-If using 10k samples for ImageNet-64, label the result as `FID-10K`, `CMMD-10K`, etc. Do not silently compare it to 50k results.
-
-## NLL / bits-dim
-
-Evaluate NLL / bits-dim on held-out test data using the full original diffusion chain, not respaced sampling.
-
-Report:
-
-```text
-NLL in bits/dim
-FID
-CMMD
-KID
-precision/recall or density/coverage
-```
-
-For the main table, use one row per `(dataset, objective)` and columns:
-
-```text
-linear
-geometric-linear
-cosine
-geometric-cosine
-```
-
-For each metric, bold the better value within each matched pair:
-
-```text
-linear vs geometric-linear
-cosine vs geometric-cosine
-```
-
-## Text interpretation guardrails
-
-Use language like:
-
-> Geometric odds gives consistent NLL improvements under the well-specified objectives. Its effect on perceptual metrics is dataset- and endpoint-dependent.
-
-Avoid claiming universal FID dominance.
-
----
-
-# Experiment 3: Add CMMD, KID, and fidelity/diversity diagnostics
+# Experiment 2: Add CMMD, KID, and fidelity/diversity diagnostics
 
 ## Goal
 
@@ -884,7 +820,7 @@ This experiment is successful if it clarifies whether geometric odds:
 
 ---
 
-# Experiment 4: NFE / respacing sweep
+# Experiment 3: NFE / respacing sweep
 
 ## Goal
 
@@ -943,11 +879,11 @@ For a selected sequence
 
 construct the respaced diffusion with cumulative alpha values inherited from the original schedule:
 
-\[
-\bar\alpha'_k = \bar\alpha_{s_k},
+
+\bar\alpha'*k = \bar\alpha*{s_k},
 \qquad
-\beta'_k=1-\frac{\bar\alpha'_{k}}{\bar\alpha'_{k-1}}.
-\]
+\beta'*k=1-\frac{\bar\alpha'*{k}}{\bar\alpha'_{k-1}}.
+
 
 Use the trained model at the corresponding original timestep embedding `s_k`.
 
@@ -1006,7 +942,7 @@ This experiment is successful if it answers:
 
 ---
 
-# Experiment 5: First additional dataset — FFHQ-64
+# Experiment 4: First additional dataset — FFHQ-64
 
 ## Recommendation
 
@@ -1128,6 +1064,72 @@ FFHQ-64 is successful if it gives a clean unconditional natural-image test of th
 
 ---
 
+# Experiment 5: Linear-in-$\bar\alpha$ (linear-decay) schedule on the existing setups
+
+## Goal
+
+Test the linear-in-$\bar\alpha$ schedule (defined in "Linear-in-$\bar\alpha$ (linear-decay) schedule" above) on trained image models. This is the schedule §6.3 of the paper derives as the optimizer of the *refined*, cumulant-aware bound, in contrast to the geometric-odds schedule, which optimizes the *universal* bound. The two proven bounds disagree on the optimal shape; this experiment tests which one better predicts downstream NLL and sample quality.
+
+This complements **Experiment 1**: the oracle measures the actual finite-step Gaussianization KL directly, while this experiment measures the downstream effect on trained models. If linear-in-$\bar\alpha$ is also added to Experiment 1, the oracle and trained-model rankings of the same four-to-six schedules can be compared head to head.
+
+## Scope (this round)
+
+Run **first** on the existing setups, reusing the existing trained image checkpoints and the CMMD/KID/PRDC metrics pipeline:
+
+```text
+Datasets:    MNIST32, FashionMNIST32, CIFAR-10, ImageNet-64 (if reusable)
+Objectives:  L_simple, L_hybrid, L_vlb   (all three)
+```
+
+All three objectives are requested, including `L_simple`. Treat `L_simple` as a diagnostic: its loss weighting is schedule-dependent and is expected to misbehave under a schedule whose $\beta_t$ profile differs sharply from DDPM-linear, which linear-in-$\bar\alpha$ does (large late-step $\beta_t$). `L_hybrid` and `L_vlb` remain the well-specified comparisons.
+
+Do **not** extend to FFHQ-64 or the NFE sweep in this round; those are later options once the existing-setup results are in. The stitched geometric/linear-decay hybrid remains deferred.
+
+## Schedules
+
+Add the matched-endpoint linear-in-$\bar\alpha$ variants to the existing comparison so each endpoint family has three contenders at fixed endpoints:
+
+```text
+linear endpoints:  linear  vs  geometric-linear  vs  linabar-linear
+cosine endpoints:  cosine  vs  geometric-cosine  vs  linabar-cosine
+```
+
+Compute the `linabar-*` endpoints from the actual baseline `betas` arrays (never hard-code), exactly as for the geometric variants:
+
+```python
+beta1_match = baseline_betas[0]
+alpha_bar_T_match = np.cumprod(1.0 - baseline_betas)[-1]
+linabar_betas = linear_alphabar_betas(T, beta1_match, alpha_bar_T_match)
+```
+
+Apply the cosine baseline's $\beta$-clipping convention (clip at $0.999$) to the `linabar` variants and record whether clipping changed the schedule (see the late-step note in the schedule definition; `linabar-cosine` is the delicate one). Optionally also run the paper's one-parameter `linabar-pure` form (`linear_alphabar_betas_pure`, matching $\bar\alpha_T$ only) on CIFAR-10 to check sensitivity to the $\beta_1$-matching choice; label it clearly and keep it out of the matched-endpoint tables.
+
+## Training / sampling / metrics
+
+These are **new training runs** (`linabar-linear` and `linabar-cosine` checkpoints do not exist yet): up to 2 schedules x 4 datasets x 3 objectives. Use the same training configuration as the existing 84-model study: T=4000, lr 1e-4, batch 128, EMA 0.9999; U-Net with 128 base channels, 3 residual blocks, attention at 16 and 8, channel multipliers (1,2,2,2) for the 32x32 datasets and (1,2,3,4) for ImageNet-64; 500k iterations for MNIST/Fashion-MNIST/CIFAR-10 and 200k for ImageNet-64; one fixed, recorded training seed. Sample with the full T=4000 reverse chain. Evaluate NLL (bits/dim, held-out, full chain) plus FID, CMMD, KID, and density/coverage or precision/recall once those pipelines exist; NLL + FID are the minimum for a first pass.
+
+## Tables
+
+Extend the main image table so each matched endpoint family shows the three-way comparison. For each `(dataset, objective)` and each metric:
+
+```text
+linear | geometric-linear | linabar-linear || cosine | geometric-cosine | linabar-cosine
+```
+
+Within each endpoint family (linear / cosine), bold the best of the three. This makes the universal-vs-cumulant question directly readable per cell.
+
+## Success criteria
+
+This experiment is informative if it answers:
+
+- Does linear-in-$\bar\alpha$ match or beat geometric on NLL under `L_hybrid` / `L_vlb`, and on which datasets? §6.3 predicts linear-decay carries a smaller constant when the data is closer to Gaussian than its sixth moment suggests, so the datasets where it wins (if any) are themselves informative.
+- Does it change the FID picture on CIFAR-10 / ImageNet-64, where geometric was mixed?
+- Are the trained-model results consistent with the oracle (Experiment 1) ranking of the same schedules?
+
+Report the result honestly even if linear-in-$\bar\alpha$ loses. A clean "geometric beats linear-in-$\bar\alpha$ on trained models despite the tighter bound" is itself a useful finding about bound tightness versus downstream behavior, and directly informs the §6.3 discussion in the paper.
+
+---
+
 # Run ordering
 
 Use this order.
@@ -1137,10 +1139,10 @@ Use this order.
 1. Implement schedule utilities.
 2. Add unit tests for geometric odds.
 3. Reproduce schedule diagnostic plots:
-   - `alpha_bar_t`,
-   - `z_t`,
-   - `r_t`,
-   - `Psi(r_t)`.
+  - `alpha_bar_t`,
+  - `z_t`,
+  - `r_t`,
+  - `Psi(r_t)`.
 4. Confirm geometric schedules exactly match baseline endpoints.
 
 Exit criteria:
@@ -1173,18 +1175,29 @@ Exit criteria:
 - One `metrics.json` per sample set.
 - Aggregated CSV and LaTeX tables generated automatically.
 
-## Phase 3: Clean current image experiments
+## Phase 3: Curate the existing matched-endpoint results
 
-1. Reuse existing checkpoints where possible.
-2. Re-run missing full-chain samples.
-3. Evaluate NLL and all metrics.
-4. Create cleaned main table with only `L_hybrid` and `L_vlb`.
-5. Put `L_simple` in appendix/diagnostic output if available.
+The matched-endpoint comparison (linear / cosine vs geometric-linear / geometric-cosine) is already trained, sampled, and scored on NLL/FID/TV; no new training or sampling is needed here.
+
+1. Pull the existing NLL/FID/TV numbers from `evaluation_results_full.tsv`.
+2. Layer the Phase 2 metrics (CMMD, KID, density/coverage) onto the existing samples if those `.npz` files are still on cluster storage; otherwise re-sample from the existing checkpoints (sampling only, no retraining).
+3. Build the cleaned main table with only `L_hybrid` and `L_vlb`; put `L_simple` in an appendix/diagnostic table.
+4. Label ImageNet-64 sample counts explicitly; re-sample at one consistent count if 10k/50k are otherwise mixed.
 
 Exit criteria:
 
-- Main table ready.
-- ImageNet sample count clearly labeled.
+- Cleaned main table ready, with the new metrics added wherever samples were available.
+
+## Phase 3b: Linear-in-$\bar\alpha$ schedule (Experiment 5)
+
+1. Add and unit-test `linear_alphabar_betas` (see schedule definitions).
+2. Train `linabar-linear` and `linabar-cosine` for all four datasets x three objectives. These are **new** runs; checkpoints do not exist yet. Use the existing-study training config (T=4000, lr 1e-4, batch 128, EMA 0.9999; same architectures and iteration counts as the existing image models) and a fixed, recorded seed.
+3. Full-chain sample and evaluate NLL plus the Phase 2 metrics.
+4. Extend the main image table to the three-way per-endpoint comparison (baseline / geometric / linear-in-$\bar\alpha$).
+
+Exit criteria:
+
+- Three-way matched-endpoint table for the existing datasets, with $\beta$-clipping status recorded for the `linabar` variants.
 
 ## Phase 4: CIFAR-10 NFE sweep
 
@@ -1232,6 +1245,11 @@ Schedules:
   geometric-linear
   cosine
   geometric-cosine
+  linabar-linear      # linear-in-alpha_bar matched to linear endpoints (Experiment 5)
+  linabar-cosine      # linear-in-alpha_bar matched to cosine endpoints (Experiment 5)
+
+Note:
+  linabar-* are run across all three objectives (incl. L_simple as diagnostic); see Experiment 5.
 
 Sampling:
   full chain, T=4000
@@ -1329,7 +1347,7 @@ For `L_hybrid` and `L_vlb` only:
 dataset | objective | schedule | NLL | FID | CMMD | KID | density | coverage
 ```
 
-or pairwise schedule columns if that is easier for the paper.
+or pairwise schedule columns if that is easier for the paper. If Experiment 5 is run, extend this to the three-way per-endpoint comparison (baseline / geometric / linear-in-$\bar\alpha$); see Experiment 5.
 
 ## Figure 2: Metric deltas
 
@@ -1457,45 +1475,46 @@ Avoid these claims unless the new data strongly supports them:
 
 Before starting:
 
-- [ ] Confirm codebase branch / commit.
-- [ ] Confirm schedule implementation tests pass.
-- [ ] Confirm baseline schedule endpoints are computed from actual beta arrays.
-- [ ] Confirm generated sample image range and preprocessing conventions.
-- [ ] Confirm metric implementations and feature extractors.
+- Confirm codebase branch / commit.
+- Confirm schedule implementation tests pass.
+- Confirm baseline schedule endpoints are computed from actual beta arrays.
+- Confirm generated sample image range and preprocessing conventions.
+- Confirm metric implementations and feature extractors.
 
 For toy experiments:
 
-- [ ] GMM posterior mixture code implemented.
-- [ ] Gaussian sanity check passes.
-- [ ] All toy distributions run for `T={50,100,250,1000}`.
-- [ ] `K_1` saved separately.
-- [ ] Bulk totals and plots generated.
+- GMM posterior mixture code implemented.
+- Gaussian sanity check passes.
+- All toy distributions run for `T={50,100,250,1000}`.
+- `K_1` saved separately.
+- Bulk totals and plots generated.
 
 For image experiments:
 
-- [ ] Full-chain samples available for all schedule/objective/dataset combinations.
-- [ ] NLL computed on held-out data.
-- [ ] FID/CMMD/KID/density-coverage or precision-recall computed.
-- [ ] Tables generated with matched-pair bolding.
+- Full-chain samples available for all schedule/objective/dataset combinations.
+- NLL computed on held-out data.
+- FID/CMMD/KID/density-coverage or precision-recall computed.
+- Tables generated with matched-pair bolding.
 
 For NFE sweep:
 
-- [ ] CIFAR-10 `L_hybrid` checkpoints found.
-- [ ] Respaced sampler verified.
-- [ ] NFE curves generated.
+- CIFAR-10 `L_hybrid` checkpoints found.
+- Respaced sampler verified.
+- NFE curves generated.
 
 For FFHQ-64:
 
-- [ ] Dataset prepared and split recorded.
-- [ ] Smoke runs complete.
-- [ ] Full `L_hybrid` runs complete.
-- [ ] Metrics and sample grids generated.
+- Dataset prepared and split recorded.
+- Smoke runs complete.
+- Full `L_hybrid` runs complete.
+- Metrics and sample grids generated.
 
 Final deliverable:
 
-- [ ] `results_summary.md`
-- [ ] `tables/*.csv`
-- [ ] `tables/*.tex`
-- [ ] `figures/*.pdf`
-- [ ] `metrics_json/**/*.json`
-- [ ] clear notes on any deviations from this plan
+- `results_summary.md`
+- `tables/*.csv`
+- `tables/*.tex`
+- `figures/*.pdf`
+- `metrics_json/**/*.json`
+- clear notes on any deviations from this plan
+
