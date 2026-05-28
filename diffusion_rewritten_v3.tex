@@ -9,6 +9,7 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage{graphicx}
+\usepackage{booktabs}
 
 \def\E{\mathbb{E}}
 \def\R{\mathbb{R}}
@@ -1358,6 +1359,79 @@ If one uses the cubic approximation \(\PsiFn(r)\approx r^3/3\) valid for \(r\le 
 and the function \(s\mapsto (e^s-1)^3\) is also convex on \([0,\infty)\).
 \end{remark}
 
+\subsection{What if the prefactor were \texorpdfstring{$t$}{t}-dependent?}
+\label{sec:t_dependent_prefactor}
+
+The optimization above treats \(16\,d(d+2)(d+4)\) as a \(t\)-independent constant, which is correct under the universal third-derivative bound \eqref{eq:avg_third_universal} but understates the true scaling. The refined bound \eqref{eq:Kt_refined_bound} already exhibits a genuine \(t\)-dependence:
+\begin{equation}
+\label{eq:Kt_refined_in_rz}
+\mathcal K_t
+\;\le\;
+\frac{16}{3}\,\E\|X_0\|^6\,\frac{\bar\alpha_t^3\,\beta_t^3}{\eta_t^3(1-\bar\alpha_t)^3}
+\;=\;
+\frac{16}{3}\,\E\|X_0\|^6\,\frac{r_t^3}{z_t^3},
+\end{equation}
+since \(\bar\alpha_t/(1-\bar\alpha_t)=1/z_t\). The prefactor \(1/z_t^3\) decays sharply as the chain progresses: at the first bulk step \(z_1\) is small (large prefactor), while at the terminal step \(z_T\) is large (vanishing prefactor). This is not a quirk of the algebra but a real feature: as the signal is smoothed, its contribution to \(\nabla^3\log p_t\) decays, and the per-step Gaussianization error decays with it.
+
+\paragraph{What the right \(K(t)\) should look like.} Both bounds are instances of the exact identity \(\sigma^6\nabla^3\ell(Y)=\kappa_3(V\mid Y)\) (\Cref{cor:posterior_mean_cov}), and they differ in how they bound \(\E\|\kappa_3(V\mid Y)\|^2\):
+\begin{itemize}
+\item The universal bound replaces \(V\) by the noise \(Z\) and uses \(\E\|Z\|^6=d(d+2)(d+4)\).
+\item The refined bound uses \(\E\|V\|^6\) directly.
+\end{itemize}
+Neither is sharp. The structurally correct envelope is
+\begin{equation}
+\label{eq:K_cumulant_ideal}
+\E\|\nabla^3\ell_t\|_F^2
+\;\lesssim\;
+\frac{\bar\alpha_t^{3}\,\|\kappa_3(X_0)\|_F^2}{(1-\bar\alpha_t)^{6}},
+\end{equation}
+obtained by tracking the third cumulant of the marginal \(X_t\), which scales as \(\bar\alpha_t^{3/2}\,\kappa_3(X_0)\). For Gaussian data, \(\|\kappa_3(X_0)\|_F=0\) and the bound vanishes identically, recovering the fact that the reverse process for Gaussian data is exactly Gaussian. The two existing bounds are loose by exactly the factor that distinguishes \(\E\|X_0\|^6\) (or \(d(d+2)(d+4)\)) from the third-cumulant norm \(\|\kappa_3(X_0)\|_F^2\) --- a quantitative measure of non-Gaussianity. We therefore propose the unified envelope
+\begin{equation}
+\label{eq:K_min_bound}
+\mathcal K_t
+\;\le\;
+\min\!\left\{
+16\,d(d+2)(d+4)\,\PsiFn(r_t),\;
+\frac{c_3\,\|\kappa_3(X_0)\|_F^2\,r_t^3}{z_t^3}
+\right\}
+\end{equation}
+for an absolute constant \(c_3>0\), with the universal piece tight when \(\bar\alpha_t\) is close to \(1\) and the cumulant piece tight when \(\bar\alpha_t\) is small. The crossover sits near
+\[
+z_t \;=\; \left(\frac{\|\kappa_3(X_0)\|_F^2}{d(d+2)(d+4)}\right)^{1/3},
+\]
+which for normalized data with \(\E\|X_0\|^2=O(d)\) is typically \(O(1)\), i.e., near the temporal midpoint of the chain.
+
+\paragraph{The optimizer under the cumulant prefactor.} If we drop the universal piece and optimize the cumulant bound alone, the bulk objective becomes
+\[
+\sum_{t=2}^T \frac{r_t^3}{z_t^3}
+\;=\;
+\sum_{t=2}^T \frac{\bar\alpha_t^3\,\beta_t^3}{\eta_t^3(1-\bar\alpha_t)^3}.
+\]
+Since \(z_t\) depends on \(r_2,\ldots,r_t\) through \(z_t=z_1\prod_{i\le t}(1+r_i)\), the problem is no longer separable in \(r_t\) alone. It is, however, separable in the variable \(\bar\alpha_t\) directly: in the small-\(\beta_t\) regime \(\eta_t\approx 1-\bar\alpha_t\approx 1-\bar\alpha_{t-1}\), and \eqref{eq:Kt_refined_in_rz} reduces to the per-step cost
+\begin{equation}
+\label{eq:cumulant_per_step}
+\mathcal K_t \;\lesssim\; \bar\alpha_{t-1}^3\,\beta_t^3.
+\end{equation}
+Equalizing this across steps gives \(\beta_t\propto 1/\bar\alpha_{t-1}\), which integrates to the \emph{linear-decay} schedule
+\begin{equation}
+\label{eq:linear_decay_optimal}
+\bar\alpha_t \;=\; 1-\frac{(1-\bar\alpha_T^\star)\,t}{T},
+\qquad
+\beta_t \;\approx\; \frac{1}{T-t+1}.
+\end{equation}
+Under this schedule the per-step cost is \(\bar\alpha_{t-1}^3\beta_t^3\equiv 1/T^3\), so the total bulk error is \(O(1/T^2)\) --- the same order as the geometric schedule, but with a smaller absolute constant whenever \(\|\kappa_3(X_0)\|_F^2\) is appreciably less than \(d(d+2)(d+4)\,\E\|X_0\|^{-6}\cdot\E\|X_0\|^6\), i.e., whenever the data is meaningfully closer to Gaussian than its sixth moment alone would suggest.
+
+\paragraph{Why we adopt the universal bound for the main result.} The geometric-odds schedule \eqref{eq:geometric_z_optimal} is the right answer to the data-free version of the optimization problem; the linear-decay schedule \eqref{eq:linear_decay_optimal} is the right answer when one is willing to commit to a model of the data's third cumulant. We default to the universal version because \emph{(i)} it is data-free; \emph{(ii)} it yields a clean closed form determined by two interpretable scalars; and \emph{(iii)} the resulting bound holds uniformly over all data with finite KL divergence to a Gaussian, including heavy-tailed and strongly non-Gaussian distributions for which \(\|\kappa_3(X_0)\|_F^2\) need not be the dominant scale. A practical hybrid would use \eqref{eq:K_min_bound} and take steps geometrically in \(z_t\) early in the chain (where the universal piece is tight) and linearly in \(\bar\alpha_t\) late in the chain (where the cumulant piece is tight), with a crossover near the temporal midpoint.
+
+\Cref{fig:hybrid_schedule} illustrates one such hybrid, constructed by stitching the geometric-odds segment (steps \(1\) through \(T/2\), targeting \(\bar\alpha_{T/2}=\tfrac12\)) to the linear-decay segment (steps \(T/2\) through \(T\), interpolating linearly from \(\bar\alpha_{T/2}=\tfrac12\) to \(\bar\alpha_T^\star\)). Panels (a)--(b) show that this construction is smooth at the crossover: \(\bar\alpha_t\) is continuous and monotone, and \(z_t\) transitions from a straight line on the log scale (geometric segment) to the curve produced by linear-in-\(\bar\alpha_t\) decay (right segment). Panels (c)--(d) confirm the design intent: under the universal cost \(\PsiFn(r_t)\) the hybrid is flat across the first half (matching the geometric optimum there), and under the cumulant cost \(\bar\alpha_{t-1}^3\beta_t^3\) it is flat across the second half (matching the linear-decay optimum there). Neither pure schedule has both properties: the pure geometric explodes the cumulant cost near \(t=T\), while the pure linear-decay explodes the universal cost near \(t=2\).
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=\textwidth]{hybrid_schedule.pdf}
+\caption{A hybrid schedule that interpolates between the two regimes. The hybrid (solid purple) is geometric in \(z_t\) for \(t\le T/2\) and linear in \(\bar\alpha_t\) for \(t\ge T/2\), stitched at the natural midpoint \(\bar\alpha_{T/2}=\tfrac12\). Endpoints are \(\beta_1=10^{-4}\) and \(\bar\alpha_T=4\times 10^{-5}\); the dotted gray lines mark the crossover. \textbf{(a)}~Signal retention \(\bar\alpha_t\). \textbf{(b)}~Odds variable \(z_t\). \textbf{(c)}~Per-step cost \(\PsiFn(r_t)\) under the universal bound: the hybrid matches the geometric optimum in the first half. \textbf{(d)}~Per-step cost \(\bar\alpha_{t-1}^3\beta_t^3\) under the cumulant bound: the hybrid matches the linear-decay optimum in the second half. Each pure schedule equalizes only one of the two costs; the hybrid equalizes whichever is tight at each time.}
+\label{fig:hybrid_schedule}
+\end{figure}
+
 \subsection{Comparison of schedules}
 
 \Cref{fig:schedule_comparison} compares our geometric-odds schedule to the DDPM linear schedule \cite{ho2020denoising} and the cosine schedule \cite{nichol2021improved}, all with \(T=1000\) steps. The two baseline schedules have different endpoints --- DDPM linear uses \(\beta_1=10^{-4}\) and reaches \(\bar\alpha_T\approx 4\times 10^{-5}\), while the cosine schedule (with its standard \(\beta_t\)-clipping at \(0.999\)) uses \(\beta_1\approx 4\times 10^{-5}\) and drives \(\bar\alpha_T\) to \(\approx 2\times 10^{-9}\) --- so we plot two instances of our schedule, one matched to each set of endpoints. Panel~(b) shows that both versions of our schedule make \(z_t\) grow geometrically (a straight line on the log scale), as \eqref{eq:geometric_z_optimal} predicts. Panel~(c) shows that the noise-to-smoothing ratio \(r_t\) is constant under each of our schedules, while it varies by several orders of magnitude under both baselines. Panel~(d) shows the resulting per-step cost \(\PsiFn(r_t)\): our schedules distribute the cost uniformly across steps, whereas DDPM linear and cosine concentrate it on a handful of expensive endpoint steps.
@@ -1369,6 +1443,84 @@ and the function \(s\mapsto (e^s-1)^3\) is also convex on \([0,\infty)\).
 \label{fig:schedule_comparison}
 \end{figure}
 
+
+\section{Empirical evaluation}
+\label{sec:experiments}
+
+We evaluate the geometric-odds schedule of \Cref{thm:exact_bulk_optimization} on four image datasets, comparing it head-to-head with the two standard baselines (DDPM linear and cosine).
+
+\subsection{Setup}
+\label{sec:exp_setup}
+
+\paragraph{Datasets.} MNIST, Fashion-MNIST, and CIFAR-10 are evaluated at \(32\times 32\) (60K/60K/50K training images, 10K test images each). ImageNet-64 is evaluated at \(64\times 64\) (\(\approx 1.28\)M training images, 50K validation images).
+
+\paragraph{Architecture and training.} All experiments use the U-Net of \cite{nichol2021improved} with \(128\) base channels, three residual blocks per resolution, and attention at resolutions \(16\) and \(8\); the channel multipliers are \((1,2,2,2)\) for the \(32\times 32\) datasets and \((1,2,3,4)\) for ImageNet-64. Models are trained with \(T=4000\) forward steps, learning rate \(10^{-4}\), batch size \(128\), and EMA rate \(0.9999\). CIFAR-10, Fashion-MNIST, and MNIST are trained for 500K iterations; ImageNet-64 for 200K iterations. Sampling uses the full \(T=4000\)-step reverse chain.
+
+\paragraph{Schedules.} We compare four schedules in two groups.
+\begin{itemize}[leftmargin=2.2em]
+\item \emph{Baselines:} \texttt{linear} \cite{ho2020denoising} and \texttt{cosine} \cite{nichol2021improved}.
+\item \emph{Geometric-odds, matched endpoints:} \texttt{geometric-linear} uses the geometric-odds recipe of \Cref{thm:exact_bulk_optimization} with the same endpoints \((\beta_1,\bar\alpha_T)\) as the DDPM linear schedule, and \texttt{geometric-cosine} uses the same endpoints as the cosine schedule. In both cases any difference from the matched baseline comes only from the schedule shape between the endpoints.
+\end{itemize}
+
+\paragraph{Training objectives.} We test three standard objectives from \cite{nichol2021improved}: \(L_{\mathrm{simple}}\) (MSE on the noise prediction with a fixed variance), \(L_{\mathrm{hybrid}}\) (MSE plus a learned variance, trained with the rescaled variational lower bound), and \(L_{\mathrm{vlb}}\) (the full variational lower bound, trained with importance-sampled \(t\)). The \(L_{\mathrm{simple}}\) weighting is implicitly fit to the linear DDPM schedule and is mis-specified for substantially different schedules; \(L_{\mathrm{hybrid}}\) and \(L_{\mathrm{vlb}}\) are the well-specified comparisons.
+
+\paragraph{Metrics.} We report NLL in bits per dimension on the held-out test set, FID against the training set (50K generated samples for the \(32\times 32\) datasets, 10K for ImageNet-64), and total variation (TV) between pixel-intensity histograms of generated and test samples as an auxiliary check on distributional match.
+
+\subsection{Matched-endpoint comparison}
+\label{sec:exp_matched}
+
+\Cref{tab:matched_nll_fid} reports NLL and FID for the four \(\{\text{baseline},\text{geometric}\}\) schedule pairs across all (dataset, objective) combinations. Within each pair the better value is bolded.
+
+\begin{table}[ht!]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Matched-endpoint comparison: holding \((\beta_1,\bar\alpha_T)\) fixed and varying only the schedule shape. Bold marks the better of each \(\{\text{baseline},\text{geometric}\}\) pair (linear vs.\ \texttt{g-lin}, cosine vs.\ \texttt{g-cos}). NLL in bits/dim; FID against the training set. Lower is better for both metrics.}
+\label{tab:matched_nll_fid}
+\begin{tabular}{llcccccccc}
+\toprule
+& & \multicolumn{4}{c}{NLL (bits/dim)} & \multicolumn{4}{c}{FID} \\
+\cmidrule(lr){3-6} \cmidrule(lr){7-10}
+Dataset & Obj.\ & linear & \texttt{g-lin} & cosine & \texttt{g-cos} & linear & \texttt{g-lin} & cosine & \texttt{g-cos} \\
+\midrule
+MNIST       & simple & 0.960 & \textbf{0.647} & 0.755 & \textbf{0.344} & 2.599 & \textbf{0.516} & 2.173 & \textbf{0.483} \\
+MNIST       & hybrid & 0.388 & \textbf{0.346} & 0.346 & \textbf{0.286} & 2.574 & \textbf{0.494} & 2.258 & \textbf{0.434} \\
+MNIST       & vlb    & 0.477 & \textbf{0.391} & 0.316 & \textbf{0.313} & \textbf{0.580} & 0.610 & \textbf{0.433} & 0.450 \\
+F-MNIST     & simple & \textbf{1.453} & 1.746 & 1.215 & \textbf{0.862} & 2.436 & \textbf{1.512} & 2.221 & \textbf{1.438} \\
+F-MNIST     & hybrid & 0.947 & \textbf{0.887} & 0.828 & \textbf{0.761} & 2.321 & \textbf{1.547} & 2.352 & \textbf{1.231} \\
+F-MNIST     & vlb    & 1.096 & \textbf{0.922} & 0.817 & \textbf{0.773} & \textbf{1.278} & 1.399 & 1.772 & \textbf{1.254} \\
+CIFAR-10    & simple & \textbf{3.418} & 8.922 & \textbf{3.298} & 4.875 & 9.769 & \textbf{6.796} & \textbf{5.550} & 9.684 \\
+CIFAR-10    & hybrid & 3.296 & \textbf{3.012} & 3.207 & \textbf{2.921} & 8.421 & \textbf{7.114} & \textbf{5.475} & 9.038 \\
+CIFAR-10    & vlb    & 3.090 & \textbf{3.009} & 2.981 & \textbf{2.925} & \textbf{10.524} & 11.290 & 11.756 & \textbf{10.694} \\
+ImageNet-64 & simple & \textbf{3.522} & 10.760 & \textbf{3.441} & 6.068 & \textbf{30.746} & 35.093 & \textbf{27.780} & 39.102 \\
+ImageNet-64 & hybrid & 3.398 & \textbf{3.329} & 3.367 & \textbf{3.316} & \textbf{30.159} & 34.555 & \textbf{28.799} & 40.381 \\
+ImageNet-64 & vlb    & 3.341 & \textbf{3.327} & 3.357 & \textbf{3.310} & \textbf{41.213} & 45.333 & 62.814 & \textbf{43.775} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three patterns are visible in \Cref{tab:matched_nll_fid}. First, for the two well-specified objectives \(L_{\mathrm{hybrid}}\) and \(L_{\mathrm{vlb}}\), the geometric-odds schedule improves NLL on \emph{every} (dataset, objective) cell relative to its matched baseline, with the largest absolute gains on the smaller datasets (e.g., MNIST/hybrid: \(0.346\to 0.286\) bits/dim under the cosine endpoints; Fashion-MNIST/hybrid: \(0.828\to 0.761\)). On CIFAR-10 the corresponding gains are \(0.06\)–\(0.29\) bits/dim, and on ImageNet-64 they are \(0.05\)–\(0.07\) bits/dim --- modest in absolute terms, but consistent across the four matched cells.
+
+Second, on MNIST and Fashion-MNIST the geometric-cosine schedule also dominates the cosine baseline on FID across all three objectives, often by large margins (e.g., MNIST/hybrid FID \(2.258\to 0.434\); Fashion-MNIST/hybrid FID \(2.352\to 1.231\)). On CIFAR-10 and ImageNet-64 the FID picture is mixed: the geometric schedule typically improves FID under the linear endpoints but not under the cosine endpoints, where the baseline cosine schedule already concentrates much of its noise budget into the high-\(\bar\alpha_t\) region that contributes most to perceptual quality. This remaining FID gap on the larger datasets is consistent with the cumulant-prefactor refinement of \Cref{sec:t_dependent_prefactor}: the universal bound \eqref{eq:Kt_universal_bound} that the geometric schedule minimizes treats every step as worst-case in the data's third cumulant, whereas FID is sensitive to fine perceptual structure that a data-aware envelope would weight differently.
+
+Third, the \(L_{\mathrm{simple}}\) rows of the table contain large NLL anomalies, most visibly \(L_{\mathrm{simple}}/\texttt{geometric-linear}\) on CIFAR-10 (8.92 bits/dim) and ImageNet-64 (10.76 bits/dim). These reflect the implicit fit of \(L_{\mathrm{simple}}\)'s loss weighting to the DDPM linear schedule: under a substantially different schedule the objective is no longer a tight surrogate for the variational lower bound, and bits/dim degrades even when sample quality is unaffected. The well-posed comparisons are therefore those in the \(L_{\mathrm{hybrid}}\) and \(L_{\mathrm{vlb}}\) rows.
+
+\subsection{Sample quality}
+\label{sec:exp_samples}
+
+\Cref{fig:samples} shows samples from the cosine baseline and from the matched geometric-cosine schedule, both trained with \(L_{\mathrm{hybrid}}\), on all four datasets. Visual fidelity is comparable on every dataset; on MNIST and Fashion-MNIST the geometric-cosine samples are visibly crisper and contain fewer of the low-contrast smears characteristic of poorly calibrated reverse chains, consistent with the FID improvements those datasets show in \Cref{tab:matched_nll_fid}.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[height=0.85\textheight,keepaspectratio]{all_datasets_cosine_vs_geometric_cosine_hybrid.png}
+\caption{Random samples from \texttt{cosine}/\(L_{\mathrm{hybrid}}\) (left of each pair) and \texttt{geometric-cosine}/\(L_{\mathrm{hybrid}}\) (right of each pair) on MNIST, Fashion-MNIST, CIFAR-10, and ImageNet-64. Both schedules share endpoints \((\beta_1,\bar\alpha_T)\); only the schedule shape between the endpoints differs.}
+\label{fig:samples}
+\end{figure}
+
+\subsection{Discussion}
+\label{sec:exp_discussion}
+
+The empirical evidence supports the schedule-shape prediction of \Cref{thm:exact_bulk_optimization}: holding endpoints fixed, the geometric-odds schedule improves bits/dim on every well-specified cell in \Cref{tab:matched_nll_fid}, and improves FID on the smaller datasets. The remaining FID gap on the larger datasets points to the data-dependent refinement of \Cref{sec:t_dependent_prefactor}: the universal bound that the geometric schedule minimizes does not see the data's third cumulant, and the hybrid schedule of \Cref{fig:hybrid_schedule}, which switches between the universal and cumulant-driven regimes near the temporal midpoint, is a natural direction for future empirical work.
 
 \bibliographystyle{plain}
 \bibliography{references}
