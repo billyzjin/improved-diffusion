@@ -40,33 +40,27 @@ The final experiments section should make the following points, in this order:
 
 For a discrete schedule with `T` steps,
 
-
 X_t = \sqrt{1-\beta_t}X_{t-1}+\sqrt{\beta_t}Z_t,
 \qquad
 \bar\alpha_t=\prod_{i=1}^t(1-\beta_i).
 
-
 The noise-to-signal odds are
-
 
 z_t=\frac{1-\bar\alpha_t}{\bar\alpha_t}.
 
-
 For bulk steps `t >= 2`, define
 
-# 
+
+
 \eta_t=(1-\beta_t)(1-\bar\alpha_{t-1}),
 \qquad
 r_t=\frac{\beta_t}{\eta_t}
 
 \frac{\beta_t}{(1-\beta_t)(1-\bar\alpha_{t-1})}.
 
-
 The universal per-step proxy is
 
-
 \Psi(r)=\frac{r^2}{2}-r+\log(1+r).
-
 
 Use `log1p(r)` in code for numerical stability.
 
@@ -80,119 +74,55 @@ Given:
 
 compute:
 
-
 z_1=\frac{\beta_1}{1-\beta_1},
 \qquad
 z_T=\frac{1-\bar\alpha_T}{\bar\alpha_T},
-
-
 
 q=\left(\frac{z_T}{z_1}\right)^{1/(T-1)},
 \qquad
 z_t=z_1q^{t-1}, \quad t=1,\ldots,T.
 
-
 Then
-
 
 \bar\alpha_t=\frac{1}{1+z_t},
 
-
 and the correct beta formula is
-
 
 \beta_1 \text{ fixed},
 \qquad
 \beta_t=\frac{(q-1)z_{t-1}}{1+qz_{t-1}},
 \quad t=2,\ldots,T.
 
-
 Under this schedule, all bulk ratios satisfy
-
 
 r_2=r_3=\cdots=r_T=q-1.
 
+### Implementation status (already in the repo)
 
-### Reference implementation
+The geometric-odds schedule is **already implemented** in `improved_diffusion/gaussian_diffusion.py` and wired through the training/eval CLI -- do not reimplement it:
 
-Add this function to the schedule utilities and test it thoroughly.
+- `get_named_beta_schedule(num_steps, "geometric", geometric_beta1=b1, geometric_alpha_bar_T=aT)` -- generic geometric-odds with user-specified endpoints.
+- `"geometric_linear"` / `"geometric_cosine"` -- the same schedule with endpoints auto-matched to the DDPM linear / cosine baselines (no endpoints to pass).
+- CLI flags `--noise_schedule`, `--geometric_beta1`, `--geometric_alpha_bar_T` thread through `script_util.py`.
+
+Matched-endpoint runs therefore need no new schedule code: use `--noise_schedule geometric_linear` / `geometric_cosine`, or `--noise_schedule geometric` with explicit endpoints.
+
+For toy / diagnostic analysis only (Experiment 1 and the Phase 0 plots) you need the per-step ratio `r_t` and proxy `Psi(r_t)`. `psi(r)` already exists in `endpoint_grid_search.py`; `r_t` is a one-liner on a `betas` array:
 
 ```python
-import numpy as np
-
-
-def geometric_odds_betas(T: int, beta1: float, alpha_bar_T: float) -> np.ndarray:
-    """Return a geometric-odds beta schedule of length T.
-
-    Indexing convention:
-        betas[0] = beta_1
-        betas[t-1] = beta_t
-
-    The schedule matches beta_1 and alpha_bar_T exactly up to floating-point error.
-    """
-    if T < 2:
-        raise ValueError("T must be at least 2")
-    if not (0.0 < beta1 < 1.0):
-        raise ValueError("beta1 must be in (0, 1)")
-    if not (0.0 < alpha_bar_T < 1.0):
-        raise ValueError("alpha_bar_T must be in (0, 1)")
-
-    z1 = beta1 / (1.0 - beta1)
-    zT = (1.0 - alpha_bar_T) / alpha_bar_T
-    if not (zT > z1):
-        raise ValueError("Need zT > z1 so that the chain adds noise overall")
-
-    q = (zT / z1) ** (1.0 / (T - 1))
-    z = z1 * q ** np.arange(T, dtype=np.float64)  # z[0] = z_1, ..., z[T-1] = z_T
-
-    betas = np.empty(T, dtype=np.float64)
-    betas[0] = beta1
-    betas[1:] = ((q - 1.0) * z[:-1]) / (1.0 + q * z[:-1])
-    return betas
-
-
-def alpha_bar_from_betas(betas: np.ndarray) -> np.ndarray:
-    return np.cumprod(1.0 - betas)
-
-
-def bulk_ratios(betas: np.ndarray) -> np.ndarray:
-    """Return r_t for t=2,...,T as a length T-1 array."""
-    alpha_bar = alpha_bar_from_betas(betas)
-    alpha_prev = alpha_bar[:-1]  # alpha_bar_{t-1}, t=2,...,T
-    beta_t = betas[1:]
-    eta_t = (1.0 - beta_t) * (1.0 - alpha_prev)
-    return beta_t / eta_t
-
-
-def psi(r: np.ndarray) -> np.ndarray:
-    return 0.5 * r**2 - r + np.log1p(r)
+def bulk_ratios(betas):  # r_t for t = 2..T
+    ab = np.cumprod(1.0 - betas)
+    return betas[1:] / ((1.0 - betas[1:]) * (1.0 - ab[:-1]))
 ```
 
-### Required tests
-
-Add unit tests before running experiments.
+Sanity-check the existing schedule (not a reimplementation) before running:
 
 ```python
-T = 4000
-beta1 = 1e-4
-alpha_bar_T = 4e-5
-betas = geometric_odds_betas(T, beta1, alpha_bar_T)
-alpha_bar = alpha_bar_from_betas(betas)
+from improved_diffusion.gaussian_diffusion import get_named_beta_schedule
+betas = get_named_beta_schedule("geometric_linear", 4000)
 r = bulk_ratios(betas)
-
-assert betas.shape == (T,)
-assert np.all(betas > 0) and np.all(betas < 1)
-assert abs(betas[0] - beta1) < 1e-12
-assert abs(alpha_bar[-1] - alpha_bar_T) / alpha_bar_T < 1e-8
-assert np.std(r) / np.mean(r) < 1e-10
-```
-
-For matched baselines, never hard-code endpoints except in toy experiments. Compute the baseline `betas`, then set:
-
-```python
-beta1_match = baseline_betas[0]
-alpha_bar_T_match = np.cumprod(1.0 - baseline_betas)[-1]
-geometric_betas = geometric_odds_betas(T, beta1_match, alpha_bar_T_match)
+assert np.all((betas > 0) & (betas < 1))
+assert np.std(r) / np.mean(r) < 1e-6   # geometric odds => constant r_t by construction
 ```
 
 ### Linear-in-$\bar\alpha$ (linear-decay) schedule
@@ -207,9 +137,9 @@ geometric_betas = geometric_odds_betas(T, beta1_match, alpha_bar_T_match)
 \qquad
 \beta_t = 1 - \frac{\bar\alpha_t}{\bar\alpha_{t-1}}.
 
-This forces $\beta_1 = (1-\bar\alpha_T)/T$, so it matches $\bar\alpha_T$ but **not** $\beta_1$.
+This forces $\beta_1 = (1-\bar\alpha_T)/T$, so it matches $\bar\alpha_T$ but **not** $\beta_1$. This pure form is **already in the repo** as `ours_v2` (`gaussian_diffusion.py`: `beta_t = 1/(T-t+1)`, with `beta` clipped at `0.999`) -- reuse it rather than reimplementing.
 
-**Matched-endpoint form (recommended for comparison).** To compare apples-to-apples against the baselines and the geometric schedule (which match *both* endpoints), interpolate $\bar\alpha_t$ linearly from $\bar\alpha_1 = 1-\beta_1$ (at $t=1$) to $\bar\alpha_T$ (at $t=T$). This matches both endpoints, so only the schedule shape differs. Produce two matched variants, `linabar-linear` and `linabar-cosine`, inheriting endpoints from the linear and cosine baselines respectively, exactly as `geometric-linear` / `geometric-cosine` do.
+**Matched-endpoint form (recommended for comparison).** To compare apples-to-apples against the baselines and the geometric schedule (which match *both* endpoints), interpolate $\bar\alpha_t$ linearly from $\bar\alpha_1 = 1-\beta_1$ (at $t=1$) to $\bar\alpha_T$ (at $t=T$). This matches both endpoints, so only the schedule shape differs. Produce two matched variants, `linabar-linear` and `linabar-cosine`, inheriting endpoints from the linear and cosine baselines respectively, exactly as `geometric-linear` / `geometric-cosine` do. Implement these as two new branches in `get_named_beta_schedule` -- `linabar_linear` and `linabar_cosine` -- right next to the existing `geometric_linear` / `geometric_cosine` cases; the reference NumPy below is the branch body (the only genuinely new schedule code this round).
 
 **Late-step behavior / clipping.** Because $\bar\alpha_t$ decreases linearly, this schedule front-loads signal retention and dumps most of the noise into the final steps. The final $\beta_t$ is governed by $\bar\alpha_T$: for the linear endpoints ($\bar\alpha_T = 4\times10^{-5}$) the last $\beta_t \approx 0.86$ (large but fine); for the cosine endpoints ($\bar\alpha_T \approx 2\times10^{-9}$) the last $\beta_t \approx 0.99999$, an almost-total-noise step. Apply the same $\beta$-clipping convention the cosine baseline uses (clip at $0.999$) to the `linabar` variants, and record whether clipping changed the schedule. Expect `linabar-cosine` to be more delicate than `linabar-linear`.
 
@@ -219,7 +149,7 @@ def linear_alphabar_betas(T: int, beta1: float, alpha_bar_T: float) -> np.ndarra
 
     alpha_bar interpolates linearly from alpha_bar_1 = 1 - beta1 (at t=1)
     to alpha_bar_T (at t=T), matching BOTH beta1 and alpha_bar_T so it is
-    directly comparable to geometric_odds_betas under the same endpoints.
+    directly comparable to the geometric schedule under the same endpoints.
 
     NOTE: 'linear in alpha_bar', NOT the DDPM 'linear' (which is linear in beta).
     """
@@ -241,24 +171,9 @@ def linear_alphabar_betas(T: int, beta1: float, alpha_bar_T: float) -> np.ndarra
     betas[0] = beta1
     betas[1:] = 1.0 - alpha_bar[1:] / alpha_bar[:-1]
     return betas
-
-
-def linear_alphabar_betas_pure(T: int, alpha_bar_T: float) -> np.ndarray:
-    """Paper's one-parameter linear-decay form: alpha_bar_t = 1 - (1-alpha_bar_T)*t/T.
-
-    beta1 is forced to (1 - alpha_bar_T)/T; matches alpha_bar_T only.
-    """
-    if T < 2:
-        raise ValueError("T must be at least 2")
-    if not (0.0 < alpha_bar_T < 1.0):
-        raise ValueError("alpha_bar_T must be in (0, 1)")
-    t = np.arange(1, T + 1, dtype=np.float64)
-    alpha_bar = 1.0 - (1.0 - alpha_bar_T) * t / T
-    betas = np.empty(T, dtype=np.float64)
-    betas[0] = 1.0 - alpha_bar[0]    # = (1 - alpha_bar_T)/T
-    betas[1:] = 1.0 - alpha_bar[1:] / alpha_bar[:-1]
-    return betas
 ```
+
+(The pure one-parameter form is `ours_v2` in the repo; see above. Only `linear_alphabar_betas` -- the endpoint-matched variant -- is new.)
 
 Tests:
 
@@ -282,10 +197,11 @@ Use or adapt this structure.
 
 ```text
 experiments/
+  # Schedules already live in improved_diffusion/gaussian_diffusion.py
+  # (get_named_beta_schedule); do NOT build a parallel schedules module.
+  # Add the new linabar_linear / linabar_cosine branches there.
   schedules/
-    schedules.py
-    test_schedules.py
-    plot_schedules.py
+    plot_schedules.py        # diagnostics only (alpha_bar_t, z_t, r_t, Psi)
   toy_oracle_kl/
     gmm_posteriors.py
     estimate_gaussianization_kl.py
@@ -358,7 +274,6 @@ outputs/<dataset>/<objective>/<schedule_name>/
 
 Directly estimate the object studied by the theory:
 
-
 K_t=\mathbb E_{X_t}
 D_{\mathrm{KL}}
 \left(
@@ -367,9 +282,7 @@ D_{\mathrm{KL}}
 \text{best Gaussian approximation}
 \right),
 
-
 or equivalently after the affine rescaling used in the proof,
-
 
 K_t=\mathbb E_{X_t}
 D_{\mathrm{KL}}
@@ -380,7 +293,6 @@ D_{\mathrm{KL}}
 \right),
 \qquad
 S_t=\sqrt{1-\beta_t}X_{t-1}.
-
 
 This avoids neural-network training and directly tests whether the geometric-odds schedule reduces the actual finite-step Gaussianization error.
 
@@ -475,103 +387,73 @@ Use `T=4000` only if the estimator is fast enough.
 
 Assume
 
-
 X_0\mid C=c\sim N(\mu_c,\Sigma_c),
 \qquad
 P(C=c)=\pi_c.
 
-
 For diffusion step `t`, define
-
 
 S_t=\sqrt{\bar\alpha_t}X_0+\sqrt{\eta_t}W,
 \qquad
 X_t=S_t+\sqrt{\beta_t}Z,
 
-
 where
-
 
 \eta_t=(1-\beta_t)(1-\bar\alpha_{t-1}).
 
-
 Conditional on component `c`,
-
 
 S_t\mid C=c\sim N(m_c, P_c),
 
-
 with
-
 
 m_c=\sqrt{\bar\alpha_t}\mu_c,
 \qquad
 P_c=\bar\alpha_t\Sigma_c+\eta_t I.
 
-
 The observation is
-
 
 X_t\mid C=c\sim N(m_c, P_c+\beta_t I).
 
-
 Given `X_t = x`, posterior component weights are
-
 
 w_c(x)\propto \pi_cN(x;m_c,P_c+\beta_t I).
 
-
 The component posterior is Gaussian:
-
 
 S_t\mid X_t=x,C=c\sim N(\tilde m_c(x),\tilde P_c),
 
-
 where
-
 
 K_c=P_c(P_c+\beta_t I)^{-1},
 
-
-
 \tilde m_c(x)=m_c+K_c(x-m_c),
-
-
 
 \tilde P_c=P_c-P_c(P_c+\beta_t I)^{-1}P_c.
 
-
 Thus the exact posterior is a mixture:
-
 
 q_t(s\mid x)=\sum_c w_c(x)N(s;\tilde m_c(x),\tilde P_c).
 
-
 The KL-best Gaussian is the moment-matched Gaussian:
-
 
 g_t^\star(s\mid x)=N(m(x),C(x)),
 
-
 with
 
-
 m(x)=\sum_c w_c(x)\tilde m_c(x),
-
-
 
 C(x)=\sum_c w_c(x)\left[\tilde P_c+
 (\tilde m_c(x)-m(x))(\tilde m_c(x)-m(x))^\top\right].
 
-
 Then estimate
 
-# 
+
+
 D_{\mathrm{KL}}(q_t(\cdot\mid x)g_t^\star(\cdot\mid x))
 
 \mathbb E_{s\sim q_t(\cdot\mid x)}
 \left[\log q_t(s\mid x)-\log g_t^\star(s\mid x)\right].
-
 
 Use Monte Carlo over both `x` and posterior samples `s`.
 
@@ -879,11 +761,9 @@ For a selected sequence
 
 construct the respaced diffusion with cumulative alpha values inherited from the original schedule:
 
-
 \bar\alpha'*k = \bar\alpha*{s_k},
 \qquad
 \beta'*k=1-\frac{\bar\alpha'*{k}}{\bar\alpha'_{k-1}}.
-
 
 Use the trained model at the corresponding original timestep embedding `s_k`.
 
@@ -1102,7 +982,7 @@ alpha_bar_T_match = np.cumprod(1.0 - baseline_betas)[-1]
 linabar_betas = linear_alphabar_betas(T, beta1_match, alpha_bar_T_match)
 ```
 
-Apply the cosine baseline's $\beta$-clipping convention (clip at $0.999$) to the `linabar` variants and record whether clipping changed the schedule (see the late-step note in the schedule definition; `linabar-cosine` is the delicate one). Optionally also run the paper's one-parameter `linabar-pure` form (`linear_alphabar_betas_pure`, matching $\bar\alpha_T$ only) on CIFAR-10 to check sensitivity to the $\beta_1$-matching choice; label it clearly and keep it out of the matched-endpoint tables.
+Apply the cosine baseline's $\beta$-clipping convention (clip at $0.999$) to the `linabar` variants and record whether clipping changed the schedule (see the late-step note in the schedule definition; `linabar-cosine` is the delicate one). Optionally also run the pure linear-decay form (already in the repo as `ours_v2`, matching $\bar\alpha_T$ only) on CIFAR-10 to check sensitivity to the $\beta_1$-matching choice; label it clearly and keep it out of the matched-endpoint tables.
 
 ## Training / sampling / metrics
 
@@ -1134,16 +1014,16 @@ Report the result honestly even if linear-in-$\bar\alpha$ loses. A clean "geomet
 
 Use this order.
 
-## Phase 0: Setup and schedule tests
+## Phase 0: Setup and schedule checks
 
-1. Implement schedule utilities.
-2. Add unit tests for geometric odds.
+1. Confirm the schedules already in `get_named_beta_schedule` behave as expected -- `geometric`, `geometric_linear`, `geometric_cosine`, and `ours_v2` (= pure linear-decay). Do not reimplement them.
+2. Add the new `linabar_linear` / `linabar_cosine` branches (matched-endpoint linear-in-$\bar\alpha$) and a small unit test for them.
 3. Reproduce schedule diagnostic plots:
   - `alpha_bar_t`,
   - `z_t`,
   - `r_t`,
   - `Psi(r_t)`.
-4. Confirm geometric schedules exactly match baseline endpoints.
+4. Confirm the geometric and linabar schedules match their baseline endpoints.
 
 Exit criteria:
 
