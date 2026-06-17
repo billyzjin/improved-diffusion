@@ -1,0 +1,18 @@
+dataset	schedule	objective	beta_1	alpha_bar_T	nll_bpd	fid	nll_samples	fid_samples	sampling_steps	source
+svhn	linear	simple			2.140557	2.939200	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linear_simple
+svhn	linear	hybrid			1.888091	2.936352	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linear_hybrid
+svhn	linear	vlb			1.714987	3.729338	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linear_vlb
+svhn	cosine	simple			1.997378	1.563267	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_cosine_simple
+svhn	cosine	hybrid			1.820134	1.630298	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_cosine_hybrid
+svhn	cosine	vlb			1.664240	3.920600	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_cosine_vlb
+svhn	geometric_linear	simple			5.524007	2.366887	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_linear_simple
+svhn	geometric_linear	hybrid			1.706695	2.296606	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_linear_hybrid
+svhn	geometric_linear	vlb			1.682548	2.585542	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_linear_vlb
+svhn	geometric_cosine	simple			2.960676	2.163469	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_cosine_simple
+svhn	geometric_cosine	hybrid			1.644253	1.922278	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_cosine_hybrid
+svhn	geometric_cosine	vlb			1.618504	2.810653	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_cosine_vlb
+svhn	linabar_linear	simple			3.008221	36.194209	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linabar_linear_simple
+svhn	linabar_linear	hybrid			2.254585	2.624329	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linabar_linear_hybrid
+svhn	linabar_linear	vlb			1.930523	4.006579	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linabar_linear_vlb
+svhn	linabar_cosine	simple			3.168502	59.461271	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linabar_cosine_simple
+svhn	linabar_cosine	vlb			2.220229	13.581338	10000	50000	4000	/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_linabar_cosine_vlb

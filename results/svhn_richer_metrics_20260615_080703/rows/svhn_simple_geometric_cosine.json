@@ -1,0 +1,44 @@
+{
+  "dataset": "svhn",
+  "fid": "2.163469",
+  "metrics": {
+    "cmmd": {
+      "bandwidth": "median_heuristic_squared_distance",
+      "bandwidth_sq": 0.461198627948761,
+      "clip_model": "ViT-B-32",
+      "estimator": "unbiased_mmd2",
+      "feature_normalization": "l2",
+      "kernel": "rbf",
+      "metric": "CMMD",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "value": 0.0033230680418039338
+    },
+    "density_coverage": {
+      "coverage": 0.9612999558448792,
+      "density": 1.1000400390625,
+      "feature_extractor": "inception_v3_pool3",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "kid": {
+      "estimator": "unbiased_mmd2",
+      "kernel": "polynomial ((x.y/d)+1)^3",
+      "metric": "KID",
+      "num_generated": 50000,
+      "num_real": 50000,
+      "standard_error": 5.656425788774611e-05,
+      "subset_size": 1000,
+      "subsets": 100,
+      "value": 0.0015279825767829448
+    }
+  },
+  "n_features_requested": 50000,
+  "nll_bpd": "2.960676",
+  "objective": "simple",
+  "real_dir": "/project_gpfs/bata0/bjin0/svhn_32x32/train",
+  "samples_npz": "/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613/svhn_geometric_cosine_simple/samples_50000x32x32x3.npz",
+  "schedule": "geometric_cosine"
+}

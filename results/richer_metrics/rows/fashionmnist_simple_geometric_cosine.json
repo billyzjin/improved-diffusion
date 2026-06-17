@@ -1,0 +1,44 @@
+{
+  "dataset": "fashionmnist",
+  "fid": "1.438355",
+  "metrics": {
+    "cmmd": {
+      "bandwidth": "median_heuristic_squared_distance",
+      "bandwidth_sq": 0.6894375085830688,
+      "clip_model": "ViT-B-32",
+      "estimator": "unbiased_mmd2",
+      "feature_normalization": "l2",
+      "kernel": "rbf",
+      "metric": "CMMD",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "value": 0.0018820776887686907
+    },
+    "density_coverage": {
+      "coverage": 0.9675999879837036,
+      "density": 1.1069800170898438,
+      "feature_extractor": "inception_v3_pool3",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "kid": {
+      "estimator": "unbiased_mmd2",
+      "kernel": "polynomial ((x.y/d)+1)^3",
+      "metric": "KID",
+      "num_generated": 50000,
+      "num_real": 50000,
+      "standard_error": 2.462570287735019e-05,
+      "subset_size": 1000,
+      "subsets": 100,
+      "value": 0.0004323745702598902
+    }
+  },
+  "n_features_requested": 50000,
+  "nll_bpd": "0.862070",
+  "objective": "simple",
+  "real_dir": "fashion_train",
+  "samples_npz": "/project_gpfs/bata0/bjin0/fashionmnist_evaluation_parallel_geometric_20260410_231225/fashionmnist_geometric_cosine_simple/samples_50000x32x32x3.npz",
+  "schedule": "geometric_cosine"
+}

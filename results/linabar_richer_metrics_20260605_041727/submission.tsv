@@ -1,0 +1,2 @@
+submitted_at	status	job_id	array_spec	manifest	results_dir	dependency	metrics
+2026-06-05T04:17:29-05:00	submitted	143186	0-23%8	results/linabar_richer_metrics_20260605_041727/manifest.tsv	results/linabar_richer_metrics_20260605_041727	afterany:143162:143163:143164:143165:143166:143167:143168:143169:143170:143171:143172:143173:143174:143175:143176:143177:143178:143179:143180:143181:143182:143183:143184:143185	cmmd,kid,density_coverage

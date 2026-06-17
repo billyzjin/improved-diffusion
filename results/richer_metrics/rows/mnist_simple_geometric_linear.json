@@ -1,0 +1,44 @@
+{
+  "dataset": "mnist",
+  "fid": "0.516012",
+  "metrics": {
+    "cmmd": {
+      "bandwidth": "median_heuristic_squared_distance",
+      "bandwidth_sq": 0.40189480781555176,
+      "clip_model": "ViT-B-32",
+      "estimator": "unbiased_mmd2",
+      "feature_normalization": "l2",
+      "kernel": "rbf",
+      "metric": "CMMD",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "value": 0.0004181868256825094
+    },
+    "density_coverage": {
+      "coverage": 0.9673999547958374,
+      "density": 1.030960028076172,
+      "feature_extractor": "inception_v3_pool3",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "kid": {
+      "estimator": "unbiased_mmd2",
+      "kernel": "polynomial ((x.y/d)+1)^3",
+      "metric": "KID",
+      "num_generated": 50000,
+      "num_real": 50000,
+      "standard_error": 1.6869257308322704e-05,
+      "subset_size": 1000,
+      "subsets": 100,
+      "value": 0.00024161625162136602
+    }
+  },
+  "n_features_requested": 50000,
+  "nll_bpd": "0.647220",
+  "objective": "simple",
+  "real_dir": "mnist_train",
+  "samples_npz": "/project_gpfs/bata0/bjin0/mnist_evaluation_parallel_geometric_20260411_090347/mnist_geometric_linear_simple/samples_50000x32x32x3.npz",
+  "schedule": "geometric_linear"
+}

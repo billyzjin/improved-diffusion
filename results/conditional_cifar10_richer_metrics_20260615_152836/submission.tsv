@@ -1,0 +1,2 @@
+submitted_at	status	job_id	array_spec	manifest	results_dir	metrics	notes
+2026-06-15T15:28:36-05:00	completed	153666	0-5%6	results/conditional_cifar10_richer_metrics_20260615_152836/manifest.tsv	results/conditional_cifar10_richer_metrics_20260615_152836	cmmd,kid,density_coverage	Corrected run with generated-feature cache keys derived from conditional sample paths

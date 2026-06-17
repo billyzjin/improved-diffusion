@@ -1,0 +1,7 @@
+dataset	conditioning	schedule	objective	nll_bpd	fid	nll_samples	fid_samples	sampling_steps	source
+cifar10	class_cond	cosine	simple	3.306671	5.122482	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_cosine_simple
+cifar10	class_cond	cosine	hybrid	3.213729	5.165507	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_cosine_hybrid
+cifar10	class_cond	cosine	vlb	2.976541	9.417955	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_cosine_vlb
+cifar10	class_cond	geometric_cosine	simple	4.877593	6.762996	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_geometric_cosine_simple
+cifar10	class_cond	geometric_cosine	hybrid	2.920135	6.991795	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_geometric_cosine_hybrid
+cifar10	class_cond	geometric_cosine	vlb	2.929911	8.140166	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/cifar10_cond_geometric_cosine_vlb

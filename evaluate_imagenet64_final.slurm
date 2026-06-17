@@ -80,7 +80,13 @@ evaluate_model() {
   local use_kl="False"
   local rescale_learned_sigmas="False"
 
-  if [[ "$exp_name" == *"geometric_linear"* ]]; then
+  if [[ "$exp_name" == *"linabar_linear"* ]]; then
+    noise_schedule="linabar_linear"
+    dropout="0.3"
+  elif [[ "$exp_name" == *"linabar_cosine"* ]]; then
+    noise_schedule="linabar_cosine"
+    dropout="0.3"
+  elif [[ "$exp_name" == *"geometric_linear"* ]]; then
     noise_schedule="geometric_linear"
     dropout="0.3"
   elif [[ "$exp_name" == *"geometric_cosine"* ]]; then
@@ -248,8 +254,11 @@ evaluate_model() {
   echo ""
 }
 
-# Find the newest EMA checkpoint for the experiment name.
-model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_200000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+# MODEL_PATH can pin an exact checkpoint; otherwise use the newest matching final EMA.
+model_path=${MODEL_PATH:-}
+if [ -z "$model_path" ]; then
+  model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_200000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+fi
 
 if [ -n "$model_path" ] && [ -f "$model_path" ]; then
   evaluate_model "$EVAL_MODEL_NAME" "$model_path"

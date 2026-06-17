@@ -1,0 +1,44 @@
+{
+  "dataset": "imagenet64",
+  "fid": "35.093241",
+  "metrics": {
+    "cmmd": {
+      "bandwidth": "median_heuristic_squared_distance",
+      "bandwidth_sq": 1.1907236576080322,
+      "clip_model": "ViT-B-32",
+      "estimator": "unbiased_mmd2",
+      "feature_normalization": "l2",
+      "kernel": "rbf",
+      "metric": "CMMD",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "value": 0.028619123090309007
+    },
+    "density_coverage": {
+      "coverage": 0.46799999475479126,
+      "density": 0.47466001586914064,
+      "feature_extractor": "inception_v3_pool3",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "kid": {
+      "estimator": "unbiased_mmd2",
+      "kernel": "polynomial ((x.y/d)+1)^3",
+      "metric": "KID",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "standard_error": 0.00022071511057461236,
+      "subset_size": 1000,
+      "subsets": 100,
+      "value": 0.03721508327923867
+    }
+  },
+  "n_features_requested": 10000,
+  "nll_bpd": "10.759519",
+  "objective": "simple",
+  "real_dir": "/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505/train",
+  "samples_npz": "/project_gpfs/bata0/bjin0/imagenet64_evaluation_parallel_finished12_nll_fid_20260511_095000/imagenet64_geometric_linear_simple/logger/samples_10000x64x64x3.npz",
+  "schedule": "geometric_linear"
+}

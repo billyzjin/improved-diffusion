@@ -141,7 +141,7 @@ This forces $\beta_1 = (1-\bar\alpha_T)/T$, so it matches $\bar\alpha_T$ but **n
 
 **Matched-endpoint form (recommended for comparison).** To compare apples-to-apples against the baselines and the geometric schedule (which match *both* endpoints), interpolate $\bar\alpha_t$ linearly from $\bar\alpha_1 = 1-\beta_1$ (at $t=1$) to $\bar\alpha_T$ (at $t=T$). This matches both endpoints, so only the schedule shape differs. Produce two matched variants, `linabar-linear` and `linabar-cosine`, inheriting endpoints from the linear and cosine baselines respectively, exactly as `geometric-linear` / `geometric-cosine` do. Implement these as two new branches in `get_named_beta_schedule` -- `linabar_linear` and `linabar_cosine` -- right next to the existing `geometric_linear` / `geometric_cosine` cases; the reference NumPy below is the branch body (the only genuinely new schedule code this round).
 
-**Late-step behavior / clipping.** Because $\bar\alpha_t$ decreases linearly, this schedule front-loads signal retention and dumps most of the noise into the final steps. The final $\beta_t$ is governed by $\bar\alpha_T$: for the linear endpoints ($\bar\alpha_T = 4\times10^{-5}$) the last $\beta_t \approx 0.86$ (large but fine); for the cosine endpoints ($\bar\alpha_T \approx 2\times10^{-9}$) the last $\beta_t \approx 0.99999$, an almost-total-noise step. Apply the same $\beta$-clipping convention the cosine baseline uses (clip at $0.999$) to the `linabar` variants, and record whether clipping changed the schedule. Expect `linabar-cosine` to be more delicate than `linabar-linear`.
+**Late-step behavior / clipping.** Because $\bar\alpha_t$ decreases linearly, this schedule front-loads signal retention and dumps most of the noise into the final steps. The final $\beta_t$ is governed by $\bar\alpha_T$: for the linear endpoints ($\bar\alpha_T = 4\times10^{-5}$) the last $\beta_t \approx 0.86$ (large but fine); for the cosine endpoints ($\bar\alpha_T \approx 2\times10^{-9}$) the last $\beta_t \approx 0.99999$, an almost-total-noise step. For the primary matched-endpoint experiment, **do not clip** `linabar-cosine`: clipping at `0.999` changes the terminal $\bar\alpha_T$ by orders of magnitude and invalidates the fixed-endpoint comparison. Instead, match the cosine schedule's actual $\bar\alpha_T$ directly, record the resulting `max_beta`, and run a short smoke test before launching the full slate. A clipped `linabar-cosine-clipped` variant may be run as a diagnostic only, but it must be labeled separately and excluded from the main matched-endpoint tables.
 
 ```python
 def linear_alphabar_betas(T: int, beta1: float, alpha_bar_T: float) -> np.ndarray:
@@ -982,7 +982,7 @@ alpha_bar_T_match = np.cumprod(1.0 - baseline_betas)[-1]
 linabar_betas = linear_alphabar_betas(T, beta1_match, alpha_bar_T_match)
 ```
 
-Apply the cosine baseline's $\beta$-clipping convention (clip at $0.999$) to the `linabar` variants and record whether clipping changed the schedule (see the late-step note in the schedule definition; `linabar-cosine` is the delicate one). Optionally also run the pure linear-decay form (already in the repo as `ours_v2`, matching $\bar\alpha_T$ only) on CIFAR-10 to check sensitivity to the $\beta_1$-matching choice; label it clearly and keep it out of the matched-endpoint tables.
+Do **not** clip the primary `linabar-*` variants: the point of this experiment is to match both baseline endpoints exactly. In particular, clipping `linabar-cosine` at `0.999` would substantially increase its terminal $\bar\alpha_T$ and turn it into a different, non-matched schedule. Record `max_beta` and the exact endpoint errors for both variants. Optionally also run a clipped `linabar-cosine-clipped` diagnostic and/or the pure linear-decay form (already in the repo as `ours_v2`, matching $\bar\alpha_T$ only) on CIFAR-10 to check sensitivity; label these clearly and keep them out of the matched-endpoint tables.
 
 ## Training / sampling / metrics
 
@@ -1023,7 +1023,7 @@ Use this order.
   - `z_t`,
   - `r_t`,
   - `Psi(r_t)`.
-4. Confirm the geometric and linabar schedules match their baseline endpoints.
+4. Confirm the geometric and primary linabar schedules match their baseline endpoints. For `linabar_cosine`, this means exact cosine $\bar\alpha_T$ matching with no beta clipping; record its large final beta explicitly.
 
 Exit criteria:
 
@@ -1077,7 +1077,7 @@ Exit criteria:
 
 Exit criteria:
 
-- Three-way matched-endpoint table for the existing datasets, with $\beta$-clipping status recorded for the `linabar` variants.
+- Three-way matched-endpoint table for the existing datasets, with `max_beta` and endpoint errors recorded for the `linabar` variants. Any clipped diagnostic variants must be labeled separately and excluded from this table.
 
 ## Phase 4: CIFAR-10 NFE sweep
 
@@ -1397,4 +1397,3 @@ Final deliverable:
 - `figures/*.pdf`
 - `metrics_json/**/*.json`
 - clear notes on any deviations from this plan
-

@@ -96,6 +96,18 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps,
             z_prev *= q
         betas = np.minimum(betas, 0.999)
         return betas
+    elif schedule_name in ("linabar_linear", "linabar_cosine"):
+        # Linear-in-alpha_bar schedule matched to the endpoints of the DDPM
+        # linear or cosine schedule. This is intentionally not clipped: clipping
+        # linabar_cosine would change alpha_bar_T and break endpoint matching.
+        T = num_diffusion_timesteps
+        if schedule_name == "linabar_linear":
+            baseline_betas = get_named_beta_schedule("linear", T)
+        else:
+            baseline_betas = get_named_beta_schedule("cosine", T)
+        beta_1 = baseline_betas[0]
+        alpha_bar_T = np.prod(1.0 - baseline_betas)
+        return linear_alphabar_betas(T, beta_1, alpha_bar_T)
     elif schedule_name == "geometric":
         # Generic geometric-odds schedule with user-specified endpoints.
         T = num_diffusion_timesteps
@@ -128,6 +140,45 @@ def get_named_beta_schedule(schedule_name, num_diffusion_timesteps,
         return betas
     else:
         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
+
+
+def linear_alphabar_betas(num_diffusion_timesteps, beta1, alpha_bar_T):
+    """
+    Create a schedule whose cumulative alpha_bar decays linearly from
+    alpha_bar_1 = 1 - beta1 to the requested terminal alpha_bar_T.
+
+    This matches both beta_1 and alpha_bar_T, so it can be compared directly
+    against endpoint-matched geometric schedules.
+    """
+    T = num_diffusion_timesteps
+    if T < 2:
+        raise ValueError(f"linear_alphabar schedule requires T >= 2, got {T}")
+    if not (0 < beta1 < 1):
+        raise ValueError(f"linear_alphabar schedule requires 0 < beta1 < 1, got {beta1}")
+    if not (0 < alpha_bar_T < 1):
+        raise ValueError(
+            f"linear_alphabar schedule requires 0 < alpha_bar_T < 1, got {alpha_bar_T}"
+        )
+
+    alpha_bar_1 = 1.0 - beta1
+    if alpha_bar_T >= alpha_bar_1:
+        raise ValueError(
+            "linear_alphabar schedule requires alpha_bar_T < 1 - beta1, "
+            f"got alpha_bar_T={alpha_bar_T}, 1-beta1={alpha_bar_1}"
+        )
+
+    t = np.arange(1, T + 1, dtype=np.float64)
+    alpha_bar = alpha_bar_1 + (alpha_bar_T - alpha_bar_1) * (t - 1.0) / (T - 1.0)
+
+    betas = np.empty(T, dtype=np.float64)
+    betas[0] = beta1
+    betas[1:] = 1.0 - alpha_bar[1:] / alpha_bar[:-1]
+    if not np.all((betas > 0) & (betas < 1)):
+        raise ValueError(
+            "linear_alphabar schedule produced beta outside (0, 1): "
+            f"min={betas.min()}, max={betas.max()}"
+        )
+    return betas
 
 
 def betas_for_alpha_bar(num_diffusion_timesteps, alpha_bar, max_beta=0.999):

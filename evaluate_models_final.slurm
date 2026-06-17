@@ -96,7 +96,13 @@ evaluate_model() {
     local use_kl="False"
     local rescale_learned_sigmas="False"
     
-    if [[ "$exp_name" == *"geometric_linear"* ]]; then
+    if [[ "$exp_name" == *"linabar_linear"* ]]; then
+        noise_schedule="linabar_linear"
+        dropout="0.3"
+    elif [[ "$exp_name" == *"linabar_cosine"* ]]; then
+        noise_schedule="linabar_cosine"
+        dropout="0.3"
+    elif [[ "$exp_name" == *"geometric_linear"* ]]; then
         noise_schedule="geometric_linear"
         dropout="0.3"
     elif [[ "$exp_name" == *"geometric_cosine"* ]]; then
@@ -239,20 +245,28 @@ evaluate_model() {
         2>&1 | tee "$exp_dir/fid_compute_log.txt"
 
     # 4. Compute Total Variation (TV) distance vs real CIFAR-10 test set (pixel histogram TV).
-    echo "Computing TV distance..."
-    python3 scripts/compute_tv_from_npz.py \
-        --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
-        --real_dir ./cifar_test \
-        --output_txt "$exp_dir/tv_results.txt" \
-        2>&1 | tee "$exp_dir/tv_compute_log.txt"
+    if [ "${SKIP_TV:-0}" = "1" ]; then
+        echo "Skipping TV distance (SKIP_TV=1)"
+    else
+        echo "Computing TV distance..."
+        python3 scripts/compute_tv_from_npz.py \
+            --samples_npz "$exp_dir/samples_50000x32x32x3.npz" \
+            --real_dir ./cifar_test \
+            --output_txt "$exp_dir/tv_results.txt" \
+            2>&1 | tee "$exp_dir/tv_compute_log.txt"
+    fi
     
     echo "Completed evaluation for $exp_name"
     echo "End Time: $(date)"
     echo ""
 }
 
-# Evaluate the single model passed from the submission script
-model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+# Evaluate the single model passed from the submission script.
+# MODEL_PATH can pin an exact checkpoint; otherwise use the newest matching final EMA.
+model_path=${MODEL_PATH:-}
+if [ -z "$model_path" ]; then
+    model_path=$(find /project_gpfs/bata0/bjin0 -name "ema_0.9999_500000.pt" -path "*/logs/$EVAL_MODEL_NAME/*" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+fi
     
     if [ -n "$model_path" ] && [ -f "$model_path" ]; then
     evaluate_model "$EVAL_MODEL_NAME" "$model_path"

@@ -1,0 +1,4 @@
+submitted_at_local	batch	job_ids	slurm_name	partition	status_at_record	output_or_manifest	notes
+2026-06-01T07:17	richer_metrics	138836_[0-47%8]	richer_metrics	long_hopper	submitted_pending	results/richer_metrics/manifest.tsv	48-row array for CMMD,KID,density_coverage; aggregate with scripts/aggregate_richer_metrics.py
+2026-06-01T07:22	toy_oracle_kl	138837-138864	toy_*	standard_l40s	submitted_running_and_pending	/project_gpfs/bata0/bjin0/toy_oracle_kl_20260601_072252/submission.tsv	28 toy oracle jobs; aggregate with scripts/aggregate_toy_oracle_kl.py
+2026-06-03T16:18	richer_metrics_completion	141076_[0-47%8]	richer_metrics	long_hopper	running_and_pending	results/richer_metrics/manifest.tsv	completion pass for KID and density_coverage after first array only received METRICS=cmmd through Slurm export
