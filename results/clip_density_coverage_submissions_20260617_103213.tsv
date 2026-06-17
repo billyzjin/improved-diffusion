@@ -1,0 +1,5 @@
+submitted_at	group	array_job_id	aggregate_job_id	rows	manifest	results_dir	metrics
+2026-06-17T10:32:13-05:00	linabar	154729	154730	18	results/linabar_richer_metrics_20260605_041727/manifest_completed_rows.tsv	results/linabar_richer_metrics_20260605_041727	clip_density_coverage
+2026-06-17T10:32:13-05:00	svhn	154731	154732	17	results/svhn_richer_metrics_20260615_080703/manifest.tsv	results/svhn_richer_metrics_20260615_080703	clip_density_coverage
+2026-06-17T10:32:13-05:00	cond_cifar10	154733	154734	6	results/conditional_cifar10_richer_metrics_20260615_152836/manifest.tsv	results/conditional_cifar10_richer_metrics_20260615_152836	clip_density_coverage
+2026-06-17T10:33:18-05:00	main	154720	154735	48	results/richer_metrics/manifest.tsv	results/richer_metrics	clip_density_coverage

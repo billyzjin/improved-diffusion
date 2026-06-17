@@ -2,6 +2,16 @@
   "dataset": "mnist",
   "fid": "0.494281",
   "metrics": {
+    "clip_density_coverage": {
+      "coverage": 0.9669999480247498,
+      "density": 1.0326800170898438,
+      "feature_extractor": "clip:ViT-B-32",
+      "feature_normalization": "l2",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
     "cmmd": {
       "bandwidth": "median_heuristic_squared_distance",
       "bandwidth_sq": 0.4056515693664551,

@@ -2,6 +2,16 @@
   "dataset": "cifar10",
   "fid": "",
   "metrics": {
+    "clip_density_coverage": {
+      "coverage": 0.7906999588012695,
+      "density": 1.1327800170898437,
+      "feature_extractor": "clip:ViT-B-32",
+      "feature_normalization": "l2",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
     "cmmd": {
       "bandwidth": "median_heuristic_squared_distance",
       "bandwidth_sq": 0.9906630516052246,

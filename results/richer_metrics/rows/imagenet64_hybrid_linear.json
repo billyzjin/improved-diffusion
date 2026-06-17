@@ -2,6 +2,16 @@
   "dataset": "imagenet64",
   "fid": "30.158692",
   "metrics": {
+    "clip_density_coverage": {
+      "coverage": 0.5676999688148499,
+      "density": 0.9079400207519531,
+      "feature_extractor": "clip:ViT-B-32",
+      "feature_normalization": "l2",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
     "cmmd": {
       "bandwidth": "median_heuristic_squared_distance",
       "bandwidth_sq": 1.187120795249939,

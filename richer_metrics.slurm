@@ -54,13 +54,13 @@ if missing:
     raise SystemExit(f"missing required Python packages: {missing}")
 PY
 
-if [[ ",$METRICS_COMMA," == *",cmmd,"* ]]; then
+if [[ ",$METRICS_COMMA," == *",cmmd,"* || ",$METRICS_COMMA," == *",clip_density_coverage,"* ]]; then
   python3 - <<'PY'
 import importlib.util
 if importlib.util.find_spec("open_clip") is None and importlib.util.find_spec("clip") is None:
     raise SystemExit(
-        "CMMD requested, but neither open_clip_torch nor OpenAI clip is installed. "
-        "Install/load one of them, or submit with METRICS=kid,density_coverage."
+        "CLIP metrics requested, but neither open_clip_torch nor OpenAI clip is installed. "
+        "Install/load one of them, or submit without CMMD/CLIP density-coverage metrics."
     )
 PY
   if [ ! -f "$CLIP_PRETRAINED" ]; then

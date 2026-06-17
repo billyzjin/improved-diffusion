@@ -39,6 +39,7 @@ def main() -> None:
         base = manifest.get(key, {})
         metrics = data.get("metrics", {})
         dc = metrics.get("density_coverage", {})
+        clip_dc = metrics.get("clip_density_coverage", {})
         kid = metrics.get("kid", {})
         rows.append(
             {
@@ -52,6 +53,8 @@ def main() -> None:
                 "kid_se": f"{float(kid.get('standard_error', 'nan')):.9g}" if "standard_error" in kid else "",
                 "density": f"{float(dc.get('density', 'nan')):.9g}" if "density" in dc else "",
                 "coverage": f"{float(dc.get('coverage', 'nan')):.9g}" if "coverage" in dc else "",
+                "clip_density": f"{float(clip_dc.get('density', 'nan')):.9g}" if "density" in clip_dc else "",
+                "clip_coverage": f"{float(clip_dc.get('coverage', 'nan')):.9g}" if "coverage" in clip_dc else "",
                 "n_features_requested": str(data.get("n_features_requested", "")),
                 "samples_npz": data.get("samples_npz", ""),
                 "real_dir": data.get("real_dir", ""),
@@ -72,12 +75,14 @@ def main() -> None:
         "kid_se",
         "density",
         "coverage",
+        "clip_density",
+        "clip_coverage",
         "n_features_requested",
         "samples_npz",
         "real_dir",
     ]
     with out_path.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t")
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Wrote {len(rows)} rows to {out_path}")

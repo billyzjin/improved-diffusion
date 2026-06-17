@@ -32,6 +32,10 @@ def parse_metrics(value: str) -> set[str]:
         "dc": "density_coverage",
         "density": "density_coverage",
         "coverage": "density_coverage",
+        "clip_dc": "clip_density_coverage",
+        "clip_density": "clip_density_coverage",
+        "clip_coverage": "clip_density_coverage",
+        "density_coverage_clip": "clip_density_coverage",
     }
     out = set()
     for item in re.split(r"[,;:+\s]+", value):
@@ -39,7 +43,7 @@ def parse_metrics(value: str) -> set[str]:
         if not item:
             continue
         out.add(aliases.get(item, item))
-    valid = {"cmmd", "kid", "density_coverage"}
+    valid = {"cmmd", "kid", "density_coverage", "clip_density_coverage"}
     bad = out - valid
     if bad:
         raise ValueError(f"Unknown metrics {sorted(bad)}; valid metrics are {sorted(valid)}")
@@ -438,7 +442,16 @@ def kth_real_radii(real: np.ndarray, k: int, device: str, chunk_size: int) -> np
     return radii
 
 
-def compute_density_coverage(real: np.ndarray, gen: np.ndarray, seed: int, n: int, k: int, device: str, chunk_size: int) -> dict[str, Any]:
+def compute_density_coverage(
+    real: np.ndarray,
+    gen: np.ndarray,
+    seed: int,
+    n: int,
+    k: int,
+    device: str,
+    chunk_size: int,
+    feature_extractor: str,
+) -> dict[str, Any]:
     import torch
 
     real = subset_features(real, n, seed)
@@ -467,7 +480,7 @@ def compute_density_coverage(real: np.ndarray, gen: np.ndarray, seed: int, n: in
         "k": int(k),
         "num_real": int(real.shape[0]),
         "num_generated": int(gen.shape[0]),
-        "feature_extractor": "inception_v3_pool3",
+        "feature_extractor": feature_extractor,
     }
 
 
@@ -523,7 +536,7 @@ def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
     result.setdefault("metrics", {})
 
     need_inception = bool(metrics & {"kid", "density_coverage"})
-    need_clip = "cmmd" in metrics
+    need_clip = bool(metrics & {"cmmd", "clip_density_coverage"})
     if need_inception:
         real_inc = extract_or_load_features(
             row=row,
@@ -566,6 +579,7 @@ def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
                 args.dc_k,
                 args.device,
                 args.distance_chunk_size,
+                "inception_v3_pool3",
             )
 
     if need_clip:
@@ -599,16 +613,29 @@ def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
             clip_pretrained=args.clip_pretrained,
             force=args.force_features,
         )
-        result["metrics"]["cmmd"] = compute_cmmd(
-            real_clip,
-            gen_clip,
-            args.device,
-            args.seed,
-            args.cmmd_n,
-            args.cmmd_bandwidth_sample,
-            args.distance_chunk_size,
-        )
-        result["metrics"]["cmmd"]["clip_model"] = args.clip_model
+        if "cmmd" in metrics:
+            result["metrics"]["cmmd"] = compute_cmmd(
+                real_clip,
+                gen_clip,
+                args.device,
+                args.seed,
+                args.cmmd_n,
+                args.cmmd_bandwidth_sample,
+                args.distance_chunk_size,
+            )
+            result["metrics"]["cmmd"]["clip_model"] = args.clip_model
+        if "clip_density_coverage" in metrics:
+            result["metrics"]["clip_density_coverage"] = compute_density_coverage(
+                real_clip,
+                gen_clip,
+                args.seed,
+                args.dc_n,
+                args.dc_k,
+                args.device,
+                args.distance_chunk_size,
+                f"clip:{args.clip_model}",
+            )
+            result["metrics"]["clip_density_coverage"]["feature_normalization"] = "l2"
 
     result_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(result_path, result)

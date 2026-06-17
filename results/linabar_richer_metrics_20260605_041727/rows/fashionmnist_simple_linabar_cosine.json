@@ -2,6 +2,16 @@
   "dataset": "fashionmnist",
   "fid": "",
   "metrics": {
+    "clip_density_coverage": {
+      "coverage": 0.45749998092651367,
+      "density": 0.30982000732421877,
+      "feature_extractor": "clip:ViT-B-32",
+      "feature_normalization": "l2",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
     "cmmd": {
       "bandwidth": "median_heuristic_squared_distance",
       "bandwidth_sq": 0.6817852258682251,
