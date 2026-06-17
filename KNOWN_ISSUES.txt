@@ -1,0 +1,173 @@
+KNOWN ISSUES IN EXPERIMENT RESULTS
+===================================
+Last updated: 2026-06-17
+
+This file tracks discovered or suspected issues in the empirical results that
+feed Section 7 ("Empirical evaluation") of the paper draft at
+/Users/Prince/Dropbox/signatures/ideas/diffusion_rewritten_v3.tex.
+
+
+ISSUE #1 — Conditional CIFAR-10 NLL is identical to unconditional NLL
+=====================================================================
+
+Status: SUSPECTED BUG. Verification needed before the conditional CIFAR-10
+        results can be trusted as a genuine class-conditional comparison.
+
+Severity: Affects §7.4 of the paper (Class-conditional CIFAR-10 generalization
+          test). Does not affect the main matched-endpoint NLL/FID table, the
+          richer-metrics tables, or the SVHN results.
+
+Affected files:
+  - results/conditional_cifar10_nll_fid_20260531_134458.tsv
+  - results/conditional_cifar10_richer_metrics_20260615_152836/richer_metrics_summary.tsv
+
+Observation
+-----------
+The conditional CIFAR-10 NLL numbers are essentially identical to the
+unconditional CIFAR-10 NLL numbers from the main slate:
+
+                          Conditional   Unconditional   Difference
+  cosine          / hybrid    3.214          3.207         +0.007
+  geometric_cos   / hybrid    2.920          2.921         -0.001
+  cosine          / vlb       2.977          2.981         -0.004
+  geometric_cos   / vlb       2.930          2.925         +0.005
+
+All four pairs differ by less than 0.01 bpd. For a genuine class-conditional
+diffusion model evaluated with the correct class label provided at inference,
+NLL should be visibly lower than the unconditional baseline (typical drops on
+CIFAR-10 are 0.05--0.1 bpd or more). Identical NLL strongly suggests the NLL
+evaluation is treating the class-conditional models as unconditional --- i.e.,
+the class labels are not being provided to the model during NLL computation.
+
+The FID, CMMD, and KID columns DO show consistent improvements in the
+conditional setting (e.g., cosine/hybrid FID 5.475 -> 5.166; geometric_cosine
+/vlb FID 10.694 -> 8.140), so the sampling pipeline may be using the labels
+correctly even if the NLL pipeline is not. The mixed signal makes this
+particularly suspicious and needs direct verification.
+
+Evidence in the local repo
+--------------------------
+The new evaluation slurm `evaluate_image_folder_final.slurm` (added in the
+2d5e1a1 commit) has `--class_cond False` hardcoded at line 180:
+
+    --class_cond False
+
+The submission script `submit_conditional_cifar10_evaluation_jobs.sh` exports
+`CLASS_COND=True,NUM_CLASSES=10` as environment variables (line 60), but the
+slurm never reads these env vars and never overrides the hardcoded flag. The
+corresponding training slurm `train_image_folder_no_mpi.slurm` line 223 also
+hardcodes `--class_cond False`.
+
+Caveat: both `evaluate_image_folder_final.slurm` and `train_image_folder_no_mpi.slurm`
+were added in commit 2d5e1a1 (after the conditional CIFAR-10 evaluation was
+actually run). The eval jobs that produced these numbers (138197-138202) ran
+in May 2026 using an older slurm script that is not present in the current
+working tree. The hardcoded-False pattern in the new scripts is consistent
+with the NLL behavior we observe, suggesting the same hardcoded-False also
+existed in the older eval script --- but this cannot be confirmed from the
+local repo alone.
+
+How to verify
+-------------
+1. SSH into the cluster and look at the eval slurm that was archived
+   alongside the May 2026 conditional results. Check whether
+   `--class_cond True` and `--num_classes 10` were passed to
+   `image_nll.py` / `scripts/nll_eval.py` (or the equivalent NLL-eval entry
+   point) during job 138197-138202.
+
+   Expected location:
+       /project_gpfs/bata0/bjin0/cifar10_conditional_evaluation_20260531_134458/
+
+2. If NLL was computed with --class_cond False (likely), re-run NLL
+   evaluation with --class_cond True and --num_classes 10. The same model
+   checkpoints (under /project_gpfs/bata0/bjin0/bjin0/122553/logs through
+   .../122558/logs) can be reused. Sample generation does NOT need to be
+   redone if FID/CMMD/KID are already trusted.
+
+3. After re-running, update `results/conditional_cifar10_nll_fid_20260531_134458.tsv`
+   and `results/conditional_cifar10_richer_metrics_20260615_152836/richer_metrics_summary.tsv`,
+   then re-bold the §7.4 table in the paper.
+
+Paper status
+------------
+Until the verification is complete, §7.4 of the paper should either:
+  (a) Be removed (the unconditional comparison stands on its own without it).
+  (b) Be hedged with a footnote acknowledging the NLL identity is suspicious
+      and the conditional results may not represent a genuine class-conditional
+      comparison.
+
+The current §7.4 text overclaims by treating the result as a clean
+class-conditional generalization test.
+
+
+ISSUE #2 — rescale_learned_sigmas hardcoded True for L_simple in eval slurm
+==========================================================================
+
+Status: CONFIRMED CODE BUG, but most likely BENIGN.
+        Does not affect any number currently in the paper because L_simple
+        rows were removed from all comparison tables in a prior revision.
+
+Severity: Would have affected L_simple FID/NLL numbers in
+          evaluate_image_folder_final.slurm runs if the diffusion code
+          actually applied rescale_learned_sigmas when learn_sigma=False.
+          Per the improved-diffusion codebase, rescaling only kicks in when
+          variances are learned, so the flag is ignored for L_simple and the
+          observed numbers are unaffected.
+
+Affected files:
+  - evaluate_image_folder_final.slurm (line 117 and the case block at 119-135)
+
+Observation
+-----------
+Line 117 initializes `rescale_learned_sigmas="True"` unconditionally. The case
+statement for $OBJECTIVE overrides this for hybrid (sets True, redundantly)
+and vlb (sets True), but the `simple)` branch is empty (lines 119-120) and so
+leaves the True initial value in place. The training-side counterpart
+`train_image_folder_no_mpi.slurm` correctly omits the flag for simple.
+
+This is a train/eval flag mismatch for L_simple specifically. Since L_simple
+is not in the paper after the prior revision that demoted it (the paper now
+shows L_hybrid and L_vlb only), no number currently in the paper is affected.
+Worth filing for code hygiene: the `simple)` branch should explicitly set
+`rescale_learned_sigmas="False"` for symmetry with the train script.
+
+How to verify
+-------------
+Inspect `improved_diffusion/gaussian_diffusion.py` and confirm that
+rescale_learned_sigmas is applied only inside the learn_sigma=True branch.
+If so, the flag is a no-op for L_simple and this is purely a code-hygiene
+issue. If not, L_simple rows of the original 84-row evaluation_results_full.tsv
+would need to be recomputed --- but those rows are not currently used by the
+paper.
+
+
+ISSUE #3 — Relative paths in richer-metrics manifest
+====================================================
+
+Status: NOT A BUG IN THE PRODUCED NUMBERS. Code-quality issue only.
+
+Severity: Zero impact on existing results (jobs completed successfully, which
+          implies the relative dirs resolved correctly on the cluster).
+          Could become a footgun for future re-runs from a different
+          working directory.
+
+Affected files:
+  - scripts/run_richer_metrics.py (line 265: `Path(row["real_dir"])`)
+  - results/richer_metrics/manifest.tsv (real_dir values: "cifar_train",
+    "fashion_train", "mnist_train")
+
+Observation
+-----------
+The manifest stores real_dir as relative paths for CIFAR-10, Fashion-MNIST,
+and MNIST (e.g., "cifar_train"). The ImageNet-64 row stores an absolute path
+(`/project_gpfs/.../imagenet64_official_verified_20260505/train`). The
+relative paths resolve correctly against the working directory of the slurm
+job (richer_metrics.slurm cds to /home/bjin0/improved-diffusion), but a
+future re-run from elsewhere would silently resolve to the wrong directory.
+
+How to verify
+-------------
+Either: (i) rewrite real_dir entries in the manifest to be absolute paths,
+or (ii) add a guard in run_richer_metrics.py that errors out if a relative
+real_dir doesn't resolve to an existing directory before computing features.
+
