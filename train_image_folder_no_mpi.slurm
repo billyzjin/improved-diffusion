@@ -60,6 +60,10 @@ export PYTHONPATH="/home/bjin0/improved-diffusion:${PYTHONPATH:-}"
 export CUDA_VISIBLE_DEVICES=0
 export OPENAI_LOG_FORMAT="stdout,log,csv"
 
+if [ -f /home/bjin0/improved-diffusion/.venv/bin/activate ]; then
+    source /home/bjin0/improved-diffusion/.venv/bin/activate
+fi
+
 python3 - <<'PY'
 import torch
 

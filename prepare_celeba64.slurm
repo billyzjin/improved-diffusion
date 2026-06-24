@@ -12,6 +12,10 @@ module load python/booth/3.12
 cd /home/bjin0/improved-diffusion
 export PYTHONPATH="/home/bjin0/improved-diffusion:${PYTHONPATH:-}"
 
+if [ -f /home/bjin0/improved-diffusion/.venv/bin/activate ]; then
+    source /home/bjin0/improved-diffusion/.venv/bin/activate
+fi
+
 CELEBA_ROOT=${CELEBA_ROOT:-/project_gpfs/bata0/bjin0/celeba_64x64}
 CELEBA_SOURCE_ROOT=${CELEBA_SOURCE_ROOT:-${CELEBA_ROOT}/source}
 CELEBA_OVERWRITE=${CELEBA_OVERWRITE:-0}

@@ -16,6 +16,7 @@ DEFAULT_OBJECTIVES = ("simple", "hybrid", "vlb")
 DATASET_IMAGE_SIZES = {
     "imagenet64": 64,
     "celeba64": 64,
+    "lsun_bedroom64": 64,
 }
 
 REAL_DIR_DEFAULTS = {
@@ -26,6 +27,7 @@ REAL_DIR_DEFAULTS = {
     "imagenet64": "/project_gpfs/bata0/bjin0/imagenet64_official_verified_20260505/train",
     "svhn": "/project_gpfs/bata0/bjin0/svhn_32x32/train",
     "celeba64": "/project_gpfs/bata0/bjin0/celeba_64x64/train",
+    "lsun_bedroom64": "/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb",
 }
 
 
@@ -78,6 +80,7 @@ def main() -> None:
     parser.add_argument("--svhn_real_dir", default=None)
     parser.add_argument("--cifar100_real_dir", default=None)
     parser.add_argument("--celeba64_real_dir", default=None)
+    parser.add_argument("--lsun_bedroom64_real_dir", default=None)
     parser.add_argument("--allow_missing", action="store_true")
     args = parser.parse_args()
 

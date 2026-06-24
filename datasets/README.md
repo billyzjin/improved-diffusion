@@ -62,10 +62,37 @@ The `cifar_train` and `cifar_test` directories can be passed directly to the tra
 
 ## LSUN bedroom
 
-To download and pre-process LSUN bedroom, clone [fyu/lsun](https://github.com/fyu/lsun) on GitHub and run their download script `python3 download.py bedroom`. The result will be an "lmdb" database named like `bedroom_train_lmdb`. You can pass this to our [lsun_bedroom.py](lsun_bedroom.py) script like so:
+On the cluster, the preferred path is the Slurm prep job:
 
 ```
-python lsun_bedroom.py bedroom_train_lmdb lsun_train_output_dir
+sbatch prepare_lsun_bedroom64.slurm
 ```
 
-This creates a directory called `lsun_train_output_dir`. This directory can be passed to the training scripts via the `--data_dir` argument.
+This downloads the official LSUN Bedroom LMDB zips from `dl.yf.io`, extracts them under `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source`, and writes a source manifest:
+
+- `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb`
+- `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_val_lmdb`
+- `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/_source_manifest.tsv`
+
+The training and NLL/FID evaluation scripts read these LMDBs directly, which avoids materializing millions of PNG files on GPFS.
+
+If a PNG image folder is explicitly needed, opt in with:
+
+```
+LSUN_CONVERT_TO_PNG=1 sbatch prepare_lsun_bedroom64.slurm
+```
+
+The converter is resumable. It writes `_manifest.tsv` in each completed split directory and uses center-crop + box downsampling.
+
+To use an existing LMDB tree or a different output path, run [lsun_bedroom.py](lsun_bedroom.py) directly:
+
+```
+python datasets/lsun_bedroom.py \
+  --root /path/to/lsun/source \
+  --out_root /path/to/lsun_bedroom_64x64 \
+  --category bedroom \
+  --splits train val \
+  --size 64
+```
+
+For a small converter/debug run against already-downloaded LMDBs, pass `--max_train_images` and `--max_val_images`.

@@ -3,7 +3,7 @@
 #SBATCH --partition=long_hopper
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=24:00:00
+#SBATCH --time=4-00:00:00
 #SBATCH --gres=gpu:h100:1
 #SBATCH --job-name=eval_image_folder
 
@@ -61,6 +61,10 @@ cd /home/bjin0/improved-diffusion
 export PYTHONPATH="/home/bjin0/improved-diffusion:${PYTHONPATH:-}"
 export CUDA_VISIBLE_DEVICES=0
 
+if [ -f /home/bjin0/improved-diffusion/.venv/bin/activate ]; then
+    source /home/bjin0/improved-diffusion/.venv/bin/activate
+fi
+
 python3 - <<'PY'
 import torch
 
@@ -96,6 +100,8 @@ NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES:-10000}
 NUM_SAMPLES=${NUM_SAMPLES:-50000}
 NLL_BATCH_SIZE=${NLL_BATCH_SIZE:-128}
 SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE:-256}
+FID_STATS_BATCH_SIZE=${FID_STATS_BATCH_SIZE:-$SAMPLE_BATCH_SIZE}
+FID_STATS_NUM_WORKERS=${FID_STATS_NUM_WORKERS:-4}
 FORCE=${FORCE:-0}
 SKIP_NLL=${SKIP_NLL:-0}
 SKIP_FID=${SKIP_FID:-0}
@@ -114,7 +120,7 @@ fi
 
 learn_sigma="False"
 use_kl="False"
-rescale_learned_sigmas="True"
+rescale_learned_sigmas="False"
 case "$OBJECTIVE" in
     simple)
         ;;
@@ -196,8 +202,19 @@ ensure_stats_file() {
     if mkdir "$lock_dir" 2>/dev/null; then
         echo "Precomputing train stats to: $STATS_FILE"
         trap 'rm -rf "$lock_dir" "$tmp_stats"' EXIT
-        python3 -m pytorch_fid "$TRAIN_DIR" "$tmp_stats" --save-stats --device cuda \
-            2>&1 | tee "$EXP_DIR/fid_stats_build.txt"
+        if [ -f "$TRAIN_DIR/data.mdb" ]; then
+            python3 scripts/save_fid_stats_from_dataset.py \
+                --data_path "$TRAIN_DIR" \
+                --output "$tmp_stats" \
+                --image_size "$IMAGE_SIZE" \
+                --batch_size "$FID_STATS_BATCH_SIZE" \
+                --device cuda \
+                --num_workers "$FID_STATS_NUM_WORKERS" \
+                2>&1 | tee "$EXP_DIR/fid_stats_build.txt"
+        else
+            python3 -m pytorch_fid "$TRAIN_DIR" "$tmp_stats" --save-stats --device cuda \
+                2>&1 | tee "$EXP_DIR/fid_stats_build.txt"
+        fi
         mv "$tmp_stats" "$STATS_FILE"
         rmdir "$lock_dir"
         trap - EXIT

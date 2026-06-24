@@ -5,7 +5,7 @@ cd /home/bjin0/improved-diffusion
 
 DATASET=${DATASET:-${1:-}}
 if [ -z "$DATASET" ]; then
-    echo "ERROR: set DATASET or pass it as the first argument (cifar100 or celeba64)"
+    echo "ERROR: set DATASET or pass it as the first argument (cifar100, celeba64, or lsun_bedroom64)"
     exit 1
 fi
 
@@ -49,8 +49,25 @@ case "$DATASET" in
         MICRO_BATCH=${MICRO_BATCH:-16}
         SLURM_TIME=${SLURM_TIME:-4-00:00:00}
         ;;
+    lsun_bedroom64)
+        PREP_SLURM=${PREP_SLURM:-prepare_lsun_bedroom64.slurm}
+        DATA_ROOT=${DATA_ROOT:-/project_gpfs/bata0/bjin0/lsun_bedroom_64x64}
+        LSUN_SOURCE_ROOT=${LSUN_SOURCE_ROOT:-$DATA_ROOT/source}
+        TRAIN_DIR=${TRAIN_DIR:-$LSUN_SOURCE_ROOT/bedroom_train_lmdb}
+        DATASET_READY_MARKER=${DATASET_READY_MARKER:-$TRAIN_DIR/data.mdb}
+        EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT:-1}
+        EXPECTED_TEST_COUNT=${EXPECTED_TEST_COUNT:-1}
+        IMAGE_SIZE=${IMAGE_SIZE:-64}
+        LR_ANNEAL_STEPS=${LR_ANNEAL_STEPS:-200000}
+        BATCH_SIZE=${BATCH_SIZE:-128}
+        LOG_INTERVAL=${LOG_INTERVAL:-500}
+        SAVE_INTERVAL=${SAVE_INTERVAL:-20000}
+        USE_FP16=${USE_FP16:-True}
+        MICRO_BATCH=${MICRO_BATCH:-16}
+        SLURM_TIME=${SLURM_TIME:-4-00:00:00}
+        ;;
     *)
-        echo "ERROR: unsupported DATASET=$DATASET; expected cifar100 or celeba64"
+        echo "ERROR: unsupported DATASET=$DATASET; expected cifar100, celeba64, or lsun_bedroom64"
         exit 1
         ;;
 esac
@@ -69,8 +86,40 @@ if [ ! -f "$PREP_SLURM" ]; then
     exit 1
 fi
 
-schedules=(linear cosine geometric_linear geometric_cosine)
-objectives=(simple hybrid vlb)
+SCHEDULES=${SCHEDULES:-linear,cosine,geometric_linear,geometric_cosine}
+OBJECTIVES=${OBJECTIVES:-simple,hybrid,vlb}
+read -r -a schedules <<< "${SCHEDULES//,/ }"
+read -r -a objectives <<< "${OBJECTIVES//,/ }"
+
+if [ "${#schedules[@]}" -eq 0 ]; then
+    echo "ERROR: no schedules selected"
+    exit 1
+fi
+if [ "${#objectives[@]}" -eq 0 ]; then
+    echo "ERROR: no objectives selected"
+    exit 1
+fi
+
+for schedule_name in "${schedules[@]}"; do
+    case "$schedule_name" in
+        linear|cosine|geometric_linear|geometric_cosine) ;;
+        *)
+            echo "ERROR: unknown schedule in SCHEDULES: $schedule_name"
+            echo "Expected: linear, cosine, geometric_linear, geometric_cosine"
+            exit 1
+            ;;
+    esac
+done
+for objective in "${objectives[@]}"; do
+    case "$objective" in
+        simple|hybrid|vlb) ;;
+        *)
+            echo "ERROR: unknown objective in OBJECTIVES: $objective"
+            echo "Expected: simple, hybrid, vlb"
+            exit 1
+            ;;
+    esac
+done
 
 schedule_short() {
     case "$1" in
@@ -83,7 +132,15 @@ schedule_short() {
 }
 
 dataset_ready=0
-if [ -d "$TRAIN_DIR" ] && [ "$FORCE_PREP" != "1" ]; then
+if [ -n "${DATASET_READY_MARKER:-}" ] && [ "$FORCE_PREP" != "1" ]; then
+    if [ -f "$DATASET_READY_MARKER" ]; then
+        dataset_ready=1
+    elif [ -d "$TRAIN_DIR" ]; then
+        echo "ERROR: $TRAIN_DIR exists but ready marker is missing: $DATASET_READY_MARKER"
+        echo "Set FORCE_PREP=1 and the dataset overwrite env var if you want to rebuild it."
+        exit 1
+    fi
+elif [ -d "$TRAIN_DIR" ] && [ "$FORCE_PREP" != "1" ]; then
     train_count=$(find "$TRAIN_DIR" -name "*.png" | wc -l)
     if [ "$train_count" -ge "$EXPECTED_TRAIN_COUNT" ]; then
         dataset_ready=1

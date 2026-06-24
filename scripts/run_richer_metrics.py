@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import math
 import os
@@ -65,6 +66,21 @@ def collect_image_paths(root: Path) -> list[Path]:
     return sorted(paths)
 
 
+def is_lmdb_dir(path: Path) -> bool:
+    return path.is_dir() and (path / "data.mdb").is_file()
+
+
+def center_crop_resize(image: Image.Image, image_size: int) -> Image.Image:
+    image = image.convert("RGB")
+    width, height = image.size
+    scale = image_size / min(width, height)
+    resample = getattr(Image, "Resampling", Image).BOX
+    image = image.resize((int(round(scale * width)), int(round(scale * height))), resample=resample)
+    left = (image.width - image_size) // 2
+    top = (image.height - image_size) // 2
+    return image.crop((left, top, left + image_size, top + image_size))
+
+
 def select_indices(n_total: int, n_requested: int | None, seed: int) -> np.ndarray:
     if n_requested is None or n_requested <= 0 or n_requested >= n_total:
         return np.arange(n_total, dtype=np.int64)
@@ -117,6 +133,64 @@ class PathImageDataset:
         return self.transform(img) if self.transform is not None else img
 
 
+class LmdbImageDataset:
+    def __init__(self, root: Path, image_size: int, n_requested: int | None, seed: int, transform: Any):
+        self.root = root
+        self.image_size = image_size
+        self.transform = transform
+        self._env = None
+
+        env = self._open_env()
+        with env.begin(write=False) as transaction:
+            keys = list(transaction.cursor().iternext(keys=True, values=False))
+        env.close()
+        self._env = None
+
+        indices = select_indices(len(keys), n_requested, seed)
+        self.keys = [keys[int(i)] for i in indices]
+        if not self.keys:
+            raise RuntimeError(f"No LMDB entries found in {root}")
+
+    def _open_env(self) -> Any:
+        if self._env is None:
+            import lmdb
+
+            self._env = lmdb.open(
+                str(self.root),
+                readonly=True,
+                lock=False,
+                readahead=False,
+                meminit=False,
+                max_readers=32,
+            )
+        return self._env
+
+    def close(self) -> None:
+        if self._env is not None:
+            self._env.close()
+            self._env = None
+
+    def __del__(self) -> None:
+        self.close()
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        state["_env"] = None
+        return state
+
+    def __len__(self) -> int:
+        return len(self.keys)
+
+    def __getitem__(self, idx: int) -> Any:
+        env = self._open_env()
+        with env.begin(write=False) as transaction:
+            image_data = transaction.get(self.keys[idx])
+        if image_data is None:
+            raise KeyError(f"LMDB key disappeared: {self.keys[idx]!r}")
+        img = center_crop_resize(Image.open(io.BytesIO(image_data)), self.image_size)
+        return self.transform(img) if self.transform is not None else img
+
+
 def dataloader_features(dataset: Any, model: Any, device: str, batch_size: int, num_workers: int, kind: str) -> np.ndarray:
     import torch
     from torch.nn.functional import adaptive_avg_pool2d
@@ -131,19 +205,24 @@ def dataloader_features(dataset: Any, model: Any, device: str, batch_size: int, 
     feats: list[np.ndarray] = []
     model.eval()
     with torch.no_grad():
-        for batch in loader:
-            batch = batch.to(device)
-            if kind == "inception":
-                pred = model(batch)[0]
-                if pred.size(2) != 1 or pred.size(3) != 1:
-                    pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
-                pred = pred.squeeze(3).squeeze(2)
-            elif kind == "clip":
-                pred = model.encode_image(batch)
-                pred = pred / pred.norm(dim=-1, keepdim=True).clamp_min(1e-12)
-            else:
-                raise ValueError(kind)
-            feats.append(pred.detach().cpu().numpy().astype(np.float32, copy=False))
+        try:
+            for batch in loader:
+                batch = batch.to(device)
+                if kind == "inception":
+                    pred = model(batch)[0]
+                    if pred.size(2) != 1 or pred.size(3) != 1:
+                        pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
+                    pred = pred.squeeze(3).squeeze(2)
+                elif kind == "clip":
+                    pred = model.encode_image(batch)
+                    pred = pred / pred.norm(dim=-1, keepdim=True).clamp_min(1e-12)
+                else:
+                    raise ValueError(kind)
+                feats.append(pred.detach().cpu().numpy().astype(np.float32, copy=False))
+        finally:
+            close = getattr(dataset, "close", None)
+            if close is not None:
+                close()
     return np.concatenate(feats, axis=0)
 
 
@@ -267,11 +346,16 @@ def extract_or_load_features(
             source_digest = file_sha256(source_path)
         else:
             source_path = Path(row["real_dir"])
-            all_paths = collect_image_paths(source_path)
-            indices = select_indices(len(all_paths), n_requested, seed)
-            all_paths = [all_paths[int(i)] for i in indices]
-            selected_count = len(all_paths)
-            source_kind = "image_dir"
+            if is_lmdb_dir(source_path):
+                all_paths = None
+                selected_count = None
+                source_kind = "lmdb"
+            else:
+                all_paths = collect_image_paths(source_path)
+                indices = select_indices(len(all_paths), n_requested, seed)
+                all_paths = [all_paths[int(i)] for i in indices]
+                selected_count = len(all_paths)
+                source_kind = "image_dir"
             source_digest = ""
 
         if kind == "inception_pool3":
@@ -279,13 +363,25 @@ def extract_or_load_features(
 
             transform = transforms.ToTensor()
             model = build_inception_model(device, inception_dims)
-            dataset = NpzImageDataset(images, transform) if split == "generated" else PathImageDataset(all_paths, transform)
+            if split == "generated":
+                dataset = NpzImageDataset(images, transform)
+            elif source_kind == "lmdb":
+                dataset = LmdbImageDataset(source_path, int(row["image_size"]), n_requested, seed, transform)
+                selected_count = len(dataset)
+            else:
+                dataset = PathImageDataset(all_paths, transform)
             features = dataloader_features(dataset, model, device, batch_size, num_workers, "inception")
             model_label = f"pytorch_fid_inception_v3_pool3_dims{inception_dims}"
             preprocessing = "torchvision.transforms.ToTensor"
         elif kind == "clip":
             model, transform, model_label = build_clip_model(device, clip_model_name, clip_pretrained)
-            dataset = NpzImageDataset(images, transform) if split == "generated" else PathImageDataset(all_paths, transform)
+            if split == "generated":
+                dataset = NpzImageDataset(images, transform)
+            elif source_kind == "lmdb":
+                dataset = LmdbImageDataset(source_path, int(row["image_size"]), n_requested, seed, transform)
+                selected_count = len(dataset)
+            else:
+                dataset = PathImageDataset(all_paths, transform)
             features = dataloader_features(dataset, model, device, batch_size, num_workers, "clip")
             preprocessing = "clip_preprocess_l2_normalized"
         else:

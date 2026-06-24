@@ -1,0 +1,13 @@
+dataset	schedule	objective	beta_1	alpha_bar_T	nll_bpd	fid	nll_samples	fid_samples	sampling_steps	source
+cifar100	cosine	hybrid			3.238326	11.612854	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_cosine_hybrid
+cifar100	cosine	simple			3.325167	12.462436	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_cosine_simple
+cifar100	cosine	vlb			2.999708	19.567620	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_cosine_vlb
+cifar100	geometric_cosine	hybrid			2.944831	15.667780	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_cosine_hybrid
+cifar100	geometric_cosine	simple			4.950643	14.308784	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_cosine_simple
+cifar100	geometric_cosine	vlb			2.961710	16.906178	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_cosine_vlb
+cifar100	geometric_linear	hybrid			3.045734	11.983016	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_linear_hybrid
+cifar100	geometric_linear	simple			9.040311	11.412882	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_linear_simple
+cifar100	geometric_linear	vlb			3.040087	18.118694	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_linear_vlb
+cifar100	linear	hybrid			3.316932	16.621504	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_linear_hybrid
+cifar100	linear	simple			3.438650	19.676453	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_linear_simple
+cifar100	linear	vlb			3.127532	16.265523	10000	50000	4000	/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_linear_vlb
