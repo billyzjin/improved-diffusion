@@ -1,0 +1,54 @@
+{
+  "dataset": "cifar100",
+  "fid": "15.667780",
+  "metrics": {
+    "clip_density_coverage": {
+      "coverage": 0.5539999604225159,
+      "density": 1.0607000183105468,
+      "feature_extractor": "clip:ViT-B-32",
+      "feature_normalization": "l2",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "cmmd": {
+      "bandwidth": "median_heuristic_squared_distance",
+      "bandwidth_sq": 0.9746585488319397,
+      "clip_model": "ViT-B-32",
+      "estimator": "unbiased_mmd2",
+      "feature_normalization": "l2",
+      "kernel": "rbf",
+      "metric": "CMMD",
+      "num_generated": 10000,
+      "num_real": 10000,
+      "value": 0.024590723377337698
+    },
+    "density_coverage": {
+      "coverage": 0.6650999784469604,
+      "density": 0.7170600158691406,
+      "feature_extractor": "inception_v3_pool3",
+      "k": 5,
+      "metric": "density_coverage",
+      "num_generated": 10000,
+      "num_real": 10000
+    },
+    "kid": {
+      "estimator": "unbiased_mmd2",
+      "kernel": "polynomial ((x.y/d)+1)^3",
+      "metric": "KID",
+      "num_generated": 50000,
+      "num_real": 50000,
+      "standard_error": 0.00011295948316372901,
+      "subset_size": 1000,
+      "subsets": 100,
+      "value": 0.012766923860655952
+    }
+  },
+  "n_features_requested": 50000,
+  "nll_bpd": "2.944831",
+  "objective": "hybrid",
+  "real_dir": "/project_gpfs/bata0/bjin0/cifar100_32x32/train",
+  "samples_npz": "/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440/cifar100_geometric_cosine_hybrid/samples_50000x32x32x3.npz",
+  "schedule": "geometric_cosine"
+}
