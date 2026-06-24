@@ -1,6 +1,6 @@
 # Experiment Registry
 
-Last updated: 2026-06-23
+Last updated: 2026-06-24
 
 This file is the first place to look before searching GPFS. The companion
 machine-readable index is `results/experiment_registry.tsv`.
@@ -23,7 +23,9 @@ machine-readable index is `results/experiment_registry.tsv`.
 | CIFAR-100 richer metrics | `results/cifar100_richer_metrics_20260623_230233/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/cifar100_evaluation_nll_fid_20260617_122440` | CIFAR-100; simple/hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Completed as Slurm array job 157934. Metrics: CMMD, KID, Inception density/coverage, and CLIP density/coverage. Manifest: `results/cifar100_richer_metrics_20260623_230233/manifest.tsv`. |
 | CelebA-64 dataset prep | none | `/project_gpfs/bata0/bjin0/celeba_64x64` | train/valid/test PNG folders with 162,770/19,867/19,962 images | Prep job 156065 completed 2026-06-20 after adding `gdown` to the repo-local `.venv`. Source files are under `/project_gpfs/bata0/bjin0/celeba_64x64/source`. |
 | LSUN Bedroom-64 dataset prep | none | `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64` | LSUN Bedroom train/val LMDB source for 64x64 experiments | Prep job 156234 completed 2026-06-21 in 02:15:03. `_source_manifest.tsv` reports 3,033,042 train entries and 300 val entries; PNG conversion is disabled by default to conserve GPFS inodes. |
-| CelebA-64 NLL/FID | pending aggregation to `results/celeba64_evaluation_nll_fid_celeba64_evaluation_nll_fid_20260620_224700.tsv` | `/project_gpfs/bata0/bjin0/celeba64_evaluation_nll_fid_20260620_224700` | CelebA-64; hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Evaluation jobs 156155-156162 are running. All have written `nll_results.txt` and are generating FID samples. Manifest: `/project_gpfs/bata0/bjin0/celeba64_evaluation_nll_fid_20260620_224700/submission.tsv`. |
+| CelebA-64 NLL/FID | `results/celeba64_evaluation_nll_fid_celeba64_evaluation_nll_fid_20260620_224700.tsv` | `/project_gpfs/bata0/bjin0/celeba64_evaluation_nll_fid_20260620_224700` | CelebA-64; hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Completed. Evaluation jobs 156155-156162 exited 0 and all 8 rows were aggregated. Manifest: `/project_gpfs/bata0/bjin0/celeba64_evaluation_nll_fid_20260620_224700/submission.tsv`. |
+| CelebA-64 richer metrics | `results/celeba64_richer_metrics_20260624_082451/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/celeba64_evaluation_nll_fid_20260620_224700` | CelebA-64; hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Completed as Slurm array job 158074. Metrics: CMMD, KID, Inception density/coverage, and CLIP density/coverage. Manifest: `results/celeba64_richer_metrics_20260624_082451/manifest.tsv`. |
+| LSUN Bedroom-64 NLL/FID | pending aggregation to `results/lsun_bedroom64_evaluation_nll_fid_lsun_bedroom64_evaluation_nll_fid_20260624_002000.tsv` | `/project_gpfs/bata0/bjin0/lsun_bedroom64_evaluation_nll_fid_20260624_002000` | LSUN Bedroom-64; hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Evaluation jobs 157947-157954 submitted 2026-06-24 from completed training checkpoints. Manifest: `/project_gpfs/bata0/bjin0/lsun_bedroom64_evaluation_nll_fid_20260624_002000/submission.tsv`. |
 
 ## Training Roots
 
@@ -34,7 +36,7 @@ machine-readable index is `results/experiment_registry.tsv`.
 | Conditional CIFAR-10 canonical training checkpoints | `/project_gpfs/bata0/bjin0/bjin0/122553/logs` through `/project_gpfs/bata0/bjin0/bjin0/122558/logs` | These are the checkpoints used by the conditional CIFAR-10 evaluation manifest. |
 | CIFAR-100 reduced slate | `/project_gpfs/bata0/bjin0/cifar100_full_slate_20260615_184504/submission.tsv` | 12 jobs completed: simple/hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Initial jobs 153779-153782 failed but resumed as 155435-155438 and completed successfully. |
 | CelebA-64 reduced slate | `/project_gpfs/bata0/bjin0/celeba64_full_slate_20260620_165200/submission.tsv` | 8 jobs completed successfully: hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Jobs 156066-156073 used prepared dataset `/project_gpfs/bata0/bjin0/celeba_64x64/train`. Earlier dependency-blocked jobs 154839-154846 were canceled. |
-| LSUN Bedroom-64 reduced slate | `/project_gpfs/bata0/bjin0/lsun_bedroom64_full_slate_20260622_101208/submission.tsv` | 8 jobs submitted 2026-06-22: hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Jobs 156585-156592 use LMDB train source `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb`. |
+| LSUN Bedroom-64 reduced slate | `/project_gpfs/bata0/bjin0/lsun_bedroom64_full_slate_20260622_101208/submission.tsv` | 8 jobs completed successfully: hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Jobs 156585-156592 used LMDB train source `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb`. |
 
 ## Lookup Pattern
 
