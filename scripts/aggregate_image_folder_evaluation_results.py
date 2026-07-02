@@ -57,6 +57,10 @@ def main() -> None:
                 "dataset": metadata.get("dataset", ""),
                 "schedule": metadata.get("schedule_name", ""),
                 "objective": metadata.get("objective", ""),
+                "hybrid_vb_weight": metadata.get(
+                    "hybrid_vb_weight",
+                    "0.001" if metadata.get("objective", "") == "hybrid" else "",
+                ),
                 "beta_1": "",
                 "alpha_bar_T": "",
                 "nll_bpd": parse_nll(exp_dir / "nll_results.txt"),
@@ -68,13 +72,14 @@ def main() -> None:
             }
         )
 
-    rows.sort(key=lambda r: (r["dataset"], r["schedule"], r["objective"]))
+    rows.sort(key=lambda r: (r["dataset"], r["schedule"], r["objective"], r["hybrid_vb_weight"]))
     output = Path(args.output) if args.output else eval_root / "results_summary.tsv"
     output.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "dataset",
         "schedule",
         "objective",
+        "hybrid_vb_weight",
         "beta_1",
         "alpha_bar_T",
         "nll_bpd",

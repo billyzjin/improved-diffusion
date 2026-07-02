@@ -9,10 +9,19 @@ import json
 from pathlib import Path
 
 
-def load_manifest(path: Path) -> dict[tuple[str, str, str], dict[str, str]]:
+def result_key(row: dict[str, str]) -> tuple[str, str, str, str]:
+    return (
+        row["dataset"],
+        row["objective"],
+        row["schedule"],
+        row.get("hybrid_vb_weight", ""),
+    )
+
+
+def load_manifest(path: Path) -> dict[tuple[str, str, str, str], dict[str, str]]:
     with path.open() as f:
         rows = list(csv.DictReader(f, delimiter="\t"))
-    return {(r["dataset"], r["objective"], r["schedule"]): r for r in rows}
+    return {result_key(r): r for r in rows}
 
 
 def metric_value(metrics: dict, name: str, field: str = "value") -> str:
@@ -35,8 +44,9 @@ def main() -> None:
     rows = []
     for path in sorted((Path(args.results_dir) / "rows").glob("*.json")):
         data = json.loads(path.read_text())
-        key = (data["dataset"], data["objective"], data["schedule"])
-        base = manifest.get(key, {})
+        key = result_key(data)
+        legacy_key = (data["dataset"], data["objective"], data["schedule"], "")
+        base = manifest.get(key, manifest.get(legacy_key, {}))
         metrics = data.get("metrics", {})
         dc = metrics.get("density_coverage", {})
         clip_dc = metrics.get("clip_density_coverage", {})
@@ -46,6 +56,7 @@ def main() -> None:
                 "dataset": data["dataset"],
                 "objective": data["objective"],
                 "schedule": data["schedule"],
+                "hybrid_vb_weight": base.get("hybrid_vb_weight", data.get("hybrid_vb_weight", "")),
                 "nll_bpd": base.get("nll_bpd", data.get("nll_bpd", "")),
                 "fid": base.get("fid", data.get("fid", "")),
                 "cmmd": metric_value(metrics, "cmmd"),
@@ -61,13 +72,14 @@ def main() -> None:
             }
         )
 
-    rows.sort(key=lambda r: (r["dataset"], r["objective"], r["schedule"]))
+    rows.sort(key=lambda r: (r["dataset"], r["objective"], r["schedule"], r["hybrid_vb_weight"]))
     out_path = Path(args.output_tsv)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "dataset",
         "objective",
         "schedule",
+        "hybrid_vb_weight",
         "nll_bpd",
         "fid",
         "cmmd",

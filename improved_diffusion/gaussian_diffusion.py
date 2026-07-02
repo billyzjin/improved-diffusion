@@ -252,6 +252,9 @@ class GaussianDiffusion:
     :param rescale_timesteps: if True, pass floating point timesteps into the
                               model so that they are always scaled like in the
                               original paper (0 to 1000).
+    :param hybrid_vb_weight: weight on the full-VLB auxiliary term for
+                             RESCALED_MSE/hybrid training. The default 0.001
+                             preserves the original scaling.
     """
 
     def __init__(
@@ -262,11 +265,18 @@ class GaussianDiffusion:
         model_var_type,
         loss_type,
         rescale_timesteps=False,
+        hybrid_vb_weight=0.001,
     ):
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
         self.loss_type = loss_type
         self.rescale_timesteps = rescale_timesteps
+        hybrid_vb_weight = float(hybrid_vb_weight)
+        if hybrid_vb_weight < 0:
+            raise ValueError(
+                f"hybrid_vb_weight must be non-negative, got {hybrid_vb_weight}"
+            )
+        self.hybrid_vb_weight = hybrid_vb_weight
 
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)
@@ -866,9 +876,9 @@ class GaussianDiffusion:
                     clip_denoised=False,
                 )["output"]
                 if self.loss_type == LossType.RESCALED_MSE:
-                    # Divide by 1000 for equivalence with initial implementation.
-                    # Without a factor of 1/1000, the VB term hurts the MSE term.
-                    terms["vb"] *= self.num_timesteps / 1000.0
+                    # Default 0.001 preserves the original num_timesteps / 1000
+                    # scaling while allowing the hybrid/VB mix to be tuned.
+                    terms["vb"] *= self.num_timesteps * self.hybrid_vb_weight
 
             target = {
                 ModelMeanType.PREVIOUS_X: self.q_posterior_mean_variance(

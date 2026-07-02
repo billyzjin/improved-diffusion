@@ -28,6 +28,7 @@ for var in "${required_vars[@]}"; do
         exit 1
     fi
 done
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-$([ "$OBJECTIVE" = "hybrid" ] && echo "0.001" || echo "none")}
 
 echo "=========================================="
 echo "IMAGE-FOLDER NLL+FID EVALUATION"
@@ -37,6 +38,7 @@ echo "Run: $RUN_NAME"
 echo "Eval name: $EVAL_NAME"
 echo "Schedule: $SCHEDULE_NAME"
 echo "Objective: $OBJECTIVE"
+echo "Hybrid VB weight: $HYBRID_VB_WEIGHT"
 echo "Model: $MODEL_PATH"
 echo "Saving results to: $PARENT_EVAL_DIR"
 echo "Node: ${SLURM_NODELIST:-N/A}"
@@ -155,6 +157,7 @@ SAMPLES_FILE="$EXP_DIR/samples_${NUM_SAMPLES}x${IMAGE_SIZE}x${IMAGE_SIZE}x3.npz"
     echo -e "eval_name\t$EVAL_NAME"
     echo -e "schedule_name\t$SCHEDULE_NAME"
     echo -e "objective\t$OBJECTIVE"
+    echo -e "hybrid_vb_weight\t$HYBRID_VB_WEIGHT"
     echo -e "dropout\t$dropout"
     echo -e "learn_sigma\t$learn_sigma"
     echo -e "use_kl\t$use_kl"

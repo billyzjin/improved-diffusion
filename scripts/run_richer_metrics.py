@@ -267,6 +267,25 @@ def feature_paths(cache_root: Path, row: dict[str, str], split: str, kind: str, 
     return base / f"{stem}.npy", base / f"{stem}.metadata.json"
 
 
+def safe_component(value: str) -> str:
+    return (
+        value.replace("+", "")
+        .replace(".", "p")
+        .replace("-", "m")
+        .replace(",", "p")
+    )
+
+
+def row_weight_suffix(row: dict[str, str]) -> str:
+    weight = row.get("hybrid_vb_weight", "")
+    source = row.get("source_eval_dir", "")
+    if row.get("objective") != "hybrid" or weight in ("", "none"):
+        return ""
+    if weight != "0.001" or "vbw" in source:
+        return f"_vbw{safe_component(weight)}"
+    return ""
+
+
 def acquire_feature_lock(feature_path: Path, meta_path: Path, force: bool, wait_seconds: int = 43_200) -> Path | None:
     """Return a lock dir to release, or None if another worker completed the cache."""
     if feature_path.is_file() and meta_path.is_file() and not force:
@@ -391,6 +410,7 @@ def extract_or_load_features(
             "dataset": row["dataset"],
             "objective": row["objective"],
             "schedule": row["schedule"],
+            "hybrid_vb_weight": row.get("hybrid_vb_weight", ""),
             "split": split,
             "kind": kind,
             "source_kind": source_kind,
@@ -581,7 +601,8 @@ def compute_density_coverage(
 
 
 def row_output_path(output_dir: Path, row: dict[str, str]) -> Path:
-    return output_dir / "rows" / f"{row['dataset']}_{row['objective']}_{row['schedule']}.json"
+    suffix = row_weight_suffix(row)
+    return output_dir / "rows" / f"{row['dataset']}_{row['objective']}_{row['schedule']}{suffix}.json"
 
 
 def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
@@ -608,6 +629,7 @@ def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
             "dataset": row["dataset"],
             "objective": row["objective"],
             "schedule": row["schedule"],
+            "hybrid_vb_weight": row.get("hybrid_vb_weight", ""),
             "samples_npz": row["samples_npz"],
             "real_dir": row["real_dir"],
             "nll_bpd": row.get("nll_bpd", ""),
@@ -622,6 +644,7 @@ def run_row(row: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
             "dataset": row["dataset"],
             "objective": row["objective"],
             "schedule": row["schedule"],
+            "hybrid_vb_weight": row.get("hybrid_vb_weight", result.get("hybrid_vb_weight", "")),
             "samples_npz": row["samples_npz"],
             "real_dir": row["real_dir"],
             "nll_bpd": row.get("nll_bpd", result.get("nll_bpd", "")),
@@ -780,7 +803,9 @@ def main() -> None:
         raise RuntimeError("No manifest rows selected")
 
     for row in rows:
-        print(f"Running richer metrics for {row['dataset']} {row['objective']} {row['schedule']}", flush=True)
+        weight = row.get("hybrid_vb_weight", "")
+        suffix = f" hybrid_vb_weight={weight}" if weight else ""
+        print(f"Running richer metrics for {row['dataset']} {row['objective']} {row['schedule']}{suffix}", flush=True)
         run_row(row, args)
 
 

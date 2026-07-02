@@ -20,11 +20,11 @@ This directory contains SLURM job scripts for running improved diffusion experim
 - **Model**: 64x64 images, 128 channels, 3 residual blocks
 - **Training**: Distributed training across 4 GPUs
 
-### 3. LSUN Bedroom-64 Training (`submit_image_folder_full_slate.sh`)
+### 3. LSUN Bedroom/Church-64 Training (`submit_image_folder_full_slate.sh`)
 - **Account**: bata0-external
 - **Partition**: long_hopper for training, standard_l40s for prep
 - **Resources**: 1 GPU, 64GB RAM, 8 CPUs for each training job
-- **Dataset**: LSUN bedroom LMDB source, resized to 64x64 at load time
+- **Dataset**: LSUN LMDB source, resized to 64x64 at load time
 - **Model**: 64x64 images, 128 channels, 3 residual blocks
 - **Training**: image-folder submitter supports linear, cosine, geometric_linear, and geometric_cosine
 
@@ -53,6 +53,10 @@ sbatch train_imagenet64.slurm
 # Prepare LSUN Bedroom-64, then submit the reduced slate
 sbatch prepare_lsun_bedroom64.slurm
 DATASET=lsun_bedroom64 SCHEDULES=linear,cosine,geometric_linear,geometric_cosine ./submit_image_folder_full_slate.sh
+
+# Or prepare LSUN Church-Outdoor-64, then submit the reduced slate
+sbatch prepare_lsun_church64.slurm
+DATASET=lsun_church64 SCHEDULES=linear,cosine,geometric_linear,geometric_cosine ./submit_image_folder_full_slate.sh
 ```
 
 ### 3. Monitor Jobs
@@ -108,14 +112,16 @@ Automatically prepared by the script.
 2. Extract to your data directory
 3. Update the `--data_dir` path in the script
 
-### LSUN Bedroom
+### LSUN Bedroom and Church Outdoor
 Run:
 
 ```bash
 sbatch prepare_lsun_bedroom64.slurm
+# or
+sbatch prepare_lsun_church64.slurm
 ```
 
-The prep job downloads `bedroom_train_lmdb.zip` and `bedroom_val_lmdb.zip`, extracts them under `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source`, and writes `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/_source_manifest.tsv`.
+The prep jobs download the official LSUN LMDB zips from `dl.yf.io`, extract them under the matching GPFS source directory, and write `_source_manifest.tsv`. Bedroom uses `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64`; Church Outdoor uses `/project_gpfs/bata0/bjin0/lsun_church_64x64`.
 
 By default, LSUN training and evaluation read the LMDBs directly to avoid consuming millions of GPFS inodes. To materialize PNG folders anyway, submit the prep job with `LSUN_CONVERT_TO_PNG=1`.
 
@@ -123,9 +129,21 @@ After the prep job completes, use:
 
 ```bash
 DATASET=lsun_bedroom64 ./submit_image_folder_full_slate.sh
+# or
+DATASET=lsun_church64 ./submit_image_folder_full_slate.sh
 ```
 
 For the current reduced dataset plan, set `SCHEDULES=linear,cosine,geometric_linear,geometric_cosine`. The default objectives are `simple,hybrid,vlb`; override `OBJECTIVES` if needed.
+
+### Hybrid VB Weight Tuning
+
+The hybrid objective defaults to the original VB weight `0.001`. To run a grid over hybrid weights for datasets supported by `submit_image_folder_full_slate.sh`, use:
+
+```bash
+DATASET=celeba64 HYBRID_VB_WEIGHTS=0,1e-4,3e-4,1e-3,3e-3,1e-2 ./submit_hybrid_weight_grid.sh
+```
+
+Existing submitters keep their original behavior unless `HYBRID_VB_WEIGHT` or `HYBRID_VB_WEIGHTS` is set.
 
 ## Troubleshooting
 

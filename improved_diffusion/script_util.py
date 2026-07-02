@@ -35,6 +35,7 @@ def model_and_diffusion_defaults():
         use_scale_shift_norm=True,
         geometric_beta1=0.0,
         geometric_alpha_bar_T=0.0,
+        hybrid_vb_weight=0.001,
     )
 
 
@@ -61,6 +62,7 @@ def create_model_and_diffusion(
     use_scale_shift_norm,
     geometric_beta1,
     geometric_alpha_bar_T,
+    hybrid_vb_weight=0.001,
 ):
     model = create_model(
         image_size,
@@ -88,6 +90,7 @@ def create_model_and_diffusion(
         timestep_respacing=timestep_respacing,
         geometric_beta1=geometric_beta1,
         geometric_alpha_bar_T=geometric_alpha_bar_T,
+        hybrid_vb_weight=hybrid_vb_weight,
     )
     return model, diffusion
 
@@ -250,6 +253,7 @@ def create_gaussian_diffusion(
     timestep_respacing="",
     geometric_beta1=0.0,
     geometric_alpha_bar_T=0.0,
+    hybrid_vb_weight=0.001,
 ):
     betas = gd.get_named_beta_schedule(
         noise_schedule, steps,
@@ -281,6 +285,7 @@ def create_gaussian_diffusion(
         ),
         loss_type=loss_type,
         rescale_timesteps=rescale_timesteps,
+        hybrid_vb_weight=hybrid_vb_weight,
     )
 
 

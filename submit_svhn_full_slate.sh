@@ -16,6 +16,7 @@ MAX_SUBMITS=${MAX_SUBMITS:-0}
 FORCE_PREP=${FORCE_PREP:-0}
 SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY:-1}
 SLURM_TIME=${SLURM_TIME:-4-00:00:00}
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 
 mkdir -p "$SLURM_LOG_DIR" "$SUBMISSION_DIR"
 if [ ! -f "$SUBMISSION_TSV" ]; then
@@ -93,6 +94,7 @@ echo "Submitting SVHN training slate"
 echo "Schedules: ${schedules[*]}"
 echo "Objectives: ${objectives[*]}"
 echo "Objective note: using simple/hybrid/vlb; simple corresponds to L_simple."
+echo "Hybrid VB weight: $HYBRID_VB_WEIGHT"
 echo "SVHN train dir: $SVHN_TRAIN_DIR"
 echo "Submission dir: $SUBMISSION_DIR"
 echo "Dry run: $DRY_RUN"
@@ -105,7 +107,7 @@ for schedule_name in "${schedules[@]}"; do
     for objective in "${objectives[@]}"; do
         run_name="${schedule_name}_${objective}"
         job_name="svhn_${short_schedule}_${objective}"
-        export_arg="ALL,RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},SVHN_TRAIN_DIR=${SVHN_TRAIN_DIR},EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT},SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY}"
+        export_arg="ALL,RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT},SVHN_TRAIN_DIR=${SVHN_TRAIN_DIR},EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT},SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY}"
 
         echo "SUBMIT schedule=$schedule_name objective=$objective time=$SLURM_TIME"
         if [ "$DRY_RUN" != "1" ]; then

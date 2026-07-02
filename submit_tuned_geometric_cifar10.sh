@@ -9,6 +9,7 @@ SUBMISSION_DIR=${SUBMISSION_DIR:-/project_gpfs/bata0/bjin0/cifar10_tuned_geometr
 SUBMISSION_TSV=${SUBMISSION_TSV:-$SUBMISSION_DIR/submission.tsv}
 DRY_RUN=${DRY_RUN:-0}
 MAX_SUBMITS=${MAX_SUBMITS:-0}
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 
 mkdir -p "$SLURM_LOG_DIR" "$SUBMISSION_DIR"
 if [ ! -f "$SUBMISSION_TSV" ]; then
@@ -32,12 +33,13 @@ echo "=========================================="
 echo "Submitting tuned CIFAR-10 geometric training jobs"
 echo "Submission dir: $SUBMISSION_DIR"
 echo "Dry run: $DRY_RUN"
+echo "Hybrid VB weight: $HYBRID_VB_WEIGHT"
 echo "=========================================="
 
 submitted=0
 for entry in "${runs[@]}"; do
     IFS='|' read -r run_name objective beta alpha reason <<< "$entry"
-    export_arg="ALL,RUN_NAME=${run_name},OBJECTIVE=${objective},GEOMETRIC_BETA1=${beta},GEOMETRIC_ALPHA_BAR_T=${alpha}"
+    export_arg="ALL,RUN_NAME=${run_name},OBJECTIVE=${objective},HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT},GEOMETRIC_BETA1=${beta},GEOMETRIC_ALPHA_BAR_T=${alpha}"
     job_name="cifar_geo_${run_name}"
     echo "SUBMIT $run_name objective=$objective beta=$beta alpha=$alpha"
     if [ "$DRY_RUN" != "1" ]; then

@@ -5,7 +5,7 @@ cd /home/bjin0/improved-diffusion
 
 DATASET=${DATASET:-${1:-}}
 if [ -z "$DATASET" ]; then
-    echo "ERROR: set DATASET or pass it as the first argument (cifar100, celeba64, or lsun_bedroom64)"
+    echo "ERROR: set DATASET or pass it as the first argument (cifar10, cifar100, celeba64, lsun_bedroom64, or lsun_church64)"
     exit 1
 fi
 
@@ -21,8 +21,23 @@ SKIP_NLL=${SKIP_NLL:-0}
 SKIP_FID=${SKIP_FID:-0}
 EVAL_AFTER_TRAIN=${EVAL_AFTER_TRAIN:-0}
 TRAIN_DEPENDENCY_TYPE=${TRAIN_DEPENDENCY_TYPE:-afterok}
+EVAL_PARTITION=${EVAL_PARTITION:-}
+EVAL_TIME=${EVAL_TIME:-}
 
 case "$DATASET" in
+    cifar10)
+        DATA_ROOT=${DATA_ROOT:-/home/bjin0/improved-diffusion}
+        TRAIN_DIR=${TRAIN_DIR:-$DATA_ROOT/cifar_train}
+        TEST_DIR=${TEST_DIR:-$DATA_ROOT/cifar_test}
+        IMAGE_SIZE=${IMAGE_SIZE:-32}
+        EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT:-50000}
+        EXPECTED_TEST_COUNT=${EXPECTED_TEST_COUNT:-10000}
+        STATS_FILE=${STATS_FILE:-/project_gpfs/bata0/bjin0/cifar10_train_stats.npz}
+        SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE:-256}
+        NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES:-10000}
+        FID_NUM_SAMPLES=${FID_NUM_SAMPLES:-50000}
+        NLL_BATCH_SIZE=${NLL_BATCH_SIZE:-128}
+        ;;
     cifar100)
         DATA_ROOT=${DATA_ROOT:-/project_gpfs/bata0/bjin0/cifar100_32x32}
         TRAIN_DIR=${TRAIN_DIR:-$DATA_ROOT/train}
@@ -65,8 +80,24 @@ case "$DATASET" in
         FID_STATS_BATCH_SIZE=${FID_STATS_BATCH_SIZE:-64}
         FID_STATS_NUM_WORKERS=${FID_STATS_NUM_WORKERS:-4}
         ;;
+    lsun_church64)
+        DATA_ROOT=${DATA_ROOT:-/project_gpfs/bata0/bjin0/lsun_church_64x64}
+        LSUN_SOURCE_ROOT=${LSUN_SOURCE_ROOT:-$DATA_ROOT/source}
+        TRAIN_DIR=${TRAIN_DIR:-$LSUN_SOURCE_ROOT/church_outdoor_train_lmdb}
+        TEST_DIR=${TEST_DIR:-$LSUN_SOURCE_ROOT/church_outdoor_val_lmdb}
+        IMAGE_SIZE=${IMAGE_SIZE:-64}
+        EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT:-1}
+        EXPECTED_TEST_COUNT=${EXPECTED_TEST_COUNT:-1}
+        STATS_FILE=${STATS_FILE:-/project_gpfs/bata0/bjin0/lsun_church64_train_stats.npz}
+        SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE:-64}
+        NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES:-300}
+        FID_NUM_SAMPLES=${FID_NUM_SAMPLES:-50000}
+        NLL_BATCH_SIZE=${NLL_BATCH_SIZE:-100}
+        FID_STATS_BATCH_SIZE=${FID_STATS_BATCH_SIZE:-64}
+        FID_STATS_NUM_WORKERS=${FID_STATS_NUM_WORKERS:-4}
+        ;;
     *)
-        echo "ERROR: unsupported DATASET=$DATASET; expected cifar100, celeba64, or lsun_bedroom64"
+        echo "ERROR: unsupported DATASET=$DATASET; expected cifar10, cifar100, celeba64, lsun_bedroom64, or lsun_church64"
         exit 1
         ;;
 esac
@@ -94,7 +125,7 @@ fi
 
 mkdir -p "$SLURM_LOG_DIR" "$PARENT_EVAL_DIR"
 if [ ! -f "$SUBMISSION_TSV" ]; then
-    printf "submitted_at\tstatus\tjob_id\tdataset\tschedule_name\tobjective\trun_name\teval_name\tmodel_path\teval_dir\tnll_num_samples\tfid_num_samples\tforce\tskip_nll\tskip_fid\tdependency\ttrain_job_id\n" > "$SUBMISSION_TSV"
+    printf "submitted_at\tstatus\tjob_id\tdataset\tschedule_name\tobjective\trun_name\teval_name\tmodel_path\teval_dir\tnll_num_samples\tfid_num_samples\thybrid_vb_weight\tforce\tskip_nll\tskip_fid\tdependency\ttrain_job_id\n" > "$SUBMISSION_TSV"
 fi
 
 echo "=========================================="
@@ -104,12 +135,25 @@ echo "Training manifest: $TRAIN_SUBMISSION_TSV"
 echo "Eval dir: $PARENT_EVAL_DIR"
 echo "Dry run: $DRY_RUN"
 echo "Eval after train: $EVAL_AFTER_TRAIN"
+echo "Eval partition override: ${EVAL_PARTITION:-script default}"
+echo "Eval time override: ${EVAL_TIME:-script default}"
 echo "=========================================="
 
 submitted=0
-while IFS=$'\t' read -r submitted_at status job_id dataset schedule_name objective run_name train_dir image_size train_steps time_limit dependency prep_job_id logdir; do
+while IFS=$'\t' read -r submitted_at status job_id dataset schedule_name objective run_name train_dir image_size train_steps time_limit dependency prep_job_id maybe_hybrid_vb_weight maybe_logdir _extra; do
     if [ "$submitted_at" = "submitted_at" ]; then
         continue
+    fi
+    if [ -z "${maybe_logdir:-}" ]; then
+        logdir="$maybe_hybrid_vb_weight"
+        if [ "$objective" = "hybrid" ]; then
+            hybrid_vb_weight="0.001"
+        else
+            hybrid_vb_weight="none"
+        fi
+    else
+        hybrid_vb_weight="$maybe_hybrid_vb_weight"
+        logdir="$maybe_logdir"
     fi
     if [ "$dataset" != "$DATASET" ]; then
         continue
@@ -137,13 +181,21 @@ while IFS=$'\t' read -r submitted_at status job_id dataset schedule_name objecti
 
     eval_name="${DATASET}_${run_name}"
     job_name="eval_${DATASET}_${schedule_name}_${objective}"
-    export_arg="ALL,DATASET=${DATASET},EVAL_NAME=${eval_name},RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},MODEL_PATH=${model_path},PARENT_EVAL_DIR=${PARENT_EVAL_DIR},TRAIN_DIR=${TRAIN_DIR},TEST_DIR=${TEST_DIR},STATS_FILE=${STATS_FILE},IMAGE_SIZE=${IMAGE_SIZE},NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES},NUM_SAMPLES=${FID_NUM_SAMPLES},NLL_BATCH_SIZE=${NLL_BATCH_SIZE},SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE},FID_STATS_BATCH_SIZE=${FID_STATS_BATCH_SIZE:-$SAMPLE_BATCH_SIZE},FID_STATS_NUM_WORKERS=${FID_STATS_NUM_WORKERS:-4},FORCE=${FORCE},SKIP_NLL=${SKIP_NLL},SKIP_FID=${SKIP_FID}"
+    export_arg="ALL,DATASET=${DATASET},EVAL_NAME=${eval_name},RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},HYBRID_VB_WEIGHT=${hybrid_vb_weight},MODEL_PATH=${model_path},PARENT_EVAL_DIR=${PARENT_EVAL_DIR},TRAIN_DIR=${TRAIN_DIR},TEST_DIR=${TEST_DIR},STATS_FILE=${STATS_FILE},IMAGE_SIZE=${IMAGE_SIZE},NLL_NUM_SAMPLES=${NLL_NUM_SAMPLES},NUM_SAMPLES=${FID_NUM_SAMPLES},NLL_BATCH_SIZE=${NLL_BATCH_SIZE},SAMPLE_BATCH_SIZE=${SAMPLE_BATCH_SIZE},FID_STATS_BATCH_SIZE=${FID_STATS_BATCH_SIZE:-$SAMPLE_BATCH_SIZE},FID_STATS_NUM_WORKERS=${FID_STATS_NUM_WORKERS:-4},FORCE=${FORCE},SKIP_NLL=${SKIP_NLL},SKIP_FID=${SKIP_FID}"
+    sbatch_overrides=()
+    if [ -n "$EVAL_PARTITION" ]; then
+        sbatch_overrides+=(--partition="$EVAL_PARTITION")
+    fi
+    if [ -n "$EVAL_TIME" ]; then
+        sbatch_overrides+=(--time="$EVAL_TIME")
+    fi
 
-    echo "SUBMIT eval $eval_name model=$model_path dependency=$dependency"
+    echo "SUBMIT eval $eval_name model=$model_path hybrid_vb_weight=$hybrid_vb_weight dependency=$dependency partition=${EVAL_PARTITION:-script_default} time=${EVAL_TIME:-script_default}"
     if [ "$DRY_RUN" != "1" ]; then
         sbatch_output=$(
             env -u SBATCH_PARTITION -u SBATCH_ACCOUNT -u SBATCH_QOS -u SBATCH_GRES -u SBATCH_CONSTRAINT \
                 sbatch \
+                "${sbatch_overrides[@]}" \
                 "${dependency_arg[@]}" \
                 --export="$export_arg" \
                 --job-name="$job_name" \
@@ -162,8 +214,8 @@ while IFS=$'\t' read -r submitted_at status job_id dataset schedule_name objecti
         eval_status="dry_run"
     fi
 
-    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-        "$(date -Is)" "$eval_status" "$eval_job_id" "$DATASET" "$schedule_name" "$objective" "$run_name" "$eval_name" "$model_path" "$PARENT_EVAL_DIR/$eval_name" "$NLL_NUM_SAMPLES" "$FID_NUM_SAMPLES" "$FORCE" "$SKIP_NLL" "$SKIP_FID" "$dependency" "$job_id" >> "$SUBMISSION_TSV"
+    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+        "$(date -Is)" "$eval_status" "$eval_job_id" "$DATASET" "$schedule_name" "$objective" "$run_name" "$eval_name" "$model_path" "$PARENT_EVAL_DIR/$eval_name" "$NLL_NUM_SAMPLES" "$FID_NUM_SAMPLES" "$hybrid_vb_weight" "$FORCE" "$SKIP_NLL" "$SKIP_FID" "$dependency" "$job_id" >> "$SUBMISSION_TSV"
 
     submitted=$((submitted + 1))
     if [ "$MAX_SUBMITS" -gt 0 ] && [ "$submitted" -ge "$MAX_SUBMITS" ]; then

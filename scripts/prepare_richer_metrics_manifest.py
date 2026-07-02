@@ -17,6 +17,7 @@ DATASET_IMAGE_SIZES = {
     "imagenet64": 64,
     "celeba64": 64,
     "lsun_bedroom64": 64,
+    "lsun_church64": 64,
 }
 
 REAL_DIR_DEFAULTS = {
@@ -28,6 +29,7 @@ REAL_DIR_DEFAULTS = {
     "svhn": "/project_gpfs/bata0/bjin0/svhn_32x32/train",
     "celeba64": "/project_gpfs/bata0/bjin0/celeba_64x64/train",
     "lsun_bedroom64": "/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb",
+    "lsun_church64": "/project_gpfs/bata0/bjin0/lsun_church_64x64/source/church_outdoor_train_lmdb",
 }
 
 
@@ -81,6 +83,7 @@ def main() -> None:
     parser.add_argument("--cifar100_real_dir", default=None)
     parser.add_argument("--celeba64_real_dir", default=None)
     parser.add_argument("--lsun_bedroom64_real_dir", default=None)
+    parser.add_argument("--lsun_church64_real_dir", default=None)
     parser.add_argument("--allow_missing", action="store_true")
     args = parser.parse_args()
 
@@ -128,6 +131,7 @@ def main() -> None:
                     "image_size": str(size_from_name or DATASET_IMAGE_SIZES.get(row["dataset"], 32)),
                     "nll_bpd": row.get("nll_bpd", ""),
                     "fid": row.get("fid", ""),
+                    "hybrid_vb_weight": row.get("hybrid_vb_weight", ""),
                     "nll_samples": row.get("nll_samples", ""),
                     "fid_samples": row.get("fid_samples", ""),
                     "sampling_steps": row.get("sampling_steps", ""),
@@ -136,7 +140,7 @@ def main() -> None:
                 }
             )
 
-    rows.sort(key=lambda r: (r["dataset"], r["objective"], r["schedule"]))
+    rows.sort(key=lambda r: (r["dataset"], r["objective"], r["schedule"], r["hybrid_vb_weight"]))
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
@@ -149,6 +153,7 @@ def main() -> None:
         "image_size",
         "nll_bpd",
         "fid",
+        "hybrid_vb_weight",
         "nll_samples",
         "fid_samples",
         "sampling_steps",

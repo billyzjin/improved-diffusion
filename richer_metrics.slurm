@@ -22,6 +22,10 @@ fi
 
 cd /home/bjin0/improved-diffusion
 
+if [ -f /home/bjin0/improved-diffusion/.venv/bin/activate ]; then
+  source /home/bjin0/improved-diffusion/.venv/bin/activate
+fi
+
 MANIFEST=${MANIFEST:-results/richer_metrics/manifest.tsv}
 OUTPUT_DIR=${OUTPUT_DIR:-results/richer_metrics}
 FEATURE_CACHE_ROOT=${FEATURE_CACHE_ROOT:-/project_gpfs/bata0/bjin0/richer_metrics_features}

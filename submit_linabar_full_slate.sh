@@ -10,6 +10,7 @@ SUBMISSION_TSV=${SUBMISSION_TSV:-$SUBMISSION_DIR/submission.tsv}
 DRY_RUN=${DRY_RUN:-0}
 MAX_SUBMITS=${MAX_SUBMITS:-0}
 SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY:-1}
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 
 mkdir -p "$SLURM_LOG_DIR" "$SUBMISSION_DIR"
 if [ ! -f "$SUBMISSION_TSV" ]; then
@@ -40,6 +41,7 @@ echo "Objectives: ${objectives[*]}"
 echo "Submission dir: $SUBMISSION_DIR"
 echo "Dry run: $DRY_RUN"
 echo "Skip dataset verify: $SKIP_DATASET_VERIFY"
+echo "Hybrid VB weight: $HYBRID_VB_WEIGHT"
 echo "=========================================="
 
 submitted=0
@@ -49,7 +51,7 @@ for dataset in "${datasets[@]}"; do
             run_name="${schedule_name}_${objective}"
             job_name="lab_${dataset}_${schedule_name#linabar_}_${objective}"
             slurm_time=$(slurm_time_for_dataset "$dataset")
-            export_arg="ALL,DATASET=${dataset},RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY}"
+            export_arg="ALL,DATASET=${dataset},RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT},SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY}"
 
             echo "SUBMIT dataset=$dataset schedule=$schedule_name objective=$objective time=$slurm_time"
             if [ "$DRY_RUN" != "1" ]; then

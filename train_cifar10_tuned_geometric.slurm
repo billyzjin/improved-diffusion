@@ -74,13 +74,14 @@ if [ -n "$RESUME_CHECKPOINT" ]; then
 fi
 
 dropout="0.3"
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 objective_flags=()
 case "$OBJECTIVE" in
     simple)
         objective_flags=(--dropout "$dropout" --learn_sigma False --use_kl False)
         ;;
     hybrid)
-        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True)
+        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True --hybrid_vb_weight "$HYBRID_VB_WEIGHT")
         ;;
     vlb)
         objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl True --schedule_sampler loss-second-moment)
@@ -102,6 +103,7 @@ fi
 cat > "$METADATA_FILE" <<EOF
 run_name	$RUN_NAME
 objective	$OBJECTIVE
+hybrid_vb_weight	$([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")
 geometric_beta1	$GEOMETRIC_BETA1
 geometric_alpha_bar_T	$GEOMETRIC_ALPHA_BAR_T
 train_steps	500000
@@ -115,6 +117,7 @@ echo "CIFAR-10 TUNED GEOMETRIC TRAINING"
 echo "Job ID: ${SLURM_JOB_ID:-N/A}"
 echo "Run: $RUN_NAME"
 echo "Objective: $OBJECTIVE"
+echo "Hybrid VB weight: $([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")"
 echo "beta_1: $GEOMETRIC_BETA1"
 echo "alpha_bar_T: $GEOMETRIC_ALPHA_BAR_T"
 echo "Resume checkpoint: ${RESUME_CHECKPOINT:-none}"

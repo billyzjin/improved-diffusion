@@ -102,6 +102,7 @@ SAVE_INTERVAL=${SAVE_INTERVAL:-50000}
 LR_ANNEAL_STEPS=${LR_ANNEAL_STEPS:-500000}
 USE_FP16=${USE_FP16:-False}
 MICRO_BATCH=${MICRO_BATCH:-}
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 
 DEFAULT_LOGDIR="/project_gpfs/bata0/bjin0/${SLURM_JOB_USER}/${SLURM_JOB_ID}/logs/${DATASET}_${RUN_NAME}"
 RESUME_LOGDIR=${RESUME_LOGDIR:-}
@@ -156,7 +157,7 @@ case "$OBJECTIVE" in
         objective_flags=(--dropout "$dropout" --learn_sigma False --use_kl False)
         ;;
     hybrid)
-        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True)
+        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True --hybrid_vb_weight "$HYBRID_VB_WEIGHT")
         ;;
     vlb)
         objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl True --schedule_sampler loss-second-moment)
@@ -192,6 +193,7 @@ PY
     echo -e "run_name\t$RUN_NAME"
     echo -e "schedule_name\t$SCHEDULE_NAME"
     echo -e "objective\t$OBJECTIVE"
+    echo -e "hybrid_vb_weight\t$([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")"
     echo -e "dropout\t$dropout"
     echo -e "image_size\t$IMAGE_SIZE"
     echo -e "batch_size\t$BATCH_SIZE"
@@ -211,6 +213,7 @@ echo "Dataset: $DATASET"
 echo "Run: $RUN_NAME"
 echo "Schedule: $SCHEDULE_NAME"
 echo "Objective: $OBJECTIVE"
+echo "Hybrid VB weight: $([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")"
 echo "Dropout: $dropout"
 echo "Train steps: $LR_ANNEAL_STEPS"
 echo "Resume checkpoint: ${RESUME_CHECKPOINT:-none}"

@@ -134,6 +134,7 @@ DIFFUSION_FLAGS="$DIFFUSION_FLAGS --geometric_beta1 ${GEOMETRIC_BETA1} --geometr
 
 TRAIN_FLAGS="--lr 1e-4 --batch_size ${BATCH_SIZE} --ema_rate 0.9999"
 TRAIN_FLAGS="$TRAIN_FLAGS --log_interval ${LOG_INTERVAL} --save_interval ${SAVE_INTERVAL} --lr_anneal_steps ${LR_ANNEAL_STEPS}"
+HYBRID_VB_WEIGHT=${HYBRID_VB_WEIGHT:-0.001}
 if [ "$USE_FP16" = "True" ]; then
     TRAIN_FLAGS="$TRAIN_FLAGS --use_fp16 True"
 fi
@@ -164,7 +165,7 @@ case "$OBJECTIVE" in
         objective_flags=(--dropout "$dropout" --learn_sigma False --use_kl False)
         ;;
     hybrid)
-        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True)
+        objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl False --rescale_learned_sigmas True --hybrid_vb_weight "$HYBRID_VB_WEIGHT")
         ;;
     vlb)
         objective_flags=(--dropout "$dropout" --learn_sigma True --use_kl True --schedule_sampler loss-second-moment)
@@ -188,6 +189,7 @@ fi
     echo -e "run_name\t$RUN_NAME"
     echo -e "schedule_name\t$SCHEDULE_NAME"
     echo -e "objective\t$OBJECTIVE"
+    echo -e "hybrid_vb_weight\t$([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")"
     echo -e "geometric_beta1\t$GEOMETRIC_BETA1"
     echo -e "geometric_alpha_bar_T\t$GEOMETRIC_ALPHA_BAR_T"
     echo -e "dropout\t$dropout"
@@ -209,6 +211,7 @@ echo "Dataset: $DATASET"
 echo "Run: $RUN_NAME"
 echo "Schedule: $SCHEDULE_NAME"
 echo "Objective: $OBJECTIVE"
+echo "Hybrid VB weight: $([ "$OBJECTIVE" = "hybrid" ] && echo "$HYBRID_VB_WEIGHT" || echo "none")"
 echo "beta_1: $GEOMETRIC_BETA1"
 echo "alpha_bar_T: $GEOMETRIC_ALPHA_BAR_T"
 echo "Resume checkpoint: ${RESUME_CHECKPOINT:-none}"

@@ -60,19 +60,27 @@ For CIFAR-10, we created a script [cifar10.py](cifar10.py) that creates `cifar_t
 
 The `cifar_train` and `cifar_test` directories can be passed directly to the training scripts via the `--data_dir` argument.
 
-## LSUN bedroom
+## LSUN bedroom and church outdoor
 
 On the cluster, the preferred path is the Slurm prep job:
 
 ```
 sbatch prepare_lsun_bedroom64.slurm
+# or
+sbatch prepare_lsun_church64.slurm
 ```
 
-This downloads the official LSUN Bedroom LMDB zips from `dl.yf.io`, extracts them under `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source`, and writes a source manifest:
+These jobs download the official LSUN LMDB zips from `dl.yf.io`, extract them under the matching GPFS source directory, and write a source manifest. Bedroom uses:
 
 - `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb`
 - `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_val_lmdb`
 - `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/_source_manifest.tsv`
+
+Church Outdoor uses:
+
+- `/project_gpfs/bata0/bjin0/lsun_church_64x64/source/church_outdoor_train_lmdb`
+- `/project_gpfs/bata0/bjin0/lsun_church_64x64/source/church_outdoor_val_lmdb`
+- `/project_gpfs/bata0/bjin0/lsun_church_64x64/_source_manifest.tsv`
 
 The training and NLL/FID evaluation scripts read these LMDBs directly, which avoids materializing millions of PNG files on GPFS.
 
@@ -80,6 +88,8 @@ If a PNG image folder is explicitly needed, opt in with:
 
 ```
 LSUN_CONVERT_TO_PNG=1 sbatch prepare_lsun_bedroom64.slurm
+# or
+LSUN_CONVERT_TO_PNG=1 sbatch prepare_lsun_church64.slurm
 ```
 
 The converter is resumable. It writes `_manifest.tsv` in each completed split directory and uses center-crop + box downsampling.
