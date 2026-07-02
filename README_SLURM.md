@@ -145,6 +145,16 @@ DATASET=celeba64 HYBRID_VB_WEIGHTS=0,1e-4,3e-4,1e-3,3e-3,1e-2 ./submit_hybrid_we
 
 Existing submitters keep their original behavior unless `HYBRID_VB_WEIGHT` or `HYBRID_VB_WEIGHTS` is set.
 
+### Dropout Tuning
+
+The training scripts default to schedule-dependent dropout (0.1 for `linear`, 0.3 for all other schedules, following Nichol & Dhariwal's CIFAR-10 sweep). To run a grid over dropout values for datasets supported by `submit_image_folder_full_slate.sh`, use:
+
+```bash
+DATASET=cifar10 DROPOUTS=0.1,0.2 ./submit_dropout_grid.sh
+```
+
+The wrapper defaults to `SCHEDULES=geometric_linear,geometric_cosine`, `OBJECTIVES=hybrid,vlb`, and `DROPOUTS=0.1,0.2` (the 0.3 grid point already exists in the main full-slate runs). Run names gain a `_do<slug>` suffix (e.g. `geometric_linear_vlb_do0p1`), the per-job `DROPOUT` override is exported to the training script, and the training `submission.tsv` records the dropout in a trailing column. `submit_image_folder_full_slate.sh` keeps its original behavior unless `DROPOUTS` is set; a plain `DROPOUT=<value>` environment override continues to work as before.
+
 ## Troubleshooting
 
 ### Out of Memory

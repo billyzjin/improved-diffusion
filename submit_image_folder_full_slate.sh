@@ -23,6 +23,10 @@ if [ -n "${HYBRID_VB_WEIGHTS+x}" ]; then
 else
     HYBRID_VB_WEIGHTS=0.001
 fi
+DROPOUT_GRID=0
+if [ -n "${DROPOUTS+x}" ]; then
+    DROPOUT_GRID=1
+fi
 
 case "$DATASET" in
     cifar10)
@@ -113,7 +117,7 @@ esac
 
 mkdir -p "$SLURM_LOG_DIR" "$SUBMISSION_DIR"
 if [ ! -f "$SUBMISSION_TSV" ]; then
-    printf "submitted_at\tstatus\tjob_id\tdataset\tschedule_name\tobjective\trun_name\ttrain_dir\timage_size\ttrain_steps\ttime_limit\tdependency\tprep_job_id\thybrid_vb_weight\tlogdir\n" > "$SUBMISSION_TSV"
+    printf "submitted_at\tstatus\tjob_id\tdataset\tschedule_name\tobjective\trun_name\ttrain_dir\timage_size\ttrain_steps\ttime_limit\tdependency\tprep_job_id\thybrid_vb_weight\tlogdir\tdropout\n" > "$SUBMISSION_TSV"
 fi
 
 if [ ! -f "$TRAIN_SLURM" ]; then
@@ -130,6 +134,11 @@ OBJECTIVES=${OBJECTIVES:-simple,hybrid,vlb}
 read -r -a schedules <<< "${SCHEDULES//,/ }"
 read -r -a objectives <<< "${OBJECTIVES//,/ }"
 read -r -a hybrid_vb_weights <<< "${HYBRID_VB_WEIGHTS//,/ }"
+if [ "$DROPOUT_GRID" = "1" ]; then
+    read -r -a dropouts <<< "${DROPOUTS//,/ }"
+else
+    dropouts=("default")
+fi
 
 if [ "${#schedules[@]}" -eq 0 ]; then
     echo "ERROR: no schedules selected"
@@ -141,6 +150,10 @@ if [ "${#objectives[@]}" -eq 0 ]; then
 fi
 if [ "${#hybrid_vb_weights[@]}" -eq 0 ]; then
     echo "ERROR: HYBRID_VB_WEIGHTS did not contain any weights"
+    exit 1
+fi
+if [ "$DROPOUT_GRID" = "1" ] && [ "${#dropouts[@]}" -eq 0 ]; then
+    echo "ERROR: DROPOUTS did not contain any values"
     exit 1
 fi
 
@@ -229,8 +242,8 @@ else
         fi
     fi
     dependency_arg=(--dependency="afterok:${prep_job_id}")
-    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-        "$(date -Is)" "prep_submitted" "$prep_job_id" "$DATASET" "prepare" "prepare" "prepare_${DATASET}" "$TRAIN_DIR" "$IMAGE_SIZE" "$LR_ANNEAL_STEPS" "prepare" "none" "$prep_job_id" "none" "none" >> "$SUBMISSION_TSV"
+    printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+        "$(date -Is)" "prep_submitted" "$prep_job_id" "$DATASET" "prepare" "prepare" "prepare_${DATASET}" "$TRAIN_DIR" "$IMAGE_SIZE" "$LR_ANNEAL_STEPS" "prepare" "none" "$prep_job_id" "none" "none" "none" >> "$SUBMISSION_TSV"
 fi
 
 echo "=========================================="
@@ -243,6 +256,11 @@ if [ "$HYBRID_VB_WEIGHT_GRID" = "1" ]; then
 else
     echo "Hybrid VB weight: ${hybrid_vb_weights[0]} (default naming)"
 fi
+if [ "$DROPOUT_GRID" = "1" ]; then
+    echo "Dropouts: ${dropouts[*]}"
+else
+    echo "Dropout: training-script default (0.1 linear, 0.3 otherwise)"
+fi
 echo "Train dir: $TRAIN_DIR"
 echo "Image size: $IMAGE_SIZE"
 echo "Train steps: $LR_ANNEAL_STEPS"
@@ -252,6 +270,7 @@ echo "Training dependency: ${dependency_arg[*]:-none}"
 echo "=========================================="
 
 submitted=0
+for dropout in "${dropouts[@]}"; do
 for schedule_name in "${schedules[@]}"; do
     short_schedule=$(schedule_short "$schedule_name")
     for objective in "${objectives[@]}"; do
@@ -267,9 +286,17 @@ for schedule_name in "${schedules[@]}"; do
                 run_name="${run_name}_vbw${slug}"
                 job_name="${job_name}_vbw${slug}"
             fi
+            if [ "$DROPOUT_GRID" = "1" ]; then
+                dropout_slug=$(weight_slug "$dropout")
+                run_name="${run_name}_do${dropout_slug}"
+                job_name="${job_name}_do${dropout_slug}"
+            fi
             export_arg="ALL,DATASET=${DATASET},RUN_NAME=${run_name},SCHEDULE_NAME=${schedule_name},OBJECTIVE=${objective},TRAIN_DIR=${TRAIN_DIR},IMAGE_SIZE=${IMAGE_SIZE},EXPECTED_TRAIN_COUNT=${EXPECTED_TRAIN_COUNT},SKIP_DATASET_VERIFY=${SKIP_DATASET_VERIFY},LR_ANNEAL_STEPS=${LR_ANNEAL_STEPS},BATCH_SIZE=${BATCH_SIZE},LOG_INTERVAL=${LOG_INTERVAL},SAVE_INTERVAL=${SAVE_INTERVAL},USE_FP16=${USE_FP16},MICRO_BATCH=${MICRO_BATCH},HYBRID_VB_WEIGHT=${hybrid_vb_weight}"
+            if [ "$DROPOUT_GRID" = "1" ]; then
+                export_arg="${export_arg},DROPOUT=${dropout}"
+            fi
 
-            echo "SUBMIT dataset=$DATASET schedule=$schedule_name objective=$objective hybrid_vb_weight=$hybrid_vb_weight time=$SLURM_TIME"
+            echo "SUBMIT dataset=$DATASET schedule=$schedule_name objective=$objective hybrid_vb_weight=$hybrid_vb_weight dropout=$dropout time=$SLURM_TIME"
             if [ "$DRY_RUN" != "1" ]; then
                 sbatch_output=$(
                     env -u SBATCH_PARTITION -u SBATCH_ACCOUNT -u SBATCH_QOS -u SBATCH_GRES -u SBATCH_CONSTRAINT \
@@ -295,8 +322,8 @@ for schedule_name in "${schedules[@]}"; do
                 logdir="DRY_RUN"
             fi
 
-            printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                "$(date -Is)" "$status" "$job_id" "$DATASET" "$schedule_name" "$objective" "$run_name" "$TRAIN_DIR" "$IMAGE_SIZE" "$LR_ANNEAL_STEPS" "$SLURM_TIME" "${dependency_arg[*]:-none}" "${prep_job_id:-none}" "$hybrid_vb_weight" "$logdir" >> "$SUBMISSION_TSV"
+            printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+                "$(date -Is)" "$status" "$job_id" "$DATASET" "$schedule_name" "$objective" "$run_name" "$TRAIN_DIR" "$IMAGE_SIZE" "$LR_ANNEAL_STEPS" "$SLURM_TIME" "${dependency_arg[*]:-none}" "${prep_job_id:-none}" "$hybrid_vb_weight" "$logdir" "$dropout" >> "$SUBMISSION_TSV"
 
             submitted=$((submitted + 1))
             if [ "$MAX_SUBMITS" -gt 0 ] && [ "$submitted" -ge "$MAX_SUBMITS" ]; then
@@ -306,6 +333,7 @@ for schedule_name in "${schedules[@]}"; do
             fi
         done
     done
+done
 done
 
 echo "=========================================="
