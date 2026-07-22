@@ -1,6 +1,6 @@
 # Experiment Registry
 
-Last updated: 2026-07-07
+Last updated: 2026-07-22
 
 This file is the first place to look before searching GPFS. The companion
 machine-readable index is `results/experiment_registry.tsv`.
@@ -33,6 +33,8 @@ machine-readable index is `results/experiment_registry.tsv`.
 | LSUN Church-Outdoor-64 richer metrics | `results/lsun_church64_richer_metrics_20260707_111049/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/lsun_church64_evaluation_nll_fid_20260630_100608` | LSUN Church-Outdoor-64; hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Completed as Slurm array job 163805 on 2026-07-07; all 8 rows aggregated. Metrics: CMMD, KID, Inception density/coverage, and CLIP density/coverage. Manifest: `results/lsun_church64_richer_metrics_20260707_111049/manifest.tsv`. The earlier job 163795 was canceled immediately because it omitted CLIP density/coverage. |
 | CIFAR-10 hybrid VB-weight tuning | none | `/project_gpfs/bata0/bjin0/cifar10_hybrid_vb_weight_grid_20260625_132927` | CIFAR-10; hybrid objective only; linear, cosine, geometric_linear, geometric_cosine; VB weights 0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 | Training jobs 158594-158617 completed successfully. Jobs were moved in place from `long_hopper`/4 days to `standard_hopper`/3 days. Manifest: `/project_gpfs/bata0/bjin0/cifar10_hybrid_vb_weight_grid_20260625_132927/submission.tsv`. |
 | CIFAR-10 hybrid VB-weight tuning NLL/FID | pending aggregation to `results/cifar10_evaluation_nll_fid_cifar10_hybrid_vb_weight_eval_20260630_095404.tsv` | `/project_gpfs/bata0/bjin0/cifar10_hybrid_vb_weight_eval_20260630_095404` | CIFAR-10; hybrid objective only; linear, cosine, geometric_linear, geometric_cosine; VB weights 0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2 | Evaluation jobs 160359-160382 submitted 2026-06-30 to `standard_hopper` with 24-hour limits. Manifest: `/project_gpfs/bata0/bjin0/cifar10_hybrid_vb_weight_eval_20260630_095404/submission.tsv`. |
+| Geometric-linear dropout 0.1 NLL/FID | `results/geometric_linear_dropout01_eval_20260711_130421.tsv` | `/project_gpfs/bata0/bjin0/geometric_linear_dropout01_eval_20260711_130421` | CIFAR-10, MNIST, FashionMNIST, SVHN, CIFAR-100, ImageNet64, CelebA-64, LSUN Bedroom-64, LSUN Church-64; geometric_linear; hybrid/vlb; dropout 0.1 | Completed. Evaluation jobs 165380-165397 exited 0; all 18 rows contain NLL, FID, and 50k sample archives. NLL uses 10k samples except LSUN uses 300 validation samples. Manifest: `results/geometric_linear_dropout01_eval_20260711_130421_submission.tsv`. |
+| Geometric-linear dropout 0.1 richer metrics | `results/geometric_linear_dropout01_richer_metrics_20260721_102718/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/geometric_linear_dropout01_eval_20260711_130421` | Same 18 geometric_linear dropout 0.1 hybrid/vlb rows | Completed as Slurm array job 170799 on 2026-07-22; all 18 rows contain CMMD, KID, Inception density/coverage, and CLIP density/coverage. Manifest: `results/geometric_linear_dropout01_richer_metrics_20260721_102718/manifest.tsv`. |
 
 ## Training Roots
 
@@ -46,6 +48,8 @@ machine-readable index is `results/experiment_registry.tsv`.
 | LSUN Bedroom-64 reduced slate | `/project_gpfs/bata0/bjin0/lsun_bedroom64_full_slate_20260622_101208/submission.tsv` | 8 jobs completed successfully: hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Jobs 156585-156592 used LMDB train source `/project_gpfs/bata0/bjin0/lsun_bedroom_64x64/source/bedroom_train_lmdb`. |
 | LSUN Church-Outdoor-64 reduced slate | `/project_gpfs/bata0/bjin0/lsun_church64_full_slate_20260625_122825/submission.tsv` | 8 jobs completed: hybrid/vlb x linear/cosine/geometric_linear/geometric_cosine. Jobs 158577-158584 used LMDB train source `/project_gpfs/bata0/bjin0/lsun_church_64x64/source/church_outdoor_train_lmdb`. |
 | CIFAR-10 hybrid VB-weight tuning | `/project_gpfs/bata0/bjin0/cifar10_hybrid_vb_weight_grid_20260625_132927/submission.tsv` | 24 jobs completed: hybrid objective x linear/cosine/geometric_linear/geometric_cosine x VB weights 0, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2. Jobs 158594-158617 were moved in place to `standard_hopper` with a 3-day limit. |
+| CIFAR-10 geometric-linear dropout check | `/project_gpfs/bata0/bjin0/cifar10_geometric_linear_dropout01_20260708_091808/submission.tsv` | 2 jobs completed successfully: geometric_linear x hybrid/vlb with dropout 0.1, to test whether geometric_linear should match the linear baseline's dropout. Jobs 164481-164482 exited 0 and final 500k EMA checkpoints are present. |
+| Other-dataset geometric-linear dropout check | `/project_gpfs/bata0/bjin0/geometric_linear_dropout01_other_datasets_20260708_091808/submission.tsv` | 16 jobs completed successfully: MNIST, FashionMNIST, SVHN, CIFAR-100, ImageNet64, CelebA-64, LSUN Bedroom-64, and LSUN Church-64 x hybrid/vlb with geometric_linear dropout 0.1. Jobs 164486-164501 exited 0; 64x64 datasets use 200k steps and 32x32 datasets use 500k steps. |
 
 ## Lookup Pattern
 
