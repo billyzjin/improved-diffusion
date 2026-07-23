@@ -1,6 +1,6 @@
 # Experiment Registry
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 This file is the first place to look before searching GPFS. The companion
 machine-readable index is `results/experiment_registry.tsv`.
@@ -11,6 +11,7 @@ machine-readable index is `results/experiment_registry.tsv`.
 |---|---|---|---|---|
 | Unconditional NLL/FID aggregate | `evaluation_results_full.tsv` | exact per-run directories are in the `source` column | MNIST, FashionMNIST, CIFAR-10, ImageNet64; simple/hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine, tuned_nll, tuned_fid, tuned_balanced | 84 result rows. This is the main table for the original unconditional slate plus tuned geometric schedules. |
 | Baseline/geometric richer metrics | `results/richer_metrics/richer_metrics_summary.tsv` | exact per-run directories are in `results/richer_metrics/manifest.tsv` | MNIST, FashionMNIST, CIFAR-10, ImageNet64; simple/hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | CMMD, KID, Inception density/coverage, and CLIP density/coverage. Submission records: `results/submitted_jobs_20260601.tsv`, `results/clip_density_coverage_submissions_20260617_103213.tsv`. |
+| ImageNet64 50k KID refresh | `results/imagenet64_kid50k_20260723_075312/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/imagenet64_fid50k_finished12_20260708_112342` | ImageNet64; simple/hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine | Slurm array job 171748 completed on `standard_hopper`; all 12 tasks exited 0. KID uses 50,000 real/generated Inception features, with 100 subsets of size 1,000. Manifest: `results/imagenet64_kid50k_20260723_075312/manifest.tsv`. |
 | Linabar NLL/FID | not yet aggregated into one local TSV | `/project_gpfs/bata0/bjin0/linabar_evaluation_nll_fid_20260605_041727` | MNIST, FashionMNIST, CIFAR-10, ImageNet64; simple/hybrid/vlb; linabar_linear, linabar_cosine | Per-run result files live under the GPFS root. The richer-metrics manifest also records sample paths. |
 | Linabar richer metrics | `results/linabar_richer_metrics_20260605_041727/richer_metrics_summary.tsv` | samples come from `/project_gpfs/bata0/bjin0/linabar_evaluation_nll_fid_20260605_041727` | completed linabar rows with available samples | CMMD, KID, Inception density/coverage, and CLIP density/coverage. Submission records: `results/linabar_richer_metrics_20260605_041727/submission.tsv`, `results/clip_density_coverage_submissions_20260617_103213.tsv`. |
 | SVHN NLL/FID | `results/svhn_evaluation_nll_fid_20260610_100613.tsv` | `/project_gpfs/bata0/bjin0/svhn_evaluation_nll_fid_20260610_100613` | SVHN; simple/hybrid/vlb; linear, cosine, geometric_linear, geometric_cosine, linabar_linear, selected linabar_cosine | 17 evaluated rows. `linabar_cosine_hybrid` was skipped because training produced NaNs. |
